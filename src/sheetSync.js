@@ -7,16 +7,25 @@ export const SHEET_WRITE_API_KEY = import.meta.env.VITE_SHEET_WRITE_API_KEY || '
 const n = (value) => Number(value) || 0;
 const round2 = (value) => Number(n(value).toFixed(2));
 const firstFilled = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') ?? '';
-const rowHasData = (row = {}) => Object.values(row).some((value) => String(value ?? '').trim() !== '');
+const rowHasData = (row = {}) => {
+  const skipValues = ['CM', 'KGS', '0', '0.00'];
+  return Object.entries(row).some(([key, value]) => {
+    // Skip internal/meta fields and unit fields with default values
+    if (['sno', 's_no', 'unit', 'size_unit', 'weight_unit', 'mrr_no', 'ge_no'].includes(key)) return false;
+    const val = String(value ?? '').trim();
+    return val !== '' && !skipValues.includes(val);
+  });
+};
+const normalizeText = (value) => String(value ?? '').trim().toLowerCase();
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const VERIFY_TIMEOUT_MS = 15000;
-const VERIFY_INTERVAL_MS = 1200;
+const VERIFY_TIMEOUT_MS = 45000;
+const VERIFY_INTERVAL_MS = 2000;
 
 function findMatchingPoRow(row = {}, poRows = []) {
   const poNo = String(row.po_no || row.party_order || '').trim();
   const details = String(row.po_details || '').trim();
   const erpCode = String(row.erp_code || '').trim();
-  const reelDetails = String(row.reel_details || row.item_name || '').trim();
+  const reelDetails = String(row.reel_details || row.item_name || row.description || '').trim();
   const gsm = String(row.gsm || '').trim();
   const size = String(row.size || '').trim();
   const bf = String(row.bf || '').trim();
@@ -46,22 +55,27 @@ export function buildHelperRows(invoice, packing, poRows = []) {
   const mrrNumber = firstFilled(packing.mrr_no, invoice.mrr_no);
   const supplierName = firstFilled(packing.distributor, packing.buyer?.name_address, invoice.bill_to?.name_address);
 
-  return (Array.isArray(packing.items) ? packing.items : [])
-    .filter(rowHasData)
-    .map((row, index) => {
-      const po = findMatchingPoRow(row, poRows);
-      const weight = round2(row.net_wt);
+  // Heuristic: Use packing.items if it has meaningful data, otherwise invoice.goods
+  const packingRows = Array.isArray(packing.items) ? packing.items.filter(rowHasData) : [];
+  const invoiceRows = Array.isArray(invoice.goods) ? invoice.goods.filter(rowHasData) : [];
+  
+  const sourceItems = packingRows.length > 0 ? packingRows : invoiceRows;
+
+  return sourceItems.map((row, index) => {
+      const poNo = row.po_no || row.party_order;
+      const po = findMatchingPoRow({ ...row, po_no: poNo }, poRows);
+      const weight = round2(row.net_wt || row.weight);
       const rate = round2(row.rate);
       return {
         s_no: index + 1,
         mrr_number: firstFilled(row.mrr_no, mrrNumber),
         po_details: firstFilled(row.po_details, po?.po_details),
-        po_no: firstFilled(row.po_no, row.party_order, po?.po_no),
+        po_no: firstFilled(poNo, po?.po_no),
         po_date: firstFilled(po?.date, packing.order_date, invoice.date),
-        supplier: firstFilled(po?.supplier, supplierName),
-        our_reel_number: firstFilled(row.reel_no),
+        supplier: firstFilled(row.supplier, po?.supplier, supplierName),
+        our_reel_number: firstFilled(row.reel_no, row.reels),
         supplier_reel_no: firstFilled(row.supplier_reel_no),
-        reel_details: firstFilled(row.reel_details, row.item_name, po?.reel_details),
+        reel_details: firstFilled(row.reel_details, row.item_name, row.description, po?.reel_details),
         erp_code: firstFilled(row.erp_code, po?.erp_code),
         size: firstFilled(row.size, po?.size),
         gsm: firstFilled(row.gsm, po?.gsm),
@@ -109,11 +123,18 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
   };
 }
 
-export async function fetchSheetRange(sheetName) {
-  if (!SCRIPT_URL) {
-    throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
+export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
+  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
   }
-  const url = `${SCRIPT_URL}?sheet=${encodeURIComponent(sheetName || PO_SHEET_NAME)}`;
+  const urlParams = new URLSearchParams({
+    sheet: sheetName || PO_SHEET_NAME,
+    action: 'get_rows'
+  });
+  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+
+  const url = `${targetScriptUrl}?${urlParams.toString()}`;
   const response = await fetch(url);
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.ok === false) {
@@ -122,12 +143,13 @@ export async function fetchSheetRange(sheetName) {
   return payload;
 }
 
-export async function fetchSheetRangeWithParams(params = {}) {
-  if (!SCRIPT_URL) {
-    throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
+export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
+  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
   }
 
-  const url = new URL(SCRIPT_URL);
+  const url = new URL(targetScriptUrl);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && String(value).trim() !== '') {
       url.searchParams.set(key, String(value));
@@ -137,10 +159,70 @@ export async function fetchSheetRangeWithParams(params = {}) {
   const response = await fetch(url.toString());
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.ok === false) {
-    throw new Error(payload?.error || payload?.message || 'Could not verify Google Sheets write.');
+    if (params.action === 'verify' || params.action === 'verify_ge') return null;
+    throw new Error(payload?.error || payload?.message || 'Error: Could not verify Google Sheets write.');
   }
   return payload;
 }
+
+export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, prefix) {
+  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
+  }
+
+  const urlParams = new URLSearchParams({
+    action: 'get_latest_ids',
+    sheet: sheetName
+  });
+  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+  if (prefix) urlParams.set('prefix', prefix);
+
+  const url = `${targetScriptUrl}?${urlParams.toString()}`;
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.error || payload?.message || 'Could not fetch latest MRR/GE IDs.');
+  }
+  return {
+    mrr: Number(payload.mrr || 0),
+    ge: Number(payload.ge || 0)
+  };
+}
+
+export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptUrl) {
+  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL.');
+  }
+
+  const urlParams = new URLSearchParams({
+    action: 'get_pending_ge',
+    mrrSheet: mrrSheetName
+  });
+  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+
+  const url = `${targetScriptUrl}?${urlParams.toString()}`;
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.error || payload?.message || 'Could not fetch pending Gate Entries.');
+  }
+  return payload.values || [];
+}
+
+/**
+ * Fetch a list of unique suppliers from the PO DETAILS sheet.
+ */
+export async function fetchUniqueSuppliers(firm) {
+  if (!firm?.scriptUrl) throw new Error(`Script URL missing for firm ${firm?.name}`);
+  const url = `${firm.scriptUrl}?action=get_suppliers&sheet=PO DETAILS&spreadsheetId=${firm.spreadsheetId || ''}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data?.ok) throw new Error(data?.error || `Failed to fetch suppliers for ${firm.name}.`);
+  return data.values || [];
+}
+
 
 function submitPayloadWithForm(payload) {
   return new Promise((resolve, reject) => {
@@ -152,7 +234,7 @@ function submitPayloadWithForm(payload) {
 
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = SCRIPT_URL;
+      form.action = payload.scriptUrl || SCRIPT_URL;
       form.target = iframeName;
       form.style.display = 'none';
 
@@ -194,18 +276,6 @@ function submitPayloadWithForm(payload) {
 }
 
 async function submitPayload(payload) {
-  const body = new URLSearchParams({
-    payload: JSON.stringify(payload)
-  });
-
-  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-    const sent = navigator.sendBeacon(SCRIPT_URL, body);
-    if (sent) {
-      await wait(400);
-      return;
-    }
-  }
-
   return submitPayloadWithForm(payload);
 }
 
@@ -213,8 +283,52 @@ function getMrrNumber(invoice, packing) {
   return firstFilled(invoice?.mrr_no, packing?.mrr_no);
 }
 
-async function verifyWrite(action, invoice, packing) {
+async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, options = {}) {
+  const mrrSheetName = options.mrrSheetName || MRR_FORM_SHEET_NAME;
+  const helperSheetName = options.helperSheetName || HELPER_SHEET_NAME;
   const mrrNumber = getMrrNumber(invoice, packing);
+  if (action === 'save_ge_entry') {
+    const geEntry = options.geEntry || {};
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < VERIFY_TIMEOUT_MS) {
+      const payload = await fetchSheetRangeWithParams({
+        action: 'verify_ge',
+        invoice_no: geEntry.invoice_no,
+        supplier: geEntry.supplier,
+        spreadsheetId
+      }, scriptUrl);
+      
+      if (payload?.ge_no) {
+        return { ok: true, ge_no: payload.ge_no };
+      }
+
+      const pendingPayload = await fetchSheetRangeWithParams({
+        action: 'get_pending_ge',
+        mrrSheet: options.mrrSheetName || MRR_FORM_SHEET_NAME,
+        spreadsheetId
+      }, scriptUrl);
+
+      const pendingMatch = (pendingPayload?.values || []).find((item) => {
+        if (item?.pending_stage !== 'pending_mrr') return false;
+        const sameInvoice = normalizeText(item.invoice_no) === normalizeText(geEntry.invoice_no);
+        const sameSupplier = !normalizeText(geEntry.supplier) || normalizeText(item.supplier).includes(normalizeText(geEntry.supplier)) || normalizeText(geEntry.supplier).includes(normalizeText(item.supplier));
+        const sameTruck = !normalizeText(geEntry.truck_no) || normalizeText(item.truck_no) === normalizeText(geEntry.truck_no);
+        return sameInvoice && sameSupplier && sameTruck;
+      });
+
+      if (pendingMatch) {
+        return { ok: true, ge_no: pendingMatch.ge_no || geEntry.ge_no || '' };
+      }
+      await wait(VERIFY_INTERVAL_MS);
+    }
+    return {
+      ok: true,
+      ge_no: geEntry.ge_no || '',
+      pendingVerification: true,
+      message: 'Gate Entry save request was sent, but verification timed out. Please confirm it in the Pending MRR list.'
+    };
+  }
+
   if (!mrrNumber) {
     return {
       ok: true,
@@ -226,9 +340,10 @@ async function verifyWrite(action, invoice, packing) {
   while (Date.now() - startedAt < VERIFY_TIMEOUT_MS) {
     if (action === 'save_invoice') {
       const payload = await fetchSheetRangeWithParams({
-        sheet: MRR_FORM_SHEET_NAME,
-        mrr_number: mrrNumber
-      });
+        sheet: mrrSheetName,
+        mrr_number: mrrNumber,
+        spreadsheetId
+      }, scriptUrl);
 
       if (payload?.count) {
         return {
@@ -241,9 +356,10 @@ async function verifyWrite(action, invoice, packing) {
       }
     } else {
       const payload = await fetchSheetRangeWithParams({
-        sheet: HELPER_SHEET_NAME,
-        mrr_number: mrrNumber
-      });
+        sheet: helperSheetName,
+        mrr_number: mrrNumber,
+        spreadsheetId
+      }, scriptUrl);
 
       if (payload?.count || !Array.isArray(packing?.items) || !packing.items.length) {
         return {
@@ -270,7 +386,7 @@ async function verifyWrite(action, invoice, packing) {
   throw new Error(`Save request was sent, but no HELPER SHEET rows were found for MRR Number ${mrrNumber}. Check the Apps Script deployment, web app permissions, and sheet headers.`);
 }
 
-async function postSheetAction(action, invoice, packing, poRows = []) {
+async function postSheetAction(action, invoice, packing, poRows = [], options = {}) {
   if (!SCRIPT_URL) {
     throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
   }
@@ -278,23 +394,34 @@ async function postSheetAction(action, invoice, packing, poRows = []) {
   await submitPayload({
     action,
     apiKey: SHEET_WRITE_API_KEY || undefined,
+    spreadsheetId: options.spreadsheetId,
+    scriptUrl: options.scriptUrl,
     invoice,
     packing,
-    // poRows deliberately entirely removed to prevent Google Apps script POST size limit truncation!
+    poRows,
+    geEntry: options.geEntry,
     options: {
-      poSheetName: PO_SHEET_NAME,
-      mrrSheetName: MRR_FORM_SHEET_NAME,
-      helperSheetName: HELPER_SHEET_NAME
+      poSheetName: options.poSheetName || PO_SHEET_NAME,
+      mrrSheetName: options.mrrSheetName || MRR_FORM_SHEET_NAME,
+      helperSheetName: options.helperSheetName || HELPER_SHEET_NAME
     }
   });
 
-  return verifyWrite(action, invoice, packing);
+  return verifyWrite(action, invoice, packing, options.spreadsheetId, options.scriptUrl, options);
 }
 
-export function saveInvoiceToSheets(invoice, packing, poRows = []) {
-  return postSheetAction('save_invoice', invoice, packing, poRows);
+export function saveInvoiceToSheets(invoice, packing, poRows = [], options = {}) {
+  return postSheetAction('save_invoice', invoice, packing, poRows, options);
 }
 
-export function savePackingToSheets(invoice, packing, poRows = []) {
-  return postSheetAction('save_packing', invoice, packing, poRows);
+export function savePackingToSheets(invoice, packing, poRows = [], options = {}) {
+  return postSheetAction('save_packing', invoice, packing, poRows, options);
+}
+
+export async function saveGeEntryToSheets(geEntry, options = {}) {
+  const result = await postSheetAction('save_ge_entry', {}, {}, [], {
+    ...options,
+    geEntry
+  });
+  return result;
 }

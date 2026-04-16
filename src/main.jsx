@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { savePackingToSheets, fetchSheetRangeWithParams, HELPER_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, HELPER_SHEET_NAME, SCRIPT_URL, PO_SHEET_NAME } from './sheetSync';
 import QRCodePackage from 'react-qr-code';
 const QRCode = typeof QRCodePackage === 'function' ? QRCodePackage : (QRCodePackage.default || QRCodePackage.QRCode || QRCodePackage);
 
@@ -52,14 +52,81 @@ const labelStyles = `
 `;
 
 const styles = `
-:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex:0 0 auto}@keyframes spin{to{transform:rotate(360deg)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast{display:none}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}}
+:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex:0 0 auto}@keyframes spin{to{transform:rotate(360deg)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center;width:100%;height:100%}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.supplier-search-wrap{position:relative;width:100%}.supplier-search{padding-right:28px !important}.supplier-search::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0}.supplier-search-wrap::after{content:"▼";position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#444;font-size:12px;line-height:1}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast{display:none}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}}
 
 `;
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const MODEL = 'gemini-2.5-flash';
-const PO_SCRIPT_URL = import.meta.env.VITE_PO_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwiyz-CktQyrxFP2U-LPHYm8zcECnPWQsK6NRYtt83w2Hzm24xZLL70PjD6yTHDiEhQOw/exec';
-const PO_SHEET_NAME = import.meta.env.VITE_PO_SHEET_NAME || 'PO DETAILS';
+
+
+const FIRMS = [
+  { 
+    id: 'lnki', 
+    name: 'LNKI', 
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbyMNk5ixvpIiK6ln-m-rT8aW2EdbTlaWF9As5EhMDg0h3u5gPrFosx4d22MLoKPWCVovg/exec', 
+    spreadsheetId: import.meta.env.VITE_LNKI_SPREADSHEET_ID || '114qzPknHLYtQnMAH3URakk9djBjDL3zpd59fd3OWau0',
+    po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
+    mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
+    helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
+    header: {
+      brand_box: '',
+      title: 'LAXMI NARAYAN KRAFT INDUSTRIES',
+      works: '1COM 2, 3RD FLOOR ADMAS PLAZA G.S ROAD, CHRISTIAN BASTI, GUWAHATI Pin 781101',
+      meta: 'State :ASSAM Pin:781101 Code :18',
+      contact: 'Contact - / M:- T:-',
+      gstin: 'GSTIN : 18AADFL5037B1ZO PAN : AADFL5037B',
+      extra_lines: [],
+      note: ''
+    }
+  },
+  { 
+    id: 'unit_1', 
+    name: 'UNIT-1', 
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbwiyz-CktQyrxFP2U-LPHYm8zcECnPWQsK6NRYtt83w2Hzm24xZLL70PjD6yTHDiEhQOw/exec', 
+    spreadsheetId: import.meta.env.VITE_UNIT_1_SPREADSHEET_ID || '',
+    po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
+    mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
+    helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
+    header: {
+      brand_box: '',
+      title: 'LAXMI NARAYAN CORRUGATED BOARDS LLP UNIT I (DR)',
+      works: '3RD FLOOR, ADAMS PLAZA, CHRISTIANBASTI, G.S. ROAD, GUWAHATI, PIN NO-781005',
+      meta: 'State :ASSAM Pin:781005 Code :18',
+      contact: 'Contact - / M:- T:-',
+      gstin: 'GSTIN :18AAIFL7383D2Z1 PAN : AAIFL7383D',
+      extra_lines: [],
+      note: ''
+    }
+  },
+  { 
+    id: 'unit_2', 
+    name: 'UNIT-2', 
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbzJD4sZCrUFu6N_w-VH60NOucs4us_artwt6h6trB1mpLBnn43OWynpxWa9pIts9xYcFA/exec', 
+    spreadsheetId: import.meta.env.VITE_UNIT_2_SPREADSHEET_ID || '',
+    po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
+    mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
+    helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
+    header: {
+      brand_box: '',
+      title: 'LAXMI NARAYAN CORRUGATED BOARDS LLP UNIT II (DR)',
+      works: 'INDUSTRIAL GROWTH CENTER, CHOWKIGATE, CHANGSARI, KAMRUP Pin 781101',
+      meta: 'State :ASSAM Pin:781101 Code :18',
+      contact: 'Contact - / M:- T:-',
+      gstin: 'GSTIN :18AAIFL7383D1Z2 PAN : AAIFL7383D',
+      extra_lines: [],
+      note: ''
+    }
+  }
+];
+
+const getSheetName = (base, type) => {
+  if (typeof base === 'object' && base !== null) {
+    return base[type] || base['reel'] || '';
+  }
+  if (type === 'sheet') return `${base} (SHEETS)`;
+  return base;
+};
 
 const defaultHeader = () => ({
   brand_box: '',
@@ -72,7 +139,25 @@ const defaultHeader = () => ({
   note: ''
 });
 
-const blankInvoiceRow = () => ({ description: '', hsn: '48043100', sort_no: '', party_order: '', gsm: '', size: '', size_unit: 'CM', reels: '', weight: '', weight_unit: 'KGS', rate: '', amount: '' });
+const blankInvoiceRow = () => ({ 
+  description: '', 
+  hsn: '48043100', 
+  sort_no: '', 
+  party_order: '', 
+  po_no: '', 
+  po_details: '', 
+  po_date: '', 
+  supplier: '', 
+  po_rate: '', 
+  gsm: '', 
+  size: '', 
+  size_unit: 'CM', 
+  reels: '', 
+  weight: '', 
+  weight_unit: 'KGS', 
+  rate: '', 
+  amount: '' 
+});
 const blankPackingRow = () => ({ mrr_no: '', ge_no: '', po_no: '', po_details: '', supplier_reel_no: '', erp_code: '', reel_details: '', item_name: '', reel_no: '', sort_no: '', party_order: '', bf: '', gsm: '', size: '', unit: 'CM', rate: '', po_rate: '', net_wt: '' });
 const blankPoRow = () => ({ sno: '', po_no: '', date: '', supplier: '', po_details: '', erp_code: '', size: '', gsm: '', bf: '', reel_details: '', rate: '', quantity: '', status: '', quantity_received: '', pending: '', closed: '', rapc: '' });
 
@@ -89,6 +174,7 @@ const blankInvoice = {
   mrr_no: '',
   receipt_date: '',
   actual_weight: '',
+  actual_mrr_weight: '',
   due_days: '',
   freight_type: '',
   bill_to: { name_address: '', gstin: '', contact: '', state: '', state_code: '' },
@@ -155,12 +241,60 @@ function words(value) {
   return `${c ? `${three(c)} Crore ` : ''}${l ? `${three(l)} Lakh ` : ''}${th ? `${three(th)} Thousand ` : ''}${h ? three(h) : ''}`.trim() + ' Only';
 }
 
-async function fileToBase64(file) {
-  const buffer = await file.arrayBuffer();
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const useFallback = () => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    };
+    
+    if (!file.type || !file.type.match(/image\/(jpeg|png|webp|gif|bmp)/i)) {
+      return useFallback();
+    }
+    
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const MAX_DIM = 1200;
+      let { width, height } = img;
+      if (width > height && width > MAX_DIM) {
+        height *= MAX_DIM / width;
+        width = MAX_DIM;
+      } else if (height > MAX_DIM) {
+        width *= MAX_DIM / height;
+        height = MAX_DIM;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      useFallback();
+    };
+    img.src = url;
+  });
+}
+
+function getDataUrlMimeType(dataUrl, fallback = 'image/jpeg') {
+  const match = String(dataUrl || '').match(/^data:([^;]+);base64,/i);
+  return match ? match[1] : fallback;
+}
+
+function getDataUrlBase64(dataUrl) {
+  const parts = String(dataUrl || '').split(',');
+  return parts.length > 1 ? parts[1] : String(dataUrl || '');
+}
+
+function getDataUrlBase64Size(dataUrl) {
+  const base64 = getDataUrlBase64(dataUrl);
+  return Math.ceil((base64.length * 3) / 4);
 }
 
 function inferJsonSchema(sample) {
@@ -521,11 +655,11 @@ function normalizePacking(data = {}) {
       ge_no: mergedRow.ge_no || packing.ge_no || '',
       po_no: mergedRow.po_no || mergedRow.party_order || '',
       po_details: mergedRow.po_details || '',
-      supplier_reel_no: mergedRow.supplier_reel_no || '',
+      supplier_reel_no: mergedRow.supplier_reel_no || mergedRow.reel_no || '',
       erp_code: mergedRow.erp_code || '',
       reel_details: mergedRow.reel_details || mergedRow.item_name || '',
       item_name: mergedRow.item_name || mergedRow.reel_details || '',
-      reel_no: mergedRow.reel_no || '',
+      reel_no: mergedRow.reel_no || mergedRow.supplier_reel_no || '',
       party_order: mergedRow.party_order || mergedRow.po_no || '',
       rate: mergedRow.rate || '',
       po_rate: mergedRow.po_rate || ''
@@ -666,43 +800,62 @@ function normalizePoRow(data = {}) {
 }
 
 function sheetValuesToPoRows(values = []) {
-  const hasHeader = /po\s*no/i.test(String(values?.[0]?.[1] || ''));
-  const rows = hasHeader ? values.slice(1) : values;
+  if (!values || values.length === 0) return [];
+  
+  const headers = values[0].map(h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+  const findIdx = (aliases) => {
+    for (const alias of aliases) {
+      const idx = headers.indexOf(alias.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  const idxMap = {
+    sno: findIdx(['S.No.', 'S No', 's_no', 'serial_no', 'sno']),
+    po_no: findIdx(['PO No.', 'PO No', 'po_no', 'party_order_no', 'party_order']),
+    date: findIdx(['Date', 'date', 'po_date', 'order_date']),
+    supplier: findIdx(['SUPPLIER', 'supplier', 'party_name', 'vendor']),
+    po_details: findIdx(['PO DETAILS', 'po_details', 'item_description']),
+    erp_code: findIdx(['ERP Code', 'erp_code', 'item_code']),
+    size: findIdx(['Size', 'size']),
+    gsm: findIdx(['GSM', 'gsm']),
+    bf: findIdx(['BF', 'bf']),
+    reel_details: findIdx(['REEL DETAILS', 'reel_details', 'item_name', 'reel_info']),
+    rate: findIdx(['Rate', 'rate']),
+    quantity: findIdx(['Total Qty', 'quantity', 'qty', 'total_qty']),
+    status: findIdx(['Status', 'status', 'order_status']),
+    quantity_received: findIdx(['Recd Qty', 'recd_qty', 'quantity_received', 'received_qty']),
+    pending: findIdx(['Pending', 'pending', 'pending_qty']),
+    closed: findIdx(['Closed', 'closed', 'is_closed']),
+    rapc: findIdx(['RAPC', 'rapc'])
+  };
+
+  const rows = values.slice(1);
   return rows
     .map((row = []) => normalizePoRow({
-      sno: row[0],
-      po_no: row[1],
-      date: row[2],
-      supplier: row[3],
-      po_details: row[4],
-      erp_code: row[5],
-      size: row[6],
-      gsm: row[7],
-      bf: row[8],
-      reel_details: row[9],
-      rate: row[10],
-      quantity: row[11],
-      status: row[12],
-      quantity_received: row[13],
-      pending: row[14],
-      closed: row[15],
-      rapc: row[16]
+      sno: row[idxMap.sno],
+      po_no: row[idxMap.po_no],
+      date: row[idxMap.date],
+      supplier: row[idxMap.supplier],
+      po_details: row[idxMap.po_details],
+      erp_code: row[idxMap.erp_code],
+      size: row[idxMap.size],
+      gsm: row[idxMap.gsm],
+      bf: row[idxMap.bf],
+      reel_details: row[idxMap.reel_details],
+      rate: row[idxMap.rate],
+      quantity: row[idxMap.quantity],
+      status: row[idxMap.status],
+      quantity_received: row[idxMap.quantity_received],
+      pending: row[idxMap.pending],
+      closed: row[idxMap.closed],
+      rapc: row[idxMap.rapc]
     }))
     .filter((row) => [row.po_no, row.supplier, row.po_details, row.erp_code, row.reel_details].some((value) => String(value || '').trim()));
 }
 
-async function fetchSheetRange(sheetName) {
-  if (!PO_SCRIPT_URL) {
-    throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
-  }
-  const url = `${PO_SCRIPT_URL}?sheet=${encodeURIComponent(sheetName || PO_SHEET_NAME)}`;
-  const response = await fetch(url);
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.ok === false) {
-    throw new Error(payload?.error || payload?.message || 'Could not load PO details from Google Apps Script.');
-  }
-  return payload;
-}
+
 function formatGeminiHttpError(status, payload, fallbackText) {
   const detailsText = JSON.stringify(payload?.error?.details || '');
   const apiMessage = String(payload?.error?.message || fallbackText || '').trim();
@@ -716,7 +869,7 @@ function formatGeminiHttpError(status, payload, fallbackText) {
     return 'Gemini API key is invalid or restricted. Check the key and Gemini API permissions.';
   }
   if (status === 400) {
-    return 'Gemini could not process this image request. Try a clearer image under 18 MB.';
+    return `Gemini could not process this image request. ${apiMessage || 'Try a clearer image under 18 MB.'}`.trim();
   }
   return `Gemini request failed (${status}). ${apiMessage || 'Please try again.'}`.trim();
 }
@@ -798,10 +951,14 @@ function mergeFocusedPackingData(data, focused = {}) {
 
 async function fetchGeminiJson(file, kind) {
   if (!API_KEY) throw new Error('Missing Gemini API key');
-  if (file.size > 18 * 1024 * 1024) throw new Error('Image is too large for direct upload. Please use a photo under 18 MB.');
   const shape = kind === 'invoice' ? blankInvoice : blankPacking;
-  const mimeType = file.type || 'image/jpeg';
-  const base64 = await fileToBase64(file);
+  const dataUrl = await fileToBase64(file);
+  const mimeType = getDataUrlMimeType(dataUrl, file.type || 'image/jpeg');
+  const processedSize = getDataUrlBase64Size(dataUrl);
+  if (processedSize > 18 * 1024 * 1024) {
+    throw new Error('Processed image is still too large for Gemini. Please use a clearer crop or a smaller photo.');
+  }
+  const base64 = getDataUrlBase64(dataUrl);
   const prompt = `Read this ${kind === 'invoice' ? 'tax invoice' : 'packing slip'} image and extract every visible dynamic value into JSON. Include company/header block, document title, copy note, party details, transport fields, bank details, declaration/terms/signature labels, totals, all table rows, extra header lines, and any leftover visible document text. Put unmatched visible text into extra_details. Return only the fields from the schema, keep dates in YYYY-MM-DD where possible, preserve row order carefully, and use empty strings or 0 when a field is unreadable.`;
   let data = await fetchGeminiStructured(base64, mimeType, prompt, shape);
 
@@ -885,7 +1042,7 @@ function getSafeInputValue(type, value) {
 }
 
 function MetaTable({ rows }) {
-  return <table className="meta"><tbody>{rows.map(([label, value, onChange, type]) => <tr key={label}><td>{label}</td><td><input type={type || 'text'} value={getSafeInputValue(type, value)} onChange={(e) => onChange(e.target.value)} /></td></tr>)}</tbody></table>;
+  return <table className="meta"><tbody>{rows.map(([label, value, onChange, type, readOnly]) => <tr key={label}><td>{label}</td><td><input type={type || 'text'} value={getSafeInputValue(type, value)} onChange={(e) => onChange && onChange(e.target.value)} readOnly={!!readOnly} disabled={!onChange} style={readOnly ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined} /></td></tr>)}</tbody></table>;
 }
 
 function Field({ label, value, onChange, full }) {
@@ -920,7 +1077,7 @@ function SimplePartyCard({ label, data, onText, onField }) {
     </div>
   );
 }
-function ReelLabelsTab({ initialMrr }) {
+function ReelLabelsTab({ initialMrr, helperSheetName }) {
   const [searchMrr, setSearchMrr] = useState(initialMrr || '');
   const [status, setStatus] = useState('');
   const [reels, setReels] = useState([]);
@@ -939,9 +1096,10 @@ function ReelLabelsTab({ initialMrr }) {
     setStatus('Searching...');
     try {
       const payload = await fetchSheetRangeWithParams({
-        sheet: HELPER_SHEET_NAME,
-        mrr_number: searchMrr.trim()
-      });
+        sheet: helperSheetName || HELPER_SHEET_NAME,
+        mrr_number: searchMrr.trim(),
+        spreadsheetId: selectedFirm.spreadsheetId
+      }, selectedFirm.scriptUrl);
       const data = payload?.values || [];
       if (data.length) {
         setReels(data);
@@ -1007,14 +1165,14 @@ function ReelLabelsTab({ initialMrr }) {
             const reelNo = getVal(reel, 'Our_Reel_Number') || getVal(reel, 'Our Reel Number') || getVal(reel, 'our_reel_number') || getVal(reel, 'reel_number') || reel['our_reel_no'] || '';
             return (
               <div key={idx} className="print-label">
-                <img src="https://i.ibb.co/Dgv0KwQ4/lnpilogo.png" className="brand-logo" alt="Laxmi Narayan Group" />
-                <h2 style={{ margin: '4px 0 8px', fontSize: 'inherit', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>LAXMI NARAYAN GROUP</h2>
+                <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" className="brand-logo" alt="Laxmi Narayan Group" />
+                <h2 style={{ margin: '4px 0 8px', fontSize: '14px', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{selectedFirm?.name}</h2>
                 <div className="sub-info">
                   <span>Doc: <b>{getVal(reel, 'Sup Doc No.') || getVal(reel, 'sup_doc_no')}</b></span>
                   <span>Date: <b>{getVal(reel, 'Date') || getVal(reel, 'date')}</b></span>
                   <span>Code: <b>{getVal(reel, 'ERP Code') || getVal(reel, 'erp_code')}</b></span>
                 </div>
-                <h3>SHREE PAWAN KRAFT PAPER MILLS LLP CR</h3>
+                <h3 style={{ fontSize: '11px' }}>{selectedFirm?.name}</h3>
                 <div className="specs">
                   Size: {getVal(reel, 'Size')} CM X GSM: {getVal(reel, 'GSM')} X BF: {getVal(reel, 'BF')}
                 </div>
@@ -1041,10 +1199,626 @@ function ReelLabelsTab({ initialMrr }) {
   );
 }
 
+function getFirmCode(firm) {
+  return String(firm?.name || firm?.id || 'GE').trim().toUpperCase().replace(/[^A-Z0-9-]+/g, '');
+}
+
+function parseDisplayDate(value) {
+  const text = String(value || '').trim();
+  if (!text) return new Date();
+  const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (match) {
+    const day = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3]);
+    return new Date(year, month, day);
+  }
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function getFinancialYearLabel(value) {
+  const date = parseDisplayDate(value);
+  const fyStart = date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
+  return `${String(fyStart).slice(-2)}-${String(fyStart + 1).slice(-2)}`;
+}
+
+function formatGateEntryNumber(firm, dateValue, sequence) {
+  const safeSequence = String(Number(sequence) || 0).padStart(4, '0');
+  return `${getFirmCode(firm)}/${getFinancialYearLabel(dateValue)}/${safeSequence}`;
+}
+
+function openGateEntryPdfWindow(firm, entry, previewPics = []) {
+  const popup = window.open('', '_blank', 'noopener,noreferrer,width=900,height=850');
+  if (!popup) return;
+
+  const photoMarkup = previewPics
+    .filter(Boolean)
+    .map((pic, index) => `<div class="photo-card"><img src="${pic}" alt="Pic ${index + 1}" /><div>Pic ${index + 1}</div></div>`)
+    .join('');
+
+  popup.document.write(`<!doctype html>
+<html>
+<head>
+  <title>${entry.ge_no || 'GE Entry'}</title>
+  <style>
+    body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;padding:32px;color:#111;background:#f0f0f0}
+    .sheet{max-width:800px;margin:0 auto;border:2px solid #111;padding:32px;background:#fff;box-shadow:0 0 20px rgba(0,0,0,0.1)}
+    .head{text-align:center;margin-bottom:28px;border-bottom:2px double #111;padding-bottom:16px}
+    .head img{height:64px;margin-bottom:12px}
+    .head h1{margin:0;font-size:28px;color:#0f4f93;text-transform:uppercase;letter-spacing:2px}
+    .head p{margin:6px 0 0;font-weight:700;color:#555;font-size:14px}
+    .grid{display:grid;grid-template-columns:180px 1fr;gap:12px 24px;margin-bottom:24px}
+    .label{font-weight:700;color:#0f4f93;text-transform:uppercase;font-size:13px}
+    .val{font-size:15px;border-bottom:1px solid #eee}
+    .photos{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:24px}
+    .photo-card{border:1px solid #ddd;padding:10px;text-align:center;font-size:12px;background:#fcfcfc}
+    .photo-card img{width:100%;height:220px;object-fit:cover;border-radius:4px}
+    .actions{display:flex;justify-content:center;gap:16px;margin:30px auto 0;max-width:800px}
+    button{padding:10px 24px;font-size:14px;font-weight:bold;cursor:pointer;border:2px solid #111;background:#111;color:#fff}
+    button.alt{background:#fff;color:#111}
+    @media print {
+      .actions{display:none} 
+      body{padding:0;background:#fff} 
+      .sheet{border:none;box-shadow:none;width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="head">
+      <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" alt="Logo" />
+      <p>${firm?.name || ''}</p>
+      <h1>GATE ENTRY PASS</h1>
+    </div>
+    <div class="grid">
+      <div class="label">GE Entry No</div><div class="val"><b>${entry.ge_no || ''}</b></div>
+      <div class="label">Date</div><div class="val">${entry.date || ''}</div>
+      <div class="label">Supplier Name</div><div class="val">${entry.supplier || ''}</div>
+      <div class="label">Invoice No</div><div class="val">${entry.invoice_no || ''}</div>
+      <div class="label">Invoice Value</div><div class="val">${entry.total_value || ''}</div>
+      <div class="label">Truck / Vehicle No</div><div class="val">${entry.truck_no || ''}</div>
+    </div>
+    ${photoMarkup ? `<div><div class="label" style="margin-bottom:12px;border-top:1px solid #111;padding-top:16px">Captured Photos</div><div class="photos">${photoMarkup}</div></div>` : ''}
+    <div style="margin-top:60px;display:flex;justify-content:space-between">
+      <div style="border-top:1px solid #111;width:150px;text-align:center;padding-top:8px;font-size:12px">Guard Signature</div>
+      <div style="border-top:1px solid #111;width:150px;text-align:center;padding-top:8px;font-size:12px">Receiver Signature</div>
+    </div>
+  </div>
+  <div class="actions">
+    <button onclick="window.print()">Download PDF</button>
+    <button class="alt" onclick="window.close()">Close Preview</button>
+  </div>
+</body>
+</html>`);
+  popup.document.close();
+}
+
+function GateEntrySavedModal({ isOpen, firm, entry, previewPics, onClose }) {
+  if (!isOpen || !entry) return null;
+
+  const previewPhotos = previewPics.filter(Boolean);
+
+  return (
+    <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 10001 }}>
+      <div style={{ background: '#fff', width: '95%', maxWidth: '850px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', border: '2px solid #111', boxShadow: '0 30px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '2px solid #eee', paddingBottom: '12px' }}>
+          <div>
+            <h2 style={{ margin: 0, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Gate Entry Registered</h2>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#666', fontWeight: 700 }}>Record saved successfully to Google Sheets</p>
+          </div>
+          <button className="btn" onClick={onClose} style={{ padding: '8px 24px' }}>Close</button>
+        </div>
+        
+        <div style={{ border: '2px solid #111', padding: '32px', background: '#fff', position: 'relative' }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '1px solid #ddd', paddingBottom: '20px' }}>
+            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px' }} alt="Logo" />
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#444', marginTop: '8px', textTransform: 'uppercase' }}>{firm?.name || ''}</div>
+            <h3 style={{ margin: '12px 0 0', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '3px', fontSize: '20px' }}>Gate Entry Pass</h3>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px 40px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>GE Entry No</span>
+              <span style={{ fontWeight: 900, fontSize: '18px', color: 'var(--primary)' }}>{entry.ge_no || ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>Date</span>
+              <span style={{ fontWeight: 700 }}>{entry.date || ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>Supplier</span>
+              <span style={{ fontWeight: 700 }}>{entry.supplier || ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>Invoice No</span>
+              <span style={{ fontWeight: 700 }}>{entry.invoice_no || ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>Invoice Value</span>
+              <span style={{ fontWeight: 700 }}>{entry.total_value || ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: 900, textTransform: 'uppercase' }}>Truck / Vehicle No</span>
+              <span style={{ fontWeight: 700 }}>{entry.truck_no || ''}</span>
+            </div>
+          </div>
+          
+          {previewPhotos.length > 0 && (
+            <div style={{ marginTop: '30px', borderTop: '1px dashed #ccc', paddingTop: '20px' }}>
+              <strong style={{ display: 'block', marginBottom: '16px', fontSize: '11px', textTransform: 'uppercase', color: '#888' }}>Attached Photos</strong>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                {previewPhotos.map((pic, index) => (
+                  <div key={index} style={{ border: '1px solid #eee', padding: '6px', background: '#f9f9f9' }}>
+                    <img src={pic} alt={`Pic ${index + 1}`} style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '2px' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'space-between', opacity: 0.6 }}>
+             <div style={{ borderTop: '1px solid #111', width: '120px', textAlign: 'center', paddingTop: '6px', fontSize: '9px', fontWeight: 700 }}>Guard Sig.</div>
+             <div style={{ borderTop: '1px solid #111', width: '120px', textAlign: 'center', paddingTop: '6px', fontSize: '9px', fontWeight: 700 }}>Receiver Sig.</div>
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
+          <button className="btn main" style={{ padding: '12px 32px', fontSize: '14px' }} onClick={() => openGateEntryPdfWindow(firm, entry, previewPics)}>
+            Download PDF
+          </button>
+          <button className="btn" style={{ padding: '12px 32px', fontSize: '14px' }} onClick={onClose}>
+            Close & Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
+  const [pics, setPics] = useState(Array(8).fill(null));
+  const defaultDate = new Date().toLocaleDateString('en-GB');
+  const [data, setData] = useState(initialData || { supplier: '', invoice_no: '', total_value: '', truck_no: '', ge_no: geNo || '', date: defaultDate });
+  const [status, setStatus] = useState('');
+  const [suppliers, setSuppliers] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedEntry, setSavedEntry] = useState(null);
+  const visibleSuppliers = [...new Set(
+    suppliers
+      .map((supplier) => String(supplier || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  useEffect(() => {
+    if (initialData) {
+      const newPics = Array(8).fill(null);
+      for (let i = 1; i <= 8; i++) {
+        const pic = initialData[`pic${i}`];
+        if (pic) newPics[i-1] = pic;
+      }
+      setPics(newPics);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    setData((prev) => ({ ...prev, date: prev.date || defaultDate, ge_no: prev.ge_no || geNo || '' }));
+  }, [defaultDate, geNo]);
+
+  useEffect(() => {
+    async function loadSuppliers() {
+      try {
+        const list = await fetchUniqueSuppliers(firm);
+        setSuppliers(list);
+      } catch (err) {
+        console.error('Failed to load suppliers:', err);
+      }
+    }
+    loadSuppliers();
+  }, [firm]);
+
+  useEffect(() => {
+    async function loadNextGeNo() {
+      if (!firm?.scriptUrl) return;
+      if (initialData?.ge_no || geNo || data.ge_no) return;
+      try {
+        const prefix = `${getFirmCode(firm)}/${getFinancialYearLabel(data.date || defaultDate)}/`;
+        const latest = await fetchLatestMrrGe('GE ENTRY', firm.spreadsheetId, firm.scriptUrl, prefix);
+        const nextGeNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.ge || 0) + 1);
+        setData((prev) => prev.ge_no ? prev : { ...prev, ge_no: nextGeNo });
+      } catch (err) {
+        console.error('Failed to load next GE No:', err);
+      }
+    }
+    loadNextGeNo();
+  }, [firm, geNo, initialData, data.ge_no, data.date, defaultDate]);
+
+  const handleFileChange = async (index, file) => {
+    if (!file) return;
+    try {
+      const base64 = await fileToBase64(file);
+      const newPics = [...pics];
+      newPics[index] = base64;
+      setPics(newPics);
+    } catch (err) {
+      alert('Error reading file');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!data.supplier || !data.invoice_no) {
+      alert('Supplier and Invoice No are required');
+      return;
+    }
+    setIsSaving(true);
+    setStatus('Uploading Gate Entry...');
+    try {
+      const payload = { ...data, firm_code: getFirmCode(firm) };
+      pics.forEach((pic, i) => {
+        if (pic) payload[`pic${i + 1}`] = pic;
+      });
+
+      const res = await saveGeEntryToSheets(payload, {
+        scriptUrl: firm.scriptUrl,
+        spreadsheetId: firm.spreadsheetId
+      });
+      const finalEntry = { ...payload, ge_no: res.ge_no || data.ge_no };
+      setData(finalEntry);
+      setSavedEntry(finalEntry);
+      setStatus('Gate Entry saved successfully.');
+    } catch (err) {
+      setStatus(err.message || 'Error saving gate entry');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="loading-overlay" style={{ background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)', overflowY: 'auto' }}>
+      <div style={{ background: '#fff', padding: '30px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '800px', width: '95%', margin: '40px auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '50px' }} alt="Logo" />
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)' }}>{firm?.name || ''}</div>
+          </div>
+          <h2 style={{ margin: 0, fontSize: '20px' }}>GATE ENTRY FORM</h2>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}>
+            <span>Supplier Name</span>
+            <div className="supplier-search-wrap">
+              <input
+                className="supplier-search"
+                list="gate-entry-suppliers"
+                value={data.supplier}
+                onChange={e => setData({...data, supplier: e.target.value})}
+                placeholder="Search or Select Supplier Name"
+              />
+              <datalist id="gate-entry-suppliers">
+                {visibleSuppliers.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
+              </datalist>
+            </div>
+          </div>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}>
+            <span>Date</span>
+            <input value={data.date || defaultDate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} />
+          </div>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}>
+            <span>GE No</span>
+            <input value={data.ge_no || geNo || ''} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} />
+          </div>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}><span>Invoice No</span><input value={data.invoice_no} onChange={e => setData({...data, invoice_no: e.target.value})} placeholder="Enter Invoice No" /></div>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}><span>Invoice Value</span><input type="number" value={data.total_value} onChange={e => setData({...data, total_value: e.target.value})} placeholder="Enter Total Value" /></div>
+          <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}><span>Truck No</span><input value={data.truck_no} onChange={e => setData({...data, truck_no: e.target.value})} placeholder="Enter Truck No" /></div>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '14px', marginBottom: '10px' }}>Upload Photos (Up to 8)</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+            {pics.map((pic, i) => (
+              <div key={i} style={{ border: '1px dashed #ccc', height: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#f9f9f9' }}>
+                {pic ? (
+                  <img src={pic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Pic ${i+1}`} />
+                ) : (
+                  <span style={{ fontSize: '10px', color: '#888' }}>Pic {i + 1}</span>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  onChange={e => handleFileChange(i, e.target.files[0])}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onBack} disabled={isSaving}>← Back</button>
+          <button className="btn main" onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? <span className="spinner" /> : 'Save'}
+          </button>
+        </div>
+        {status && <p style={{ color: status.includes('Error') ? 'red' : 'green', fontSize: '12px', marginTop: '10px', fontWeight: 'bold' }}>{status}</p>}
+      </div>
+      <GateEntrySavedModal
+        isOpen={Boolean(savedEntry)}
+        firm={firm}
+        entry={savedEntry}
+        previewPics={pics}
+        onClose={() => {
+          const finalGeNo = savedEntry?.ge_no || data.ge_no;
+          const finalEntry = savedEntry || data;
+          setSavedEntry(null);
+          onSave(finalGeNo, finalEntry);
+        }}
+      />
+    </div>
+  );
+}
+
+function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect }) {
+  if (!isOpen) return null;
+  return (
+    <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 10000 }}>
+      <div style={{ background: '#fff', padding: '24px', maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid #111' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0 }}>Select Pending Item</h2>
+          <button className="btn" onClick={onClose}>Close</button>
+        </div>
+        {!pendingGEs.length ? <p>No pending entries found.</p> : (
+          <table className="table" style={{ width: '100%', fontSize: '11px' }}>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Date</th>
+                <th>GE No</th>
+                <th>MRR No</th>
+                <th>Supplier</th>
+                <th>Invoice</th>
+                <th>Truck No</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingGEs.map((ge, idx) => (
+                <tr key={idx}>
+                  <td>{ge.pending_label || 'Pending MRR'}</td>
+                  <td>{ge.date}</td>
+                  <td className="c">{ge.ge_entry || ge.ge_no}</td>
+                  <td className="c">{ge.mrr_number || ge.mrr_no || ''}</td>
+                  <td>{ge.supplier_name || ge.supplier}</td>
+                  <td>{ge.invoice_no}</td>
+                  <td>{ge.truck_no}</td>
+                  <td className="c">
+                    <button className="btn main small" onClick={() => onSelect(ge)}>Select</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StartupOverlay({ onSelect, onGeSubmit, firms }) {
+  const [step, setStep] = useState(1);
+  const [tempFirm, setTempFirm] = useState(null);
+  const tempType = 'reel';
+  const [pendingGEs, setPendingGEs] = useState([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [pendingFilter, setPendingFilter] = useState('pending_mrr');
+
+  const pendingCounts = {
+    pending_mrr: pendingGEs.filter((item) => item.pending_stage === 'pending_mrr').length,
+    pending_accounts_approval: pendingGEs.filter((item) => item.pending_stage === 'pending_accounts_approval').length,
+    pending_md_approval: pendingGEs.filter((item) => item.pending_stage === 'pending_md_approval').length,
+    pending_tally_posting: pendingGEs.filter((item) => item.pending_stage === 'pending_tally_posting').length
+  };
+
+  const filteredPendingGEs = pendingGEs.filter((item) => item.pending_stage === pendingFilter);
+
+  useEffect(() => {
+    if (step === 3 && tempFirm) {
+      async function loadCount() {
+        setIsLoadingPending(true);
+        try {
+          const mrrSheet = getSheetName(tempFirm.mrr, tempType);
+          const list = await fetchPendingGeEntries(mrrSheet, tempFirm.spreadsheetId, tempFirm.scriptUrl);
+          setPendingGEs(list || []);
+        } catch (err) {
+          console.error('Failed to load pending count:', err);
+        } finally {
+          setIsLoadingPending(false);
+        }
+      }
+      loadCount();
+    }
+  }, [step, tempFirm, tempType]);
+
+  if (step === 1) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
+          <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '80px', marginBottom: '20px' }} alt="Logo" />
+          <h2 style={{ color: 'var(--ink)', fontSize: '24px', marginBottom: '30px', letterSpacing: '0.02em' }}>SELECT FIRM</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {firms.map((firm) => (
+              <button 
+                key={firm.id} 
+                className="btn main" 
+                style={{ padding: '16px', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                onClick={() => { setTempFirm(firm); setStep(3); }}
+              >
+                {firm.name}
+              </button>
+            ))}
+          </div>
+          <p style={{ marginTop: '30px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700 }}>Auto MRR System v4.0</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 3) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
+          <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px', marginBottom: '10px' }} alt="Logo" />
+          <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm.name}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button 
+              className="btn main" 
+              style={{ padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#2c3e50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setStep(4); }}
+            >
+              1. NEW GATE ENTRY
+            </button>
+            <button 
+              className="btn main" 
+              disabled={isLoadingPending}
+              style={{ padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#27ae60', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setPendingFilter('pending_mrr'); setStep(6); }}
+            >
+              2. PENDING MRR {isLoadingPending ? '...' : `(${pendingCounts.pending_mrr})`}
+            </button>
+            <button 
+              className="btn main" 
+              disabled={isLoadingPending}
+              style={{ padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#1f7a8c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setPendingFilter('pending_accounts_approval'); setStep(6); }}
+            >
+              3. PENDING ACCOUNT APPROVAL {isLoadingPending ? '...' : `(${pendingCounts.pending_accounts_approval})`}
+            </button>
+            <button 
+              className="btn main" 
+              disabled={isLoadingPending}
+              style={{ padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#8a5a10', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setPendingFilter('pending_md_approval'); setStep(6); }}
+            >
+              4. PENDING MD APPROVAL {isLoadingPending ? '...' : `(${pendingCounts.pending_md_approval})`}
+            </button>
+            <button 
+              className="btn main" 
+              disabled={isLoadingPending}
+              style={{ padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#6c757d', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setPendingFilter('pending_tally_posting'); setStep(6); }}
+            >
+              5. PENDING TALLY POSTING {isLoadingPending ? '...' : `(${pendingCounts.pending_tally_posting})`}
+            </button>
+            <button 
+              className="btn" 
+              style={{ padding: '10px', marginTop: '10px', fontSize: '11px', fontWeight: 700 }}
+              onClick={() => { setStep(1); }}
+            >
+              ← Back to Firms
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 4) {
+    return (
+      <GateEntryForm 
+        firm={tempFirm} 
+        mrrType={tempType} 
+        initialData={editData}
+        onBack={() => { setEditData(null); setStep(3); }} 
+        onSave={(geNo, geData) => {
+          setEditData(null);
+          onGeSubmit(geNo, geData);
+          setStep(3);
+        }} 
+      />
+    );
+  }
+
+  if (step === 6) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ margin: 'auto', background: '#fff', padding: '30px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+             <h2 style={{ margin: 0 }}>
+               {pendingFilter === 'pending_mrr' ? 'Pending MRR' :
+                pendingFilter === 'pending_accounts_approval' ? 'Pending Account Approval' :
+                pendingFilter === 'pending_md_approval' ? 'Pending MD Approval' :
+                'Pending Tally Posting'}
+             </h2>
+             <button className="btn" onClick={() => setStep(3)}>← Back</button>
+          </div>
+          {!filteredPendingGEs.length ? <p>No pending entries found.</p> : (
+            <table className="table" style={{ width: '100%', fontSize: '11px' }}>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>GE No</th>
+                  <th>MRR No</th>
+                  <th>Supplier</th>
+                  <th>Invoice</th>
+                  <th>Truck No</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPendingGEs.map((ge, idx) => (
+                  <tr key={idx}>
+                    <td>{ge.pending_label || 'Pending MRR'}</td>
+                    <td>{ge.date}</td>
+                    <td className="c">{ge.ge_no || ge.ge_entry}</td>
+                    <td className="c">{ge.mrr_number || ge.mrr_no || ''}</td>
+                    <td>{ge.supplier || ge.supplier_name}</td>
+                    <td>{ge.invoice_no}</td>
+                    <td>{ge.truck_no}</td>
+                    <td className="c" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                      <button 
+                        className="btn main small" 
+                        onClick={() => {
+                          onGeSubmit(ge.ge_no || ge.ge_entry, ge);
+                          onSelect(tempFirm, tempType);
+                        }}
+                      >
+                        PROCEED
+                      </button>
+                      <button 
+                        className="btn small" 
+                        style={{ background: '#7f8c8d' }}
+                        onClick={() => {
+                          setEditData(ge);
+                          setStep(4);
+                        }}
+                      >
+                        EDIT / FIX
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('invoice');
   const [invoice, setInvoice] = useState(blankInvoice);
   const [packing, setPacking] = useState(blankPacking);
+  const [geData, setGeData] = useState(null);
+  const [pendingGEs, setPendingGEs] = useState([]);
+  const [showGeModal, setShowGeModal] = useState(false);
+  const [isFetchingGEs, setIsFetchingGEs] = useState(false);
   const [poRows, setPoRows] = useState([]);
   const [poFilter, setPoFilter] = useState('');
   const [status, setStatus] = useState('');
@@ -1054,6 +1828,11 @@ function App() {
   const [isLoadingPo, setIsLoadingPo] = useState(false);
   const [isSavingInvoice, setIsSavingInvoice] = useState(false);
   const [isSavingPacking, setIsSavingPacking] = useState(false);
+  const [selectedFirm, setSelectedFirm] = useState(null);
+  const [mrrType, setMrrType] = useState('reel');
+  const [isFirmSelected, setIsFirmSelected] = useState(false);
+  const [triggerPendingModal, setTriggerPendingModal] = useState(false);
+  const [manualFields, setManualFields] = useState({}); // { [rowIdx]: { fieldName: true } }
   const invoiceRef = useRef(null);
   const packingRef = useRef(null);
   const popupTimerRef = useRef(null);
@@ -1089,7 +1868,17 @@ function App() {
     }
   };
   const setInvNest = (group, field, value) => setInvoice((p) => ({ ...p, [group]: { ...p[group], [field]: value } }));
-  const setInvRow = (i, field, value) => setInvoice((p) => ({ ...p, goods: p.goods.map((row, idx) => idx === i ? { ...row, [field]: value } : row) }));
+  const setInvRow = (i, field, value) => setInvoice((p) => ({ 
+    ...p, 
+    goods: p.goods.map((row, idx) => {
+      if (idx !== i) return row;
+      const updated = { ...row, [field]: value };
+      if (field === 'weight' || field === 'rate') {
+        updated.amount = money(n(updated.weight) * n(updated.rate));
+      }
+      return updated;
+    }) 
+  }));
   const setPack = (field, value) => {
     setPacking((p) => ({
       ...p,
@@ -1102,7 +1891,16 @@ function App() {
     }
   };
   const setPackNest = (group, field, value) => setPacking((p) => ({ ...p, [group]: { ...p[group], [field]: value } }));
-  const setPackRow = (i, field, value) => setPacking((p) => ({ ...p, items: p.items.map((row, idx) => idx === i ? { ...row, [field]: value } : row) }));
+  const setPackRow = (i, field, value) => setPacking((p) => ({
+    ...p,
+    items: p.items.map((row, idx) => {
+      if (idx !== i) return row;
+      const updated = { ...row, [field]: value };
+      if (field === 'reel_no') updated.supplier_reel_no = value;
+      if (field === 'supplier_reel_no') updated.reel_no = value;
+      return updated;
+    })
+  }));
 
   const gross = invoice.goods.reduce((sum, row) => sum + (n(row.amount) || n(row.weight) * n(row.rate)), 0);
   const reels = invoice.goods.reduce((sum, row) => sum + n(row.reels), 0);
@@ -1115,6 +1913,7 @@ function App() {
   const invoiceRowCount = invoice.goods.filter(isMeaningful).length;
   const packingRowCount = packing.items.filter(isMeaningful).length;
   const packingReels = packing.items.filter(isMeaningful).length;
+  const isGateEntryLocked = Boolean(geData && (geData.ge_no || geData.ge_entry || geData.invoice_no || geData.supplier));
   const poFilterText = poFilter.trim().toLowerCase();
   const filteredPoRows = poFilterText ? poRows.filter((row) => [row.po_no, row.date, row.supplier, row.po_details, row.erp_code, row.reel_details, row.status].some((value) => String(value || '').toLowerCase().includes(poFilterText))) : poRows;
   const withCurrentOption = (options, current) => current && !options.includes(current) ? [current, ...options] : options;
@@ -1233,11 +2032,55 @@ function App() {
     const match = matches.find((po) => po.erp_code === row.erp_code) || matches[0];
     return fillPackRowFromPoRecord(row, match, { item_name: description, reel_details: description, po_no: match?.po_no || row.po_no });
   });
-  const handleErpCodeSelect = (index, erpCode) => updatePackRowFromSource(index, (row) => {
-    const matches = getPoRowsForPo(row.po_no).filter((po) => po.erp_code === erpCode && (!(row.item_name || row.reel_details) || po.reel_details === (row.item_name || row.reel_details)));
-    const match = matches[0];
-    return fillPackRowFromPoRecord(row, match, { erp_code: erpCode, po_no: match?.po_no || row.po_no, item_name: match?.reel_details || row.item_name, reel_details: match?.reel_details || row.reel_details });
-  });
+  const handlePoNoSelectInvoice = (index, poNo) => setInvoice((p) => ({
+    ...p,
+    goods: p.goods.map((row, idx) => {
+      if (idx !== index) return row;
+      const matches = getPoRowsForPo(poNo);
+      if (!matches.length) return { ...row, po_no: poNo };
+      const match = matches[0];
+      return {
+        ...row,
+        po_no: poNo,
+        po_details: match.po_details,
+        po_date: match.date,
+        supplier: match.supplier,
+        po_rate: match.rate,
+        description: match.reel_details || row.description,
+        gsm: match.gsm || row.gsm,
+        size: match.size || row.size
+      };
+    })
+  }));
+  const handlePoDetailsSelectInvoice = (index, poDetails) => setInvoice((p) => ({
+    ...p,
+    goods: p.goods.map((row, idx) => {
+      if (idx !== index) return row;
+      const matches = getPoRowsForPo(row.po_no).filter(m => m.po_details === poDetails);
+      if (!matches.length) return { ...row, po_details: poDetails };
+      const match = matches[0];
+      return {
+        ...row,
+        po_details: poDetails,
+        po_date: match.date,
+        supplier: match.supplier,
+        po_rate: match.rate,
+        description: match.reel_details || row.description,
+        gsm: match.gsm || row.gsm,
+        size: match.size || row.size
+      };
+    })
+  }));
+
+  const toggleManual = (i, field) => {
+    setManualFields(prev => ({
+      ...prev,
+      [i]: {
+        ...(prev[i] || {}),
+        [field]: !prev[i]?.[field]
+      }
+    }));
+  };
   const isSaving = isSavingInvoice || isSavingPacking;
   const statusTone = isScanning || isLoadingPo || isSaving ? 'working' : !status ? 'idle' : /failed|could not|error|blocked/i.test(status) ? 'error' : /reading|loading|saving/i.test(status) ? 'working' : 'success';
   const statusText = status || 'Ready to load PO details, scan invoice, and scan packing slip photos';
@@ -1252,21 +2095,71 @@ function App() {
   };
 
   const loadPoDetails = async () => {
+    if (!selectedFirm) return;
     setIsLoadingPo(true);
-    setStatus('Loading PO details from Google Apps Script...');
+    const poSheet = getSheetName(selectedFirm.po, mrrType);
+    setStatus(`Loading PO details for ${selectedFirm.name} (${mrrType.toUpperCase()})...`);
     try {
-      const payload = await fetchSheetRange(PO_SHEET_NAME);
+      const payload = await fetchSheetRange(poSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
       const rows = Array.isArray(payload?.data)
         ? payload.data.map((row) => normalizePoRow(row))
         : sheetValuesToPoRows(payload?.values || []);
       const enrichedPacking = enrichPackingWithPoRows(packing, rows);
       setPoRows(rows);
       setPacking(enrichedPacking);
-      setStatus(`Loaded ${rows.length} PO rows from Google Apps Script.`);
+      setStatus(`Loaded ${rows.length} PO rows for ${selectedFirm.name}.`);
     } catch (err) {
-      setStatus(err?.message || 'Could not load PO details from Google Apps Script.');
+      setStatus(err?.message || 'Could not load PO details.');
     } finally {
       setIsLoadingPo(false);
+    }
+  };
+
+  const fetchLastIds = async () => {
+    if (!selectedFirm) return;
+    const mrrSheet = getSheetName(selectedFirm.mrr, mrrType);
+    console.log(`Fetching latest IDs for ${selectedFirm.name} (${mrrType})...`);
+    setStatus(`Syncing ${selectedFirm.name} IDs (Next Number + 1)...`);
+    
+    try {
+      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
+      const lastMrr = Number(data.mrr) || 0;
+      const lastGe = Number(data.ge) || 0;
+      
+      console.log(`${selectedFirm.name} Latest IDs:`, { mrr: lastMrr, ge: lastGe });
+      const nextMrr = String(lastMrr + 1);
+      const nextGe = String(lastGe + 1);
+      
+      setInvoice(prev => ({ 
+        ...prev, 
+        mrr_no: prev.mrr_no && prev.mrr_no !== '1' ? prev.mrr_no : nextMrr, 
+        ge_no: prev.ge_no && prev.ge_no !== '1' ? prev.ge_no : nextGe 
+      }));
+      setPacking(prev => {
+        const targetMrr = prev.mrr_no && prev.mrr_no !== '1' ? prev.mrr_no : nextMrr;
+        const targetGe = prev.ge_no && prev.ge_no !== '1' ? prev.ge_no : nextGe;
+        return { 
+          ...prev, 
+          mrr_no: targetMrr, 
+          ge_no: targetGe,
+          items: (prev.items || []).map(row => ({ ...row, mrr_no: targetMrr, ge_no: targetGe }))
+        };
+      });
+      setStatus(`Ready. ${selectedFirm.name} Next MRR: ${nextMrr}, GE: ${nextGe}`);
+    } catch (err) {
+      console.error(`Could not fetch IDs for ${selectedFirm.id}:`, err);
+      setStatus(`Alert: Could not sync ${selectedFirm.name} IDs. Manual entry required.`);
+    }
+  };
+
+  const handleFirmSelection = (firm, type = 'reel', openPending = false) => {
+    setSelectedFirm(firm);
+    setMrrType(type);
+    setIsFirmSelected(true);
+    setTriggerPendingModal(openPending);
+    if (firm.header) {
+      setInvoice(prev => ({ ...prev, header: firm.header }));
+      setPacking(prev => ({ ...prev, header: firm.header }));
     }
   };
 
@@ -1281,9 +2174,44 @@ function App() {
 
     setIsSavingInvoice(true);
     setIsSavingPacking(true);
-    setStatus('Saving data to MRR FORM and HELPER SHEET...');
+    const mrrSheet = getSheetName(selectedFirm.mrr, mrrType);
+    const helperSheet = getSheetName(selectedFirm.helper, mrrType);
+    
+    if (mrrType === 'other') {
+      setStatus(`Saving data to ${mrrSheet} and ${helperSheet}...`);
+      try {
+        const result = await savePackingToSheets(invoice, packing, poRows, {
+          mrrSheetName: mrrSheet,
+          helperSheetName: helperSheet,
+          spreadsheetId: selectedFirm.spreadsheetId,
+          scriptUrl: selectedFirm.scriptUrl
+        });
+        const helperDeleted = Number(result?.helperSheet?.deletedRows || 0);
+        const helperInserted = Number(result?.helperSheet?.insertedRows || 0);
+        const mrrUpdated = Number(result?.mrrForm?.updatedRows || 0);
+        const mrrInserted = Number(result?.mrrForm?.insertedRows || 0);
+        const successMessage = `Saved both sheets successfully. ${helperSheet} replaced ${helperDeleted} old row(s), inserted ${helperInserted} new row(s). ${mrrSheet} updated ${mrrUpdated} row(s), inserted ${mrrInserted} row(s).`;
+        setStatus(successMessage);
+        showPopup(successMessage, 'success');
+        setTimeout(() => fetchLastIds(), 500);
+      } catch (err) {
+        setStatus(err?.message || 'Could not save data to Google Sheets.');
+        showPopup(err?.message || 'Error saving invoice', 'error');
+      } finally {
+        setIsSavingInvoice(false);
+        setIsSavingPacking(false);
+      }
+      return;
+    }
+
+    setStatus(`Saving data to ${mrrSheet} and ${helperSheet}...`);
     try {
-      const result = await savePackingToSheets(invoice, packing, poRows);
+      const result = await savePackingToSheets(invoice, packing, poRows, {
+        mrrSheetName: mrrSheet,
+        helperSheetName: helperSheet,
+        spreadsheetId: selectedFirm.spreadsheetId,
+        scriptUrl: selectedFirm.scriptUrl
+      });
       const helperDeleted = Number(result?.helperSheet?.deletedRows || 0);
       const helperInserted = Number(result?.helperSheet?.insertedRows || 0);
       const mrrUpdated = Number(result?.mrrForm?.updatedRows || 0);
@@ -1291,6 +2219,8 @@ function App() {
       const successMessage = `Saved both sheets successfully. HELPER SHEET replaced ${helperDeleted} old row(s), inserted ${helperInserted} new row(s). MRR FORM updated ${mrrUpdated} row(s), inserted ${mrrInserted} row(s).`;
       setStatus(successMessage);
       showPopup(successMessage, 'success');
+      
+      setTimeout(() => fetchLastIds(), 500);
     } catch (err) {
       const errorMessage = err?.message || 'Could not save data to Google Sheets.';
       setStatus(errorMessage);
@@ -1301,21 +2231,68 @@ function App() {
     }
   };
 
-  const usePoRows = (rows, label = '') => {
-    if (!rows.length) {
-      setStatus('No PO rows matched the current selection.');
-      return;
+  const loadPendingGEs = async () => {
+    if (!selectedFirm) return;
+    setIsFetchingGEs(true);
+    try {
+      const data = await fetchPendingGeEntries(getSheetName(selectedFirm.mrr, mrrType), selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
+      setPendingGEs(data);
+      setShowGeModal(true);
+    } catch (err) {
+      showPopup(err.message, 'error');
+    } finally {
+      setIsFetchingGEs(false);
     }
-    const normalizedPacking = applyPoRowsToPacking(packing, rows);
-    const syncedInvoice = syncInvoiceFromPacking(invoice, normalizedPacking);
-    setPacking(normalizedPacking);
-    setInvoice(syncedInvoice);
-    setStatus(`Imported ${rows.length} PO rows from ${label || rows[0]?.po_no || 'Google Sheets'} into the packing slip.`);
+  };
+
+  const applyPendingItem = (ge) => {
+    if (!ge) return;
+    const geNo = ge.ge_entry || ge.ge_no || ge.ge_entry_no || '';
+    const supplier = ge.supplier_name || ge.supplier || '';
+    const truck = ge.truck_no || '';
+    const invNo = ge.invoice_no || '';
+    const mrrNo = ge.mrr_number || ge.mrr_no || '';
+    const docDate = ge.date || '';
+    const receiptDate = ge.dt_of_receipt || ge.dt_of_receipts || ge.receipt_date || '';
+
+    setGeData(ge);
+    setInv('ge_no', String(geNo));
+    if (docDate) setInv('date', docDate);
+    if (mrrNo) setInv('mrr_no', String(mrrNo));
+    if (receiptDate) setInv('receipt_date', receiptDate);
+    setInv('vehicle_no', truck);
+    setInv('invoice_no', invNo);
+    setInvNest('bill_to', 'name_address', supplier);
+
+    setPack('ge_no', String(geNo));
+    if (docDate) setPack('date', docDate);
+    if (mrrNo) setPack('mrr_no', String(mrrNo));
+    if (receiptDate) setPack('receipt_date', receiptDate);
+    setPack('truck_no', truck);
+    setPack('challan_no', invNo);
+    setPack('distributor', supplier);
+  };
+
+  const handleSelectPendingGE = (ge) => {
+    applyPendingItem(ge);
+    const geNo = ge.ge_entry || ge.ge_no || ge.ge_entry_no || '';
+    const supplier = ge.supplier_name || ge.supplier || '';
+    setShowGeModal(false);
+    showPopup(`Selected GE #${geNo} from ${supplier}`);
   };
 
   useEffect(() => {
-    loadPoDetails();
-  }, []);
+    if (isFirmSelected) {
+      loadPoDetails();
+      if (!geData) {
+        fetchLastIds();
+      }
+      if (triggerPendingModal) {
+        setTriggerPendingModal(false);
+        loadPendingGEs();
+      }
+    }
+  }, [isFirmSelected, selectedFirm, mrrType, geData, triggerPendingModal]);
 
   useEffect(() => () => {
     if (popupTimerRef.current) window.clearTimeout(popupTimerRef.current);
@@ -1328,25 +2305,57 @@ function App() {
       const data = await fetchGeminiJson(file, kind);
       if (kind === 'invoice') {
         const normalizedInvoice = normalizeInvoice(data);
+        
+        // Fix: Preserve the currently selected firm's header
+        // and move the scanned supplier info into bill_to (Supplier details)
+        const scannedSupplier = normalizedInvoice.header;
+        normalizedInvoice.bill_to = {
+          ...normalizedInvoice.bill_to,
+          name_address: (scannedSupplier.title || '') + (scannedSupplier.works ? '\n' + scannedSupplier.works : ''),
+          gstin: scannedSupplier.gstin || '',
+          state: scannedSupplier.meta || ''
+        };
+        normalizedInvoice.header = invoice.header; 
+
+        if (invoice.mrr_no) normalizedInvoice.mrr_no = invoice.mrr_no;
+        if (invoice.ge_no) normalizedInvoice.ge_no = invoice.ge_no;
+        
         const syncedPacking = enrichPackingWithPoRows(syncPackingFromInvoice(normalizedInvoice, packing));
         setInvoice(normalizedInvoice);
         setPacking(syncedPacking);
-        setStatus('Invoice scanned with Gemini. Only tax invoice rows were updated.');
+        setStatus('Invoice scanned with Gemini. Firm header preserved; supplier details updated.');
       } else {
         let normalizedPacking = enrichPackingWithPoRows(normalizePacking(data));
+        if (packing.mrr_no) normalizedPacking.mrr_no = packing.mrr_no;
+        if (packing.ge_no) normalizedPacking.ge_no = packing.ge_no;
+        
         normalizedPacking = {
           ...normalizedPacking,
-          items: mergeInvoiceGoodsIntoPackingItems(normalizedPacking.items, invoice.goods)
+          items: mergeInvoiceGoodsIntoPackingItems(normalizedPacking.items, invoice.goods).map(row => ({
+            ...row,
+            mrr_no: normalizedPacking.mrr_no,
+            ge_no: normalizedPacking.ge_no
+          }))
         };
         const syncedInvoice = syncInvoiceFromPacking(invoice, normalizedPacking);
         setPacking(normalizedPacking);
         setInvoice(syncedInvoice);
-        setStatus('Packing slip scanned with Gemini. Only packing slip rows were updated.');
+        setStatus('Packing slip scanned with Gemini. Synced MRR/GE numbers preserved.');
       }
     } finally {
       setIsScanning(false);
     }
   };
+
+  if (!isFirmSelected) return (
+    <>
+      <style>{styles}</style>
+      <style>{labelStyles}</style>
+      <StartupOverlay firms={FIRMS} onSelect={handleFirmSelection} onGeSubmit={(geNo, data) => { 
+        applyPendingItem({ ...data, ge_no: geNo });
+      }} />
+    </>
+  );
 
   return (
     <div className="app">
@@ -1366,21 +2375,55 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <h1 style={{ margin: 0 }}>Auto MRR System</h1>
           <div className="toolbar" style={{ marginTop: 0 }}>
-            <button className={`btn ${activeTab === 'invoice' ? 'main' : ''}`} onClick={() => setActiveTab('invoice')}>Invoice & Packing</button>
-            <button className={`btn ${activeTab === 'labels' ? 'main' : ''}`} onClick={() => setActiveTab('labels')}>Print Reel Labels</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>Firm:</span>
+              <select 
+                value={selectedFirm?.id || ''} 
+                onChange={(e) => {
+                  const firm = FIRMS.find(f => f.id === e.target.value);
+                  if (firm) setSelectedFirm(firm);
+                }}
+                style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, border: '1px solid #a8a8a8' }}
+              >
+                {FIRMS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+            <button className={`btn ${activeTab === 'invoice' ? 'main' : ''}`} onClick={() => setActiveTab('invoice')}>Invoice{mrrType !== 'other' ? ' & Packing' : ''}</button>
+            {mrrType !== 'other' && <button className={`btn ${activeTab === 'labels' ? 'main' : ''}`} onClick={() => setActiveTab('labels')}>Labels</button>}
+            <button className="btn" onClick={loadPendingGEs} disabled={isFetchingGEs}>
+              {isFetchingGEs ? <span className="spinner" /> : 'Pick GE'}
+            </button>
+            <div style={{ marginLeft: '12px', padding: '4px 8px', background: '#eee', borderRadius: '4px', fontSize: '10px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ opacity: 0.6 }}>MODE:</span>
+              <select 
+                value={mrrType} 
+                onChange={(e) => setMrrType(e.target.value)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  padding: 0, 
+                  fontWeight: 900, 
+                  fontSize: '10px', 
+                  textTransform: 'uppercase', 
+                  cursor: 'pointer',
+                  color: 'var(--ink)'
+                }}
+              >
+                <option value="reel">Reel MRR</option>
+                <option value="other">Other MRR</option>
+              </select>
+              <button onClick={fetchLastIds} title="Sync Numbers" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', opacity: 0.7 }}>🔄</button>
+            </div>
+            <button className="btn small" onClick={() => setIsFirmSelected(false)} style={{ marginLeft: '8px' }}>Reset</button>
           </div>
         </div>
 
-        {activeTab === 'invoice' && (
-          <div className="toolbar" style={{ marginTop: 14 }}>
-            <button className="btn main" disabled={isScanning || isSaving} onClick={() => invoiceRef.current?.click()}>{isScanning ? 'Reading Photo...' : 'Upload Invoice Photo'}</button>
-            <input ref={invoiceRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('invoice', file); } catch (err) { setStatus(err?.message || 'Could not read invoice photo with Gemini'); } e.target.value = ''; }} />
-            <button className="btn" disabled={isScanning || isSaving} onClick={() => packingRef.current?.click()}>Upload Packing Photo</button>
-            <input ref={packingRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('packing', file); } catch (err) { setStatus(err?.message || 'Could not read packing photo with Gemini'); } e.target.value = ''; }} />
-            <button className="btn" disabled={isScanning || isSaving} onClick={() => window.print()}>Print All</button>
-            <span className={`status ${statusTone}`}>{isScanning || isLoadingPo || isSaving ? <span className="spinner" aria-hidden="true" /> : null}{statusText}</span>
-          </div>
-        )}
+      <PendingGeModal 
+        isOpen={showGeModal} 
+        onClose={() => setShowGeModal(false)} 
+        pendingGEs={pendingGEs} 
+        onSelect={handleSelectPendingGE} 
+      />
 
         {activeTab === 'invoice' && (
           <div className="help">
@@ -1412,58 +2455,270 @@ function App() {
         )}
       </div>
 
+        {activeTab === 'invoice' && (
+          <div className="toolbar" style={{ marginTop: 14 }}>
+            {mrrType !== 'other' && (
+              <>
+                <button className="btn main" disabled={isScanning || isSaving} onClick={() => invoiceRef.current?.click()}>{isScanning ? 'Reading Photo...' : 'Upload Invoice Photo'}</button>
+                <input ref={invoiceRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('invoice', file); } catch (err) { setStatus(err?.message || 'Could not read invoice photo with Gemini'); } e.target.value = ''; }} />
+                <button className="btn" disabled={isScanning || isSaving} onClick={() => packingRef.current?.click()}>Upload Packing Photo</button>
+                <input ref={packingRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('packing', file); } catch (err) { setStatus(err?.message || 'Could not read packing photo with Gemini'); } e.target.value = ''; }} />
+              </>
+            )}
+            {mrrType === 'other' && <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--warn)', border: '1px solid currentColor', padding: '6px 12px', background: '#fff' }}>MANUAL ENTRY MODE ACTIVE</div>}
+            <button className="btn" disabled={isScanning || isSaving} onClick={() => window.print()}>Print All</button>
+            <span className={`status ${statusTone}`}>{isScanning || isLoadingPo || isSaving ? <span className="spinner" aria-hidden="true" /> : null}{statusText}</span>
+          </div>
+        )}
+
 
       {activeTab === 'invoice' && (
         <>
           <section className="doc">
             <div className="sectionHead">
               <div>
-                <h2>Tax Invoice</h2>
+                <h2>Tax Invoice{mrrType === 'other' ? ' (OTHER MRR)' : ''}</h2>
               </div>
             </div>
             <div className="sheet">
               <Header header={invoice.header} />
               <div className="title">{invoice.doc_title}</div>
+              
               <div className="grid2">
-                <PartyCard label="Details of Receiver (Billed To)" data={invoice.bill_to} onText={(v) => setInvNest('bill_to', 'name_address', v)} onField={(f, v) => setInvNest('bill_to', f, v)} contact code />
-                <MetaTable rows={[['Invoice No.', invoice.invoice_no, (v) => setInv('invoice_no', v)], ['Date', invoice.date, (v) => setInv('date', v), 'date'], ['E-Way Bill No.', invoice.eway_no, (v) => setInv('eway_no', v)], ['E-Way Date', invoice.eway_date, (v) => setInv('eway_date', v), 'date'], ['L.R No.', invoice.lr_no, (v) => setInv('lr_no', v)], ['Truck No.', invoice.vehicle_no, (v) => setInv('vehicle_no', v)], ['GE No.', invoice.ge_no, (v) => setInv('ge_no', v)], ['MRR No.', invoice.mrr_no, (v) => setInv('mrr_no', v)], ['Dt Of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'], ['Actual Total', invoice.actual_weight, (v) => setInv('actual_weight', v)], ['Due Days', invoice.due_days, (v) => setInv('due_days', v), 'number'], ['Freight Type', invoice.freight_type, (v) => setInv('freight_type', v)]]} />
+                {mrrType === 'other' ? (
+                  <MetaTable rows={[
+                    ['G. E. No.', invoice.ge_no, (v) => setInv('ge_no', v), 'text', isGateEntryLocked],
+                    ['Date', invoice.date, (v) => setInv('date', v), 'date', isGateEntryLocked],
+                    ['MRR Number', invoice.mrr_no, (v) => setInv('mrr_no', v)],
+                    ['Dt. of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'],
+                    ['Sup Doc No.', invoice.invoice_no, (v) => setInv('invoice_no', v), 'text', isGateEntryLocked],
+                    ['Truck Number', invoice.vehicle_no, (v) => setInv('vehicle_no', v), 'text', isGateEntryLocked],
+                    ['Invoice Ttl Weight (Kgs)', invoice.actual_weight, (v) => setInv('actual_weight', v)],
+                    ['Actual MRR Ttl Weight (Kgs)', invoice.actual_mrr_weight, (v) => setInv('actual_mrr_weight', v)],
+                    ['SUPPLIER', invoice.bill_to?.name_address, (v) => setInvNest('bill_to', 'name_address', v), 'text', isGateEntryLocked],
+                    ['INVOICE BASIC VALUE', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))],
+                    ['MRR BASIC VALUE', invoice.totals.taxable_gst, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, taxable_gst: v } }))]
+                  ]} />
+                ) : (
+                  <>
+                    <PartyCard label="Details of Supplier" data={invoice.bill_to} onText={(v) => setInvNest('bill_to', 'name_address', v)} onField={(f, v) => setInvNest('bill_to', f, v)} contact code />
+                    <MetaTable rows={[
+                      ['Invoice No.', invoice.invoice_no, (v) => setInv('invoice_no', v)], 
+                      ['Date', invoice.date, (v) => setInv('date', v), 'date'], 
+                      ['E-Way Bill No.', invoice.eway_no, (v) => setInv('eway_no', v)], 
+                      ['E-Way Date', invoice.eway_date, (v) => setInv('eway_date', v), 'date'], 
+                      ['L.R No.', invoice.lr_no, (v) => setInv('lr_no', v)], 
+                      ['Truck No.', invoice.vehicle_no, (v) => setInv('vehicle_no', v)], 
+                      ['GE No.', invoice.ge_no, (v) => setInv('ge_no', v)], 
+                      ['MRR No.', invoice.mrr_no, (v) => setInv('mrr_no', v)], 
+                      ['Dt Of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'], 
+                      ['Actual Total', invoice.actual_weight, (v) => setInv('actual_weight', v)], 
+                      ['Due Days', invoice.due_days, (v) => setInv('due_days', v), 'number'], 
+                      ['Freight Type', invoice.freight_type, (v) => setInv('freight_type', v)]
+                    ]} />
+                  </>
+                )}
               </div>
-              <div className="grid2">
-                <PartyCard label="Consignee Details" data={invoice.consignee} onText={(v) => setInvNest('consignee', 'name_address', v)} onField={(f, v) => setInvNest('consignee', f, v)} contact code />
-                <PartyCard label="Delivery At (Shipped To)" data={invoice.delivery} onText={(v) => setInvNest('delivery', 'name_address', v)} onField={(f, v) => setInvNest('delivery', f, v)} contact code extras={[['Transporter', invoice.transporter, (v) => setInv('transporter', v)], ['PIN', invoice.pin, (v) => setInv('pin', v)]]} />
+
+              {mrrType !== 'other' && (
+                <div className="grid2">
+                  <PartyCard label="Consignee Details" data={invoice.consignee} onText={(v) => setInvNest('consignee', 'name_address', v)} onField={(f, v) => setInvNest('consignee', f, v)} contact code />
+                  <PartyCard label="Delivery At (Shipped To)" data={invoice.delivery} onText={(v) => setInvNest('delivery', 'name_address', v)} onField={(f, v) => setInvNest('delivery', f, v)} contact code extras={[['Transporter', invoice.transporter, (v) => setInv('transporter', v)], ['PIN', invoice.pin, (v) => setInv('pin', v)]]} />
+                </div>
+              )}
+
+              {mrrType !== 'other' && (
+                <div className="line"><Field label="IRN" value={invoice.irn} onChange={(v) => setInv('irn', v)} /><Field label="Ack" value={invoice.ack_no} onChange={(v) => setInv('ack_no', v)} /><Field label="Ack Dt" value={invoice.ack_date} onChange={(v) => setInv('ack_date', v)} /></div>
+              )}
+
+              {mrrType === 'other' ? (
+                <div className="wrap">
+                  <table className="table invoiceTable" style={{ minWidth: "1600px" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: "50px" }}>S NO.</th>
+                        <th style={{ width: "100px" }}>MRR Number</th>
+                        <th style={{ width: "250px" }}>PO DETAILS</th>
+                        <th style={{ width: "120px" }}>PO NO.</th>
+                        <th style={{ width: "100px" }}>PO DATE</th>
+                        <th style={{ width: "200px" }}>SUPPLIER</th>
+                        <th style={{ width: "100px" }}>Weight</th>
+                        <th style={{ width: "100px" }}>Rate</th>
+                        <th style={{ width: "120px" }}>VALUE</th>
+                        <th style={{ width: "100px" }}>PO RATE</th>
+                        <th style={{ width: "100px" }}>Date</th>
+                        <th style={{ width: "100px" }}>Dt of Receipts</th>
+                        <th style={{ width: "120px" }}>Sup Doc No</th>
+                        <th style={{ width: "80px" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoice.goods.map((row, i) => (
+                        <tr key={i}>
+                          <td className="c">{i + 1}</td>
+                          <td className="c">{invoice.mrr_no}</td>
+                          <td style={{ verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                              {manualFields[i]?.po_details ? (
+                                <input 
+                                  value={row.po_details || ''} 
+                                  onChange={(e) => setInvRow(i, 'po_details', e.target.value)} 
+                                  placeholder="Manual PO details"
+                                />
+                              ) : (
+                                <select 
+                                  style={{ flex: 1 }}
+                                  value={getSelectValue(getPoDetailOptions({ po_no: row.po_no, po_details: row.po_details }), row.po_details)} 
+                                  onChange={(e) => handlePoDetailsSelectInvoice(i, e.target.value)}
+                                >
+                                  <option value="">Select PO Details</option>
+                                  {getPoDetailOptions({ po_no: row.po_no, po_details: row.po_details }).map((option) => <option key={option} value={option}>{option}</option>)}
+                                </select>
+                              )}
+                              <button className="btn small" onClick={() => toggleManual(i, 'po_details')} title="Toggle Manual Entry" style={{ padding: '2px 4px' }}>{manualFields[i]?.po_details ? '📖' : '✍️'}</button>
+                            </div>
+                          </td>
+                          <td style={{ verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                              {manualFields[i]?.po_no ? (
+                                <input 
+                                  value={row.po_no || ''} 
+                                  onChange={(e) => setInvRow(i, 'po_no', e.target.value)} 
+                                  placeholder="Manual PO No."
+                                />
+                              ) : (
+                                <select 
+                                  style={{ flex: 1 }}
+                                  value={getSelectValue(poNoOptions, row.po_no)} 
+                                  onChange={(e) => handlePoNoSelectInvoice(i, e.target.value)}
+                                >
+                                  <option value="">Select PO NO</option>
+                                  {poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                                </select>
+                              )}
+                              <button className="btn small" onClick={() => toggleManual(i, 'po_no')} title="Toggle Manual Entry" style={{ padding: '2px 4px' }}>{manualFields[i]?.po_no ? '📖' : '✍️'}</button>
+                            </div>
+                          </td>
+                          <td><input type="date" value={getSafeInputValue('date', row.po_date)} onChange={(e) => setInvRow(i, 'po_date', e.target.value)} /></td>
+                          <td><input value={row.supplier} onChange={(e) => setInvRow(i, 'supplier', e.target.value)} /></td>
+                          <td><input value={row.weight} onChange={(e) => setInvRow(i, 'weight', e.target.value)} /></td>
+                          <td><input value={row.rate} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td>
+                          <td className="r" style={{ fontWeight: 700 }}>{money(row.amount)}</td>
+                          <td><input value={row.po_rate} onChange={(e) => setInvRow(i, 'po_rate', e.target.value)} /></td>
+                          <td className="c">{invoice.date}</td>
+                          <td className="c">{invoice.receipt_date}</td>
+                          <td className="c">{invoice.invoice_no}</td>
+                          <td className="c"><button className="btn small" onClick={() => setInvoice((p) => ({ ...p, goods: p.goods.filter((_, idx) => idx !== i) }))}>Del</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={14} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
+                          <button 
+                            className="btn main" 
+                            onClick={() => setInvoice((p) => ({ ...p, goods: [...p.goods, blankInvoiceRow()] }))}
+                            style={{ 
+                              borderRadius: '50%', 
+                              width: '30px', 
+                              height: '30px', 
+                              padding: 0, 
+                              fontSize: '20px', 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              border: '2px solid #111',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            title="Add New Row"
+                          >
+                            +
+                          </button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="wrap"><table className="table invoiceTable"><colgroup><col style={{ width: "4.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "8%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8.5%" }} /><col style={{ width: "4%" }} /></colgroup><thead><tr><th>S.No</th><th>Description</th><th>HSN</th><th>Sort</th><th>Party Order</th><th>GSM</th><th>Size</th><th>Unit</th><th>Reels</th><th>Weight</th><th>Unit</th><th>Rate</th><th>Amount</th><th>Action</th></tr></thead><tbody>{invoice.goods.map((row, i) => <tr key={i}><td className="c">{i + 1}</td><td><input value={row.description} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td><td><input value={row.hsn} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td><td><input value={row.sort_no} onChange={(e) => setInvRow(i, 'sort_no', e.target.value)} /></td><td><input value={row.party_order} onChange={(e) => setInvRow(i, 'party_order', e.target.value)} /></td><td><input value={row.gsm} onChange={(e) => setInvRow(i, 'gsm', e.target.value)} /></td><td><input value={row.size} onChange={(e) => setInvRow(i, 'size', e.target.value)} /></td><td><input value={row.size_unit} onChange={(e) => setInvRow(i, 'size_unit', e.target.value)} /></td><td><input value={row.reels} onChange={(e) => setInvRow(i, 'reels', e.target.value)} /></td><td><input value={row.weight} onChange={(e) => setInvRow(i, 'weight', e.target.value)} /></td><td><input value={row.weight_unit} onChange={(e) => setInvRow(i, 'weight_unit', e.target.value)} /></td><td><input value={row.rate} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td><td><input value={row.amount} onChange={(e) => setInvRow(i, 'amount', e.target.value)} /></td><td className="c"><button className="btn small" onClick={() => setInvoice((p) => ({ ...p, goods: p.goods.filter((_, idx) => idx !== i) }))}>Del</button></td></tr>)}</tbody><tfoot><tr><td colSpan={14} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}><button className="btn main" onClick={() => setInvoice((p) => ({ ...p, goods: [...p.goods, blankInvoiceRow()] }))} style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #111', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title="Add New Row">+</button></td></tr></tfoot></table></div>
+              )}
+
+              <div className="summary">
+                <div className="panel">
+                  <div className="cardTitle">Declaration</div>
+                  <textarea value={invoice.declaration} onChange={(e) => setInv('declaration', e.target.value)} />
+                  <div className="cardTitle">Bank Details</div>
+                  <Field label="Bank" value={invoice.bank.name} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, name: v } }))} />
+                  <Field label="A/C" value={invoice.bank.account_no} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, account_no: v } }))} />
+                  <Field label="IFSC" value={invoice.bank.ifsc} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, ifsc: v } }))} />
+                </div>
+                <div className="panel">
+                  <MetaTable rows={[
+                    ['Gross Amount', money(invoice.totals.gross_amount || gross), () => { }], 
+                    [mrrType === 'other' ? 'INVOICE BASIC VALUE' : 'Insurance', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))], 
+                    [mrrType === 'other' ? 'MRR BASIC VALUE' : 'Taxable GST', money(invoice.totals.taxable_gst || taxable), () => { }], 
+                    ['CGST %', invoice.totals.cgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, cgst_pct: v } }))], 
+                    ['CGST Value', money(invoice.totals.cgst_value || cg), () => { }], 
+                    ['SGST %', invoice.totals.sgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, sgst_pct: v } }))], 
+                    ['SGST Value', money(invoice.totals.sgst_value || sg), () => { }], 
+                    ['Round Off', invoice.totals.round_off, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, round_off: v } }))], 
+                    ['Net Amount', money(invoice.totals.net_amount || net), () => { }]
+                  ]} />
+                </div>
               </div>
-              <div className="line"><Field label="IRN" value={invoice.irn} onChange={(v) => setInv('irn', v)} /><Field label="Ack" value={invoice.ack_no} onChange={(v) => setInv('ack_no', v)} /><Field label="Ack Dt" value={invoice.ack_date} onChange={(v) => setInv('ack_date', v)} /></div>
-              <div className="wrap"><table className="table invoiceTable"><colgroup><col style={{ width: "4.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "8%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8.5%" }} /><col style={{ width: "4%" }} /></colgroup><thead><tr><th>S.No</th><th>Description</th><th>HSN</th><th>Sort</th><th>Party Order</th><th>GSM</th><th>Size</th><th>Unit</th><th>Reels</th><th>Weight</th><th>Unit</th><th>Rate</th><th>Amount</th><th>Action</th></tr></thead><tbody>{invoice.goods.map((row, i) => <tr key={i}><td className="c">{i + 1}</td><td><input value={row.description} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td><td><input value={row.hsn} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td><td><input value={row.sort_no} onChange={(e) => setInvRow(i, 'sort_no', e.target.value)} /></td><td><input value={row.party_order} onChange={(e) => setInvRow(i, 'party_order', e.target.value)} /></td><td><input value={row.gsm} onChange={(e) => setInvRow(i, 'gsm', e.target.value)} /></td><td><input value={row.size} onChange={(e) => setInvRow(i, 'size', e.target.value)} /></td><td><input value={row.size_unit} onChange={(e) => setInvRow(i, 'size_unit', e.target.value)} /></td><td><input value={row.reels} onChange={(e) => setInvRow(i, 'reels', e.target.value)} /></td><td><input value={row.weight} onChange={(e) => setInvRow(i, 'weight', e.target.value)} /></td><td><input value={row.weight_unit} onChange={(e) => setInvRow(i, 'weight_unit', e.target.value)} /></td><td><input value={row.rate} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td><td><input value={row.amount} onChange={(e) => setInvRow(i, 'amount', e.target.value)} /></td><td className="c"><button className="btn small" onClick={() => setInvoice((p) => ({ ...p, goods: p.goods.filter((_, idx) => idx !== i) }))}>Del</button></td></tr>)}</tbody></table></div>
-              <div className="summary"><div className="panel"><div className="cardTitle">Declaration</div><textarea value={invoice.declaration} onChange={(e) => setInv('declaration', e.target.value)} /><div className="cardTitle">Bank Details</div><Field label="Bank" value={invoice.bank.name} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, name: v } }))} /><Field label="A/C" value={invoice.bank.account_no} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, account_no: v } }))} /><Field label="IFSC" value={invoice.bank.ifsc} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, ifsc: v } }))} /></div><div className="panel"><MetaTable rows={[['Gross Amount', money(invoice.totals.gross_amount || gross), () => { }], ['Insurance', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))], ['Taxable GST', money(invoice.totals.taxable_gst || taxable), () => { }], ['CGST %', invoice.totals.cgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, cgst_pct: v } }))], ['CGST Value', money(invoice.totals.cgst_value || cg), () => { }], ['SGST %', invoice.totals.sgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, sgst_pct: v } }))], ['SGST Value', money(invoice.totals.sgst_value || sg), () => { }], ['Round Off', invoice.totals.round_off, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, round_off: v } }))], ['Net Amount', money(invoice.totals.net_amount || net), () => { }]]} /></div></div>
+              
               <div className="valueLine"><span>{invoice.total_label}:</span> <input value={invoice.total_words || words(invoice.totals.net_amount || net)} onChange={(e) => setInv('total_words', e.target.value)} /></div>
-              <div className="foot"><div><div className="cardTitle">Terms & Condition</div><textarea value={invoice.terms} onChange={(e) => setInv('terms', e.target.value)} /><div className="cardTitle">Extra Details</div><textarea value={invoice.extra_details} onChange={(e) => setInv('extra_details', e.target.value)} /></div><div className="sign"><textarea value={invoice.certification} onChange={(e) => setInv('certification', e.target.value)} /><div><input value={invoice.signer_name} onChange={(e) => setInv('signer_name', e.target.value)} /></div><div className="sigLine"><input value={invoice.signatory_label} onChange={(e) => setInv('signatory_label', e.target.value)} /></div></div></div>
+              
+              <div className="foot">
+                <div>
+                  <div className="cardTitle">Terms & Condition</div>
+                  <textarea value={invoice.terms} onChange={(e) => setInv('terms', e.target.value)} />
+                  <div className="cardTitle">Extra Details</div>
+                  <textarea value={invoice.extra_details} onChange={(e) => setInv('extra_details', e.target.value)} />
+                </div>
+                <div className="sign">
+                  <textarea value={invoice.certification} onChange={(e) => setInv('certification', e.target.value)} />
+                  <div><input value={invoice.signer_name} onChange={(e) => setInv('signer_name', e.target.value)} /></div>
+                  <div className="sigLine"><input value={invoice.signatory_label} onChange={(e) => setInv('signatory_label', e.target.value)} /></div>
+                </div>
+              </div>
             </div>
-            <div className="actions"><button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setInvoice((p) => ({ ...p, goods: [...p.goods, blankInvoiceRow()] }))}>Add Goods Row</button></div>
+
+            <div className="actions">
+              <button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setInvoice((p) => ({ ...p, goods: [...p.goods, blankInvoiceRow()] }))}>Add Goods Row</button>
+              {mrrType === 'other' && <button className="btn main" disabled={isSaving} onClick={saveAllData}>{isSavingInvoice ? 'Saving...' : 'Save OTHER MRR'}</button>}
+            </div>
           </section>
 
-          <section className="doc">
-            <div className="sectionHead">
-              <div>
-                <h2>Packing Slip</h2>
+          {mrrType !== 'other' && (
+            <section className="doc">
+              <div className="sectionHead">
+                <div>
+                  <h2>Packing Slip</h2>
+                </div>
               </div>
-            </div>
-            <div className="sheet">
-              <Header header={packing.header} />
-              <div className="title">{packing.doc_title}</div>
-              <div className="grid2">
-                <div className="card"><SimplePartyCard label="Name & Address of Consignee" data={packing.consignee} onText={(v) => setPackNest('consignee', 'name_address', v)} onField={(f, v) => setPackNest('consignee', f, v)} /><SimplePartyCard label="Name & Address of Buyer" data={packing.buyer} onText={(v) => setPackNest('buyer', 'name_address', v)} onField={(f, v) => setPackNest('buyer', f, v)} /></div>
-                <MetaTable rows={[['Challan No.', packing.challan_no, (v) => setPack('challan_no', v)], ['Date', packing.date, (v) => setPack('date', v), 'date'], ['Order Date', packing.order_date, (v) => setPack('order_date', v), 'date'], ['L.R. No.', packing.lr_no, (v) => setPack('lr_no', v)], ['L.R. Dt', packing.lr_date, (v) => setPack('lr_date', v), 'date'], ['GE No.', packing.ge_no, (v) => setPack('ge_no', v)], ['MRR No.', packing.mrr_no, (v) => setPack('mrr_no', v)], ['Dt of Receipt', packing.receipt_date, (v) => setPack('receipt_date', v), 'date'], ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v)], ['Actual Total', packing.actual_total, (v) => setPack('actual_total', v)], ['Carrier', packing.carrier, (v) => setPack('carrier', v)], ['Distributor', packing.distributor, (v) => setPack('distributor', v)], ['Total Reel', packing.total_reels || packingReels, (v) => setPack('total_reels', v)], ['Total Weight', packing.total_weight || packingWeight, (v) => setPack('total_weight', v)]]} />
+              <div className="sheet">
+                <Header header={packing.header} />
+                <div className="title">{packing.doc_title}</div>
+                <div className="grid2">
+                  <div className="card"><SimplePartyCard label="Name & Address of Consignee" data={packing.consignee} onText={(v) => setPackNest('consignee', 'name_address', v)} onField={(f, v) => setPackNest('consignee', f, v)} /><SimplePartyCard label="Name & Address of Buyer" data={packing.buyer} onText={(v) => setPackNest('buyer', 'name_address', v)} onField={(f, v) => setPackNest('buyer', f, v)} /></div>
+                  <MetaTable rows={[['Challan No.', packing.challan_no, (v) => setPack('challan_no', v)], ['Date', packing.date, (v) => setPack('date', v), 'date'], ['Order Date', packing.order_date, (v) => setPack('order_date', v), 'date'], ['L.R. No.', packing.lr_no, (v) => setPack('lr_no', v)], ['L.R. Dt', packing.lr_date, (v) => setPack('lr_date', v), 'date'], ['GE No.', packing.ge_no, (v) => setPack('ge_no', v)], ['MRR No.', packing.mrr_no, (v) => setPack('mrr_no', v)], ['Dt of Receipt', packing.receipt_date, (v) => setPack('receipt_date', v), 'date'], ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v)], ['Actual Total', packing.actual_total, (v) => setPack('actual_total', v)], ['Carrier', packing.carrier, (v) => setPack('carrier', v)], ['Distributor', packing.distributor, (v) => setPack('distributor', v)], ['Total Reel', packing.total_reels || packingReels, (v) => setPack('total_reels', v)], ['Total Weight', packing.total_weight || packingWeight, (v) => setPack('total_weight', v)]]} />
+                </div>
+                <div className="line"><input value={packing.intro_line} onChange={(e) => setPack('intro_line', e.target.value)} /></div>
+                <div className="wrap"><table className="table packingTable"><colgroup><col style={{ width: "4%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "14%" }} /><col style={{ width: "16%" }} /><col style={{ width: "9%" }} /><col style={{ width: "8%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "12%" }} /><col style={{ width: "5%" }} /><col style={{ width: "5%" }} /><col style={{ width: "6%" }} /><col style={{ width: "5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "5%" }} /></colgroup><thead><tr><th>Sr.</th><th>MRR No.</th><th>GE No.</th><th>PO No.</th><th>PO Details</th><th>Description</th><th>Supplier Reel No.</th><th>ERP Code</th><th>Reel No.</th><th>Sort No.</th><th>Party Order No.</th><th>BF</th><th>GSM</th><th>Size</th><th>Unit</th><th>Rate</th><th>PO Rate</th><th>Net Wt(Kgs.)</th><th>Action</th></tr></thead><tbody>{packing.items.map((row, i) => <tr key={i}><td className="c">{i + 1}</td><td><input value={row.mrr_no} onChange={(e) => setPackRow(i, 'mrr_no', e.target.value)} /></td><td><input value={row.ge_no} onChange={(e) => setPackRow(i, 'ge_no', e.target.value)} /></td><td><select value={getSelectValue(poNoOptions, row.po_no)} onChange={(e) => handlePoNoSelect(i, e.target.value)}><option value="">Select PO</option>{poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getPoDetailOptions(row), row.po_details)} onChange={(e) => handlePoDetailsSelect(i, e.target.value)}><option value="">Select PO Details</option>{getPoDetailOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getDescriptionOptions(row), row.item_name || row.reel_details)} onChange={(e) => handleDescriptionSelect(i, e.target.value)}><option value="">Select Description</option>{getDescriptionOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.supplier_reel_no} onChange={(e) => setPackRow(i, 'supplier_reel_no', e.target.value)} /></td><td><select value={getSelectValue(getErpCodeOptions(row), row.erp_code)} onChange={(e) => handleErpCodeSelect(i, e.target.value)}><option value="">Select ERP Code</option>{getErpCodeOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.reel_no} onChange={(e) => setPackRow(i, 'reel_no', e.target.value)} /></td><td><input value={row.sort_no} onChange={(e) => setPackRow(i, 'sort_no', e.target.value)} /></td><td><input value={row.party_order} onChange={(e) => setPackRow(i, 'party_order', e.target.value)} /></td><td><input value={row.bf} onChange={(e) => setPackRow(i, 'bf', e.target.value)} /></td><td><input value={row.gsm} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td><td><input value={row.size} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td><td><input value={row.unit} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td><td><input value={row.rate} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td><td><input value={row.po_rate} onChange={(e) => setPackRow(i, 'po_rate', e.target.value)} /></td><td><input value={row.net_wt} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td><td className="c"><button className="btn small" onClick={() => setPacking((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }))}>Del</button></td></tr>)}</tbody><tfoot><tr><td colSpan="15" className="r"><b>Grand Total</b></td><td className="c">{packing.total_reels || packingReels} Reels</td><td></td><td className="r">{money(packing.total_weight || packingWeight)}</td><td></td></tr><tr><td colSpan={19} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}><button className="btn main" onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))} style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #111', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title="Add New Row">+</button></td></tr></tfoot></table></div>
+                <div className="foot"><div><div className="cardTitle">Extra Details</div><textarea value={packing.extra_details} onChange={(e) => setPack('extra_details', e.target.value)} /><div className="cardTitle">Received By</div><input value={packing.receiver_label} onChange={(e) => setPack('receiver_label', e.target.value)} /></div><div className="sign"><div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div><textarea value={packing.approval_text} onChange={(e) => setPack('approval_text', e.target.value)} /><div className="sigLine"><input value={packing.signatory_label} onChange={(e) => setPack('signatory_label', e.target.value)} /></div></div></div>
               </div>
-              <div className="line"><input value={packing.intro_line} onChange={(e) => setPack('intro_line', e.target.value)} /></div>
-              <div className="wrap"><table className="table packingTable"><colgroup><col style={{ width: "4%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "14%" }} /><col style={{ width: "16%" }} /><col style={{ width: "9%" }} /><col style={{ width: "8%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "12%" }} /><col style={{ width: "5%" }} /><col style={{ width: "5%" }} /><col style={{ width: "6%" }} /><col style={{ width: "5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "5%" }} /></colgroup><thead><tr><th>Sr.</th><th>MRR No.</th><th>GE No.</th><th>PO No.</th><th>PO Details</th><th>Description</th><th>Supplier Reel No.</th><th>ERP Code</th><th>Reel No.</th><th>Sort No.</th><th>Party Order No.</th><th>BF</th><th>GSM</th><th>Size</th><th>Unit</th><th>Rate</th><th>PO Rate</th><th>Net Wt(Kgs.)</th><th>Action</th></tr></thead><tbody>{packing.items.map((row, i) => <tr key={i}><td className="c">{i + 1}</td><td><input value={row.mrr_no} onChange={(e) => setPackRow(i, 'mrr_no', e.target.value)} /></td><td><input value={row.ge_no} onChange={(e) => setPackRow(i, 'ge_no', e.target.value)} /></td><td><select value={getSelectValue(poNoOptions, row.po_no)} onChange={(e) => handlePoNoSelect(i, e.target.value)}><option value="">Select PO</option>{poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getPoDetailOptions(row), row.po_details)} onChange={(e) => handlePoDetailsSelect(i, e.target.value)}><option value="">Select PO Details</option>{getPoDetailOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getDescriptionOptions(row), row.item_name || row.reel_details)} onChange={(e) => handleDescriptionSelect(i, e.target.value)}><option value="">Select Description</option>{getDescriptionOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.supplier_reel_no} onChange={(e) => setPackRow(i, 'supplier_reel_no', e.target.value)} /></td><td><select value={getSelectValue(getErpCodeOptions(row), row.erp_code)} onChange={(e) => handleErpCodeSelect(i, e.target.value)}><option value="">Select ERP Code</option>{getErpCodeOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.reel_no} onChange={(e) => setPackRow(i, 'reel_no', e.target.value)} /></td><td><input value={row.sort_no} onChange={(e) => setPackRow(i, 'sort_no', e.target.value)} /></td><td><input value={row.party_order} onChange={(e) => setPackRow(i, 'party_order', e.target.value)} /></td><td><input value={row.bf} onChange={(e) => setPackRow(i, 'bf', e.target.value)} /></td><td><input value={row.gsm} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td><td><input value={row.size} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td><td><input value={row.unit} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td><td><input value={row.rate} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td><td><input value={row.po_rate} onChange={(e) => setPackRow(i, 'po_rate', e.target.value)} /></td><td><input value={row.net_wt} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td><td className="c"><button className="btn small" onClick={() => setPacking((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }))}>Del</button></td></tr>)}</tbody><tfoot><tr><td colSpan="15" className="r"><b>Grand Total</b></td><td className="c">{packing.total_reels || packingReels} Reels</td><td></td><td className="r">{money(packing.total_weight || packingWeight)}</td><td></td></tr></tfoot></table></div>
-              <div className="foot"><div><div className="cardTitle">Extra Details</div><textarea value={packing.extra_details} onChange={(e) => setPack('extra_details', e.target.value)} /><div className="cardTitle">Received By</div><input value={packing.receiver_label} onChange={(e) => setPack('receiver_label', e.target.value)} /></div><div className="sign"><div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div><textarea value={packing.approval_text} onChange={(e) => setPack('approval_text', e.target.value)} /><div className="sigLine"><input value={packing.signatory_label} onChange={(e) => setPack('signatory_label', e.target.value)} /></div></div></div>
-            </div>
-            <div className="actions"><button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))}>Add Packing Row</button><button className="btn main" disabled={isSavingInvoice || isSavingPacking} onClick={saveAllData}>{isSaving ? 'Saving...' : 'Save All Data'}</button></div>
-          </section>
+              <div className="actions"><button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))}>Add Packing Row</button><button className="btn main" disabled={isSavingInvoice || isSavingPacking} onClick={saveAllData}>{isSaving ? 'Saving...' : 'Save All Data'}</button></div>
+            </section>
+          )}
         </>
       )}
 
-      {activeTab === 'labels' && <ReelLabelsTab initialMrr={invoice.mrr_no || packing.mrr_no} />}
+      {activeTab === 'labels' && <ReelLabelsTab initialMrr={invoice.mrr_no || packing.mrr_no} helperSheetName={getSheetName(selectedFirm?.helper, mrrType)} />}
     </div>
   );
 }
@@ -1473,53 +2728,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -11,42 +11,73 @@ const DEFAULT_SHEETS = {
  * Field Aliases for mapping JSON payload keys to Sheet Headers
  */
 const MRR_FORM_ALIASES = {
-  ge_no: ['G. E. No.', 'g_e_no', 'ge_no'],
+  ge_no: ['G. E. No.', 'GE No', 'g_e_no', 'ge_no'],
   date: ['Date', 'date'],
-  mrr_number: ['MRR Number', 'mrr_number', 'mrr_no'],
-  dt_of_receipt: ['Dt. of Receipt', 'dt_of_receipt', 'dt_of_receipts', 'receipt_date'],
-  sup_doc_no: ['Sup Doc No.', 'sup_doc_no', 'supplier_doc_no'],
-  truck_number: ['Truck Number', 'truck_number', 'vehicle_number', 'truck_no'],
-  invoice_ttl_weight_kgs: ['Invoice Ttl Weight (Kgs)', 'invoice_ttl_weight_kgs', 'invoice_total_weight_kgs', 'invoice_weight'],
-  actual_mrr_ttl_weight_kgs: ['Actual MRR Ttl Weight (Kgs)', 'actual_mrr_ttl_weight_kgs', 'actual_total_weight_kgs', 'actual_weight'],
-  required_reel: ['Required Reel', 'required_reel', 'required_reels'],
+  mrr_number: ['MRR Number', 'MRR No', 'mrr_number', 'mrr_no'],
+  dt_of_receipt: ['Dt. of Receipt', 'Dt of Receipt', 'dt_of_receipt', 'dt_of_receipts', 'receipt_date'],
+  sup_doc_no: ['Sup Doc No.', 'Sup Doc No', 'sup_doc_no', 'supplier_doc_no'],
+  truck_number: ['Truck Number', 'Truck No', 'truck_number', 'vehicle_number', 'truck_no'],
+  invoice_ttl_weight_kgs: ['Invoice Ttl Weight (Kgs)', 'Invoice Total Weight', 'invoice_ttl_weight_kgs', 'invoice_total_weight_kgs', 'invoice_weight'],
+  actual_mrr_ttl_weight_kgs: ['Actual MRR Ttl Weight (Kgs)', 'Actual Total Weight', 'actual_mrr_ttl_weight_kgs', 'actual_total_weight_kgs', 'actual_weight', 'actual_mrr_weight'],
+  required_reel: ['Required Reel', 'Required Reels', 'required_reel', 'required_reels'],
   rows_added: ['Rows Added', 'rows_added'],
   supplier: ['SUPPLIER', 'supplier'],
-  invoice_basic_value: ['INVOICE BASIC VALUE', 'invoice_basic_value'],
-  mrr_basic_value: ['MRR BASIC VALUE', 'mrr_basic_value']
+  invoice_basic_value: ['INVOICE BASIC VALUE', 'Invoice Basic Value', 'invoice_basic_value'],
+  mrr_basic_value: ['MRR BASIC VALUE', 'MRR Basic Value', 'mrr_basic_value'],
+  accounts_approval_timestamp: ['Accounts Approval Timestamp', 'accounts_approval_timestamp'],
+  accounts_approval_useremail: ['Accounts Approval Useremail', 'accounts_approval_useremail'],
+  md_approval_timestamp: ['MD Approval Timestamp', 'md_approval_timestamp'],
+  md_approval_useremail: ['MD Approval Useremail', 'md_approval_useremail'],
+  pending_tally_posting_timestamp: ['Pending Tally Posting Timestamp', 'Pending Tally Posting Timesyamp', 'pending_tally_posting_timestamp'],
+  pending_tally_posting_useremail: ['Pending Tally Posting Useremail', 'pending_tally_posting_useremail']
 };
 
 const HELPER_SHEET_ALIASES = {
-  s_no: ['S NO.', 's_no', 'sno'],
-  mrr_number: ['MRR Number', 'mrr_number', 'mrr_no'],
-  po_details: ['PO DETAILS', 'po_details'],
-  po_no: ['PO NO.', 'po_no'],
-  po_date: ['PO DATE', 'po_date'],
-  supplier: ['SUPPLIER', 'supplier'],
-  our_reel_number: ['Our Reel Number', 'our_reel_number', 'our_reel_no', 'reel_number', 'reel_no'],
-  supplier_reel_no: ['Supplier Reel No.', 'supplier_reel_no', 'supplier_reel_number'],
-  reel_details: ['REEL DETAILS', 'reel_details'],
-  erp_code: ['ERP Code', 'erp_code'],
-  size: ['Size', 'size'],
-  gsm: ['GSM', 'gsm'],
-  bf: ['BF', 'bf'],
-  weight: ['Weight', 'weight', 'net_wt', 'net_weight'],
-  rate: ['Rate', 'rate'],
-  value: ['VALUE', 'value'],
-  po_rate: ['PO RATE', 'po_rate'],
+  's_no': ['S NO.', 'S.No.', 'S No', 'Serial No', 'S No.', 'S. No.', 's_no'],
+  'mrr_number': ['MRR Number', 'MRR No', 'MRR No.', 'mrr_number', 'MRR_NO', 'MRR NO.'],
+  'po_details': ['PO DETAILS', 'PO Details', 'po_details'],
+  'po_no': ['PO NO.', 'PO No', 'po_no', 'PO Number'],
+  'po_date': ['PO DATE', 'PO Date', 'Date', 'po_date'],
+  'supplier': ['SUPPLIER', 'Supplier', 'supplier'],
+  'our_reel_number': ['Our Reel Number', 'Reel No', 'Our Reel No.', 'reel_no'],
+  'supplier_reel_no': ['Supplier Reel No.', 'Supplier Reel No', 'supplier_reel_no'],
+  'reel_details': ['Reel Details', 'reel_details', 'Item Description'],
+  'erp_code': ['ERP Code', 'erp_code'],
+  'size': ['Size', 'size'],
+  'gsm': ['GSM', 'gsm'],
+  'bf': ['BF', 'bf'],
+  'weight': ['Weight', 'Weight(Kgs.)', 'weight'],
+  'rate': ['Rate', 'rate'],
+  'value': ['VALUE', 'Value', 'value'],
+  'po_rate': ['PO RATE', 'PO Rate', 'po_rate'],
+  'date': ['Date', 'date'],
+  'dt_of_receipts': ['Dt of Receipts', 'DT OF RECEIPTS', 'Dt of Receipt', 'dt_of_receipts'],
+  'sup_doc_no': ['Sup Doc No.', 'SUP DOC NO.', 'Sup Doc No', 'Invoice No', 'sup_doc_no', ' Sup Doc No.'],
+  'accounts_approval_timestamp': ['Accounts Approval Timestamp', 'accounts_approval_timestamp'],
+  'accounts_approval_useremail': ['Accounts Approval Useremail', 'accounts_approval_useremail'],
+  'md_approval_timestamp': ['MD Approval Timestamp', 'md_approval_timestamp'],
+  'md_approval_useremail': ['MD Approval Useremail', 'md_approval_useremail'],
+  'pending_tally_posting_timestamp': ['Pending Tally Posting Timestamp', 'Pending Tally Posting Timesyamp', 'pending_tally_posting_timestamp'],
+  'pending_tally_posting_useremail': ['Pending Tally Posting Useremail', 'pending_tally_posting_useremail']
+};
+
+const GE_ENTRY_ALIASES = {
+  timestamp: ['Timestamp', 'timestamp'],
   date: ['Date', 'date'],
-  dt_of_receipts: ['Dt of Receipts', 'dt_of_receipts', 'dt_of_receipt', 'receipt_date'],
-  sup_doc_no: ['Sup Doc No.', 'sup_doc_no', 'supplier_doc_no']
+  ge_no: ['GE Entry', 'GE No', 'ge_no'],
+  supplier: ['Supplier Name', 'Supplier', 'supplier'],
+  invoice_no: ['Invoice No', 'Invoice No.', 'invoice_no'],
+  total_value: ['Total Invocie Value', 'Total Value', 'total_value'],
+  truck_no: ['Truck No', 'Truck No.', 'Vehicle No', 'truck_no'],
+  pic1: ['Pic 1', 'pic1'],
+  pic2: ['Pic 2', 'pic2'],
+  pic3: ['Pic 3', 'pic3'],
+  pic4: ['Pic 4', 'pic4'],
+  pic5: ['Pic 5', 'pic5'],
+  pic6: ['Pic 6', 'pic6'],
+  pic7: ['Pic 7', 'pic7'],
+  pic8: ['Pic 8', 'pic8'],
+  mrr_no: ['MRR', 'mrr_no', 'MRR No']
 };
 
 /* -------------------------------------------------------------------------- */
@@ -55,23 +86,80 @@ const HELPER_SHEET_ALIASES = {
 
 function doGet(e) {
   try {
-    const sheetName = String(e.parameter.sheet || '').trim();
-    if (!sheetName) throw new Error('Sheet name is required for GET requests.');
-
+    const action = String(e.parameter.action || '').toLowerCase();
     let ss;
     if (e.parameter.spreadsheetId) {
-      ss = SpreadsheetApp.openById(e.parameter.spreadsheetId);
+      ss = SpreadsheetApp.openById(String(e.parameter.spreadsheetId).trim());
     } else {
       ss = SpreadsheetApp.getActiveSpreadsheet();
     }
     
     if (!ss) throw new Error('Spreadsheet not bound. Provide "spreadsheetId" or use container-bound script.');
 
-    const sheet = getSheetOrThrow_(ss, sheetName);
-    
+    // Custom action to get the last MRR and GE numbers for auto-incrementing
+    if (action === 'get_latest_ids') {
+      const sheetName = String(e.parameter.sheet || '').trim();
+      const sheet = getSheetOrThrow_(ss, sheetName);
+      const headers = getHeaders_(sheet);
+      const lastRow = sheet.getLastRow();
+      const prefix = String(e.parameter.prefix || '').trim().toUpperCase();
+      
+      let lastMrr = 0;
+      let lastGe = 0;
+      let lastGeText = '';
+      
+      if (lastRow >= 2) {
+        const mrrIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.mrr_number);
+        const geIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.ge_no);
+        
+        if (mrrIndex !== -1) {
+          const mrrValues = sheet.getRange(2, mrrIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
+          for (let i = mrrValues.length - 1; i >= 0; i--) {
+            const val = String(mrrValues[i]).trim();
+            if (val) {
+              lastMrr = extractSequenceNumber_(val);
+              if (lastMrr > 0) break;
+            }
+          }
+        }
+        
+        if (geIndex !== -1) {
+          const geValues = sheet.getRange(2, geIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
+          if (prefix) {
+            // Find max sequence specifically for this prefix (FIRM/FY/)
+            let maxInPrefix = 0;
+            for (let i = 0; i < geValues.length; i++) {
+              const val = String(geValues[i]).trim().toUpperCase();
+              if (val.indexOf(prefix) === 0) {
+                const seq = extractSequenceNumber_(val);
+                if (seq > maxInPrefix) maxInPrefix = seq;
+              }
+            }
+            lastGe = maxInPrefix;
+            // ge_text is less relevant here but we can reconstruct it
+            lastGeText = lastGe > 0 ? prefix + Utilities.formatString('%04d', lastGe) : '';
+          } else {
+            // Traditional backward search
+            for (let i = geValues.length - 1; i >= 0; i--) {
+              const val = String(geValues[i]).trim();
+              if (val) {
+                lastGeText = val;
+                lastGe = extractSequenceNumber_(val);
+                if (lastGe > 0) break;
+              }
+            }
+          }
+        }
+      }
+      
+      return jsonOutput_({ ok: true, mrr: lastMrr, ge: lastGe, ge_text: lastGeText });
+    }
+
     // If frontend is verifying a write (checking MRR Number count)
     const mrrNumber = String(e.parameter.mrr_number || '').trim();
     if (mrrNumber) {
+      const sheetName = String(e.parameter.sheet || '').trim();
+      const sheet = getSheetOrThrow_(ss, sheetName);
       let count = 0;
       let matchedRows = [];
       const headers = getHeaders_(sheet);
@@ -100,8 +188,169 @@ function doGet(e) {
       }
       return jsonOutput_({ ok: true, count: count, values: matchedRows });
     }
+
+    // Custom action to get unique suppliers from PO DETAILS
+    if (action === 'get_suppliers') {
+      const poSheet = getSheetOrThrow_(ss, DEFAULT_SHEETS.poDetails);
+      const headers = getHeaders_(poSheet);
+      const lastRow = poSheet.getLastRow();
+      
+      if (lastRow < 2) return jsonOutput_({ ok: true, values: [] });
+      
+      const supplierIndex = findColumnIndex_(headers, HELPER_SHEET_ALIASES.supplier);
+      if (supplierIndex === -1) return jsonOutput_({ ok: true, values: [] });
+      
+      const values = poSheet.getRange(2, supplierIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
+      const uniqueSuppliers = [...new Set(values.map(v => String(v).trim()).filter(v => v !== ''))].sort();
+      
+      return jsonOutput_({ ok: true, values: uniqueSuppliers });
+    }
     
+    // Custom action to get pending MRR / approval / tally items
+    if (action === 'get_pending_ge') {
+      const result = [];
+      const geSheetName = 'GE ENTRY';
+      const geSheet = getSheetOrThrow_(ss, geSheetName);
+      const geHeaders = getHeaders_(geSheet);
+      const lastGeRow = geSheet.getLastRow();
+
+      if (lastGeRow >= 2) {
+        const geData = geSheet.getRange(2, 1, lastGeRow - 1, geHeaders.length).getDisplayValues();
+        const mrrColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.mrr_no);
+
+        geData.forEach(function(row) {
+          const mrrVal = mrrColIndex === -1 ? '' : String(row[mrrColIndex]).trim();
+          if (mrrVal !== '') return;
+
+          const obj = {
+            pending_stage: 'pending_mrr',
+            pending_label: 'Pending MRR',
+            sort_order: 1
+          };
+
+          for (const key in GE_ENTRY_ALIASES) {
+            const idx = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES[key]);
+            if (idx !== -1) obj[key] = row[idx];
+          }
+          geHeaders.forEach((h, i) => {
+            const normalized = normalizeHeader_(h);
+            if (!(normalized in obj)) obj[normalized] = row[i];
+          });
+          result.push(obj);
+        });
+      }
+
+      const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
+      if (mrrSheetName) {
+        const mrrSheet = getSheetOrThrow_(ss, mrrSheetName);
+        const mrrHeaders = getHeaders_(mrrSheet);
+        const lastMrrRow = mrrSheet.getLastRow();
+
+        if (lastMrrRow >= 2 && mrrHeaders.length > 0) {
+          const mrrData = mrrSheet.getRange(2, 1, lastMrrRow - 1, mrrHeaders.length).getDisplayValues();
+          const mrrIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_number);
+          const geIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.ge_no);
+          const dateIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.date);
+          const supplierIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.supplier);
+          const docIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.sup_doc_no);
+          const truckIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.truck_number);
+          const accountsApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.accounts_approval_timestamp);
+          const mdApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.md_approval_timestamp);
+          const tallyIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.pending_tally_posting_timestamp);
+
+          mrrData.forEach(function(row) {
+            const mrrNumber = mrrIndex === -1 ? '' : String(row[mrrIndex]).trim();
+            if (!mrrNumber) return;
+
+            const accountsApproval = accountsApprovalIndex === -1 ? '' : String(row[accountsApprovalIndex]).trim();
+            const mdApproval = mdApprovalIndex === -1 ? '' : String(row[mdApprovalIndex]).trim();
+            const tallyPosting = tallyIndex === -1 ? '' : String(row[tallyIndex]).trim();
+
+            let pendingStage = '';
+            let pendingLabel = '';
+            let sortOrder = 99;
+
+            if (!accountsApproval) {
+              pendingStage = 'pending_accounts_approval';
+              pendingLabel = 'Pending Accounts Approval';
+              sortOrder = 2;
+            } else if (!mdApproval) {
+              pendingStage = 'pending_md_approval';
+              pendingLabel = 'Pending MD Approval';
+              sortOrder = 3;
+            } else if (!tallyPosting) {
+              pendingStage = 'pending_tally_posting';
+              pendingLabel = 'Pending Tally Posting';
+              sortOrder = 4;
+            } else {
+              return;
+            }
+
+            const obj = {
+              pending_stage: pendingStage,
+              pending_label: pendingLabel,
+              sort_order: sortOrder,
+              ge_no: geIndex === -1 ? '' : row[geIndex],
+              date: dateIndex === -1 ? '' : row[dateIndex],
+              mrr_number: mrrNumber,
+              supplier: supplierIndex === -1 ? '' : row[supplierIndex],
+              invoice_no: docIndex === -1 ? '' : row[docIndex],
+              truck_no: truckIndex === -1 ? '' : row[truckIndex],
+              accounts_approval_timestamp: accountsApproval,
+              md_approval_timestamp: mdApproval,
+              pending_tally_posting_timestamp: tallyPosting
+            };
+
+            mrrHeaders.forEach((h, i) => {
+              const normalized = normalizeHeader_(h);
+              if (!(normalized in obj)) obj[normalized] = row[i];
+            });
+            result.push(obj);
+          });
+        }
+      }
+
+      result.sort(function(a, b) {
+        const orderA = Number(a.sort_order || 99);
+        const orderB = Number(b.sort_order || 99);
+        if (orderA !== orderB) return orderA - orderB;
+        return String(b.date || '').localeCompare(String(a.date || ''));
+      });
+
+      return jsonOutput_({ ok: true, values: result });
+    }
+
+    if (action === 'verify_ge') {
+      const geSheetName = 'GE ENTRY';
+      const geSheet = getSheetOrThrow_(ss, geSheetName);
+      const geHeaders = getHeaders_(geSheet);
+      const lastGeRow = geSheet.getLastRow();
+      const invoiceNo = String(e.parameter.invoice_no || '').trim().toLowerCase();
+      const supplier = String(e.parameter.supplier || '').trim().toLowerCase();
+
+      if (lastGeRow >= 2 && invoiceNo) {
+        const invColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.invoice_no);
+        const supColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.supplier);
+        const geColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.ge_no);
+
+        if (invColIndex !== -1 && geColIndex !== -1) {
+          const geData = geSheet.getRange(2, 1, lastGeRow - 1, geHeaders.length).getDisplayValues();
+          for (let i = geData.length - 1; i >= 0; i--) {
+            const rowInv = String(geData[i][invColIndex]).trim().toLowerCase();
+            const rowSup = supColIndex !== -1 ? String(geData[i][supColIndex]).trim().toLowerCase() : '';
+            if (rowInv === invoiceNo && (!supplier || rowSup.includes(supplier) || supplier.includes(rowSup))) {
+              return jsonOutput_({ ok: true, ge_no: geData[i][geColIndex] });
+            }
+          }
+        }
+      }
+      return jsonOutput_({ ok: false });
+    }
+
     // Default GET behavior: Return the entire sheet data as a 2D array
+    const sheetName = String(e.parameter.sheet || '').trim();
+    if (!sheetName) throw new Error('Sheet name is required for default GET requests.');
+    const sheet = getSheetOrThrow_(ss, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
     let values = [];
@@ -129,7 +378,7 @@ function doPost(e) {
     
     let ss;
     if (payload.spreadsheetId) {
-      ss = SpreadsheetApp.openById(payload.spreadsheetId);
+      ss = SpreadsheetApp.openById(String(payload.spreadsheetId).trim());
     } else {
       ss = SpreadsheetApp.getActiveSpreadsheet();
     }
@@ -143,8 +392,12 @@ function doPost(e) {
     const packing = payload.packing || {};
     const poRows = Array.isArray(payload.poRows) ? payload.poRows : [];
 
-    const mrrSheet = getSheetOrThrow_(ss, String(options.mrrSheetName || DEFAULT_SHEETS.mrrForm).trim());
-    const helperSheet = getSheetOrThrow_(ss, String(options.helperSheetName || DEFAULT_SHEETS.helper).trim());
+    let mrrSheet = null;
+    let helperSheet = null;
+    if (action !== 'save_ge_entry') {
+      mrrSheet = getSheetOrThrow_(ss, String(options.mrrSheetName || DEFAULT_SHEETS.mrrForm).trim());
+      helperSheet = getSheetOrThrow_(ss, String(options.helperSheetName || DEFAULT_SHEETS.helper).trim());
+    }
 
     // Use LockService to prevent concurrent executions from overwriting each other
     const lock = LockService.getDocumentLock();
@@ -152,9 +405,15 @@ function doPost(e) {
     lock.waitLock(20000);
     
     try {
+      if (action === 'save_ge_entry') {
+        const geResult = saveGeEntryRow_(ss, payload.geEntry || {});
+        return jsonOutput_({ ok: true, action: action, geEntry: geResult });
+      }
+
       if (action === 'save_invoice') {
         const mrrRecord = buildMrrFormRecord_(invoice, packing, poRows, []);
         const mrrResult = upsertMrrFormRow_(mrrSheet, mrrRecord);
+        updateGeEntryWithMrr_(ss, mrrRecord.ge_no, mrrRecord.mrr_number);
         return jsonOutput_({ ok: true, action: action, mrrForm: mrrResult });
       }
 
@@ -165,6 +424,7 @@ function doPost(e) {
       const helperResult = replaceHelperRows_(helperSheet, mrrRecord.mrr_number, helperRows);
       // Ensure we include updated helper info (like rows with serials) for MRR calculation if needed
       const mrrResult = upsertMrrFormRow_(mrrSheet, buildMrrFormRecord_(invoice, packing, poRows, helperResult.rowsWithSerial));
+      updateGeEntryWithMrr_(ss, mrrRecord.ge_no, mrrRecord.mrr_number);
 
       return jsonOutput_({
         ok: true,
@@ -219,30 +479,37 @@ function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
  * Maps incoming items to helper sheet row data.
  */
 function buildHelperRows_(invoice, packing, poRows) {
-  const items = Array.isArray(packing.items) ? packing.items : [];
   const baseDate = firstFilled_(packing.date, invoice.date);
   const receiptDate = firstFilled_(packing.receipt_date, invoice.receipt_date);
   const supplierDocNo = firstFilled_(invoice.invoice_no, packing.challan_no);
   const mrrNumber = firstFilled_(packing.mrr_no, invoice.mrr_no);
+  const supplierName = firstFilled_(packing.distributor, packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address);
 
-  return items.filter(rowHasData_).map(function(row) {
+  // Heuristic: Use packing.items if it has meaningful data, otherwise invoice.goods
+  const packingItems = Array.isArray(packing.items) ? packing.items.filter(rowHasData_) : [];
+  const invoiceGoods = Array.isArray(invoice.goods) ? invoice.goods.filter(rowHasData_) : [];
+  
+  const items = (packingItems.length > 0) ? packingItems : invoiceGoods;
+
+  return items.map(function(row, index) {
+    const poNo = firstFilled_(row.po_no, row.party_order);
     return {
       s_no: '',
       mrr_number: firstFilled_(row.mrr_no, mrrNumber),
       po_details: firstFilled_(row.po_details),
-      po_no: firstFilled_(row.po_no, row.party_order),
+      po_no: poNo,
       po_date: firstFilled_(packing.order_date, invoice.date),
-      supplier: firstFilled_(packing.distributor, packing.buyer && packing.buyer.name_address),
-      our_reel_number: firstFilled_(row.reel_no),
+      supplier: firstFilled_(row.supplier, supplierName),
+      our_reel_number: firstFilled_(row.reel_no, row.reels),
       supplier_reel_no: firstFilled_(row.supplier_reel_no),
-      reel_details: firstFilled_(row.reel_details, row.item_name),
+      reel_details: firstFilled_(row.reel_details, row.item_name, row.description),
       erp_code: firstFilled_(row.erp_code),
       size: firstFilled_(row.size),
       gsm: firstFilled_(row.gsm),
       bf: firstFilled_(row.bf),
-      weight: round2_(row.net_wt),
+      weight: round2_(row.net_wt || row.weight),
       rate: round2_(row.rate),
-      value: round2_(n_(row.net_wt) * n_(row.rate)),
+      value: round2_(n_(row.net_wt || row.weight) * n_(row.rate)),
       po_rate: round2_(row.po_rate),
       date: baseDate,
       dt_of_receipts: receiptDate,
@@ -293,7 +560,7 @@ function replaceHelperRows_(sheet, mrrNumber, helperRows) {
   const headerKeys = headers.map(h => aliasReverseMap[normalizeHeader_(h)]);
 
   const values = rowsWithSerial.map(function(row) {
-    return buildNewRowValuesOptimized_(headerKeys, row);
+    return buildRowValuesFromHeaderKeys_(headerKeys, row);
   });
 
   // Append everything efficiently in a single bulk operation
@@ -326,10 +593,137 @@ function upsertMrrFormRow_(sheet, record) {
     return { updatedRows: 1, insertedRows: 0, rowNumber: existingRowNumber };
   }
 
-  const newRow = buildNewRowValuesOptimized_(headerKeys, record);
+  const newRow = buildRowValuesFromHeaderKeys_(headerKeys, record);
   const rowNumber = sheet.getLastRow() + 1;
   sheet.getRange(rowNumber, 1, 1, headers.length).setValues([newRow]);
   return { updatedRows: 0, insertedRows: 1, rowNumber: rowNumber };
+}
+
+/**
+ * Saves a new Gate Entry row or updates an existing one.
+ */
+function saveGeEntryRow_(ss, data) {
+  const geSheetName = 'GE ENTRY';
+  const sheet = getSheetOrThrow_(ss, geSheetName);
+  const headers = getHeaders_(sheet);
+  
+  if (!headers.length) throw new Error('GE ENTRY sheet is empty or missing headers.');
+  
+  const record = Object.assign({}, data);
+  if (!record.timestamp) record.timestamp = new Date().toLocaleString();
+  if (!record.date) record.date = new Date().toLocaleDateString();
+  const firmCode = normalizeFirmCode_(record.firm_code || ss.getName());
+  
+  // Save photos to Drive and replace base64 with URLs
+  const folderName = "GateEntry_Photos_" + ss.getName().replace(/[^a-zA-Z0-9]/g, '_');
+  for (let i = 1; i <= 8; i++) {
+    const key = 'pic' + i;
+    if (record[key] && record[key].indexOf('data:') === 0) {
+      const fileName = 'GE_' + (record.ge_no || 'pending') + '_Pic' + i + '_' + (new Date().getTime()) + '.jpg';
+      record[key] = saveBase64ToDrive_(record[key], fileName, folderName);
+    }
+  }
+  
+  const geIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.ge_no);
+  
+  // Auto-generate formatted GE No if missing or still numeric placeholder.
+  if (shouldAutoGenerateGeNo_(record.ge_no)) {
+    if (geIndex !== -1) {
+      record.ge_no = getNextFormattedGeNo_(sheet, geIndex, firmCode, record.date);
+    }
+  }
+
+  // Check if we should update an existing row (if ge_no exists)
+  let existingRow = -1;
+  if (record.ge_no && geIndex !== -1) {
+    existingRow = findRowNumberByKey_(sheet, geIndex, record.ge_no);
+  }
+
+  const newRow = buildRowValuesFromAliases_(headers, record, GE_ENTRY_ALIASES);
+  
+  if (existingRow > 0) {
+    // Update existing row
+    sheet.getRange(existingRow, 1, 1, newRow.length).setValues([newRow]);
+    return { ok: true, ge_no: record.ge_no, row: existingRow, updated: true };
+  } else {
+    // Append new row
+    sheet.appendRow(newRow);
+    return { ok: true, ge_no: record.ge_no, row: sheet.getLastRow(), updated: false };
+  }
+}
+
+/**
+ * Builds an array of values for a new row based on aliases and a record object.
+ */
+function buildRowValuesFromAliases_(headers, record, aliasMap) {
+  const rowValues = new Array(headers.length).fill('');
+  for (const key in record) {
+    const aliases = aliasMap[key];
+    if (aliases) {
+      const colIndex = findColumnIndex_(headers, aliases);
+      if (colIndex !== -1) {
+        rowValues[colIndex] = record[key];
+      }
+    }
+  }
+  return rowValues;
+}
+
+/**
+ * Updates a Gate Entry row with the MRR number.
+ */
+function updateGeEntryWithMrr_(ss, geNo, mrrNo) {
+  if (!geNo || !mrrNo) return;
+  const geSheetName = 'GE ENTRY';
+  let sheet;
+  try {
+    sheet = ss.getSheetByName(geSheetName);
+    if (!sheet) return;
+  } catch (e) {
+    return;
+  }
+
+  const headers = getHeaders_(sheet);
+  const geIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.ge_no);
+  const mrrIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.mrr_no);
+  
+  if (geIndex === -1 || mrrIndex === -1) return;
+  
+  const rowNumber = findRowNumberByKey_(sheet, geIndex, geNo);
+  if (rowNumber > 0) {
+    sheet.getRange(rowNumber, mrrIndex + 1).setValue(mrrNo);
+  }
+}
+
+/**
+ * Saves a base64 image to Google Drive and returns the viewing URL.
+ */
+function saveBase64ToDrive_(base64Data, fileName, folderName) {
+  try {
+    const folderSearch = DriveApp.getFoldersByName(folderName);
+    let folder;
+    if (folderSearch.hasNext()) {
+      folder = folderSearch.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+    }
+
+    const contentType = base64Data.substring(base64Data.indexOf(":") + 1, base64Data.indexOf(";"));
+    const bytes = Utilities.base64Decode(base64Data.split(",")[1]);
+    const blob = Utilities.newBlob(bytes, contentType, fileName);
+    const file = folder.createFile(blob);
+    
+    // Attempt to set public sharing. Note: organization policies might block this.
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (sharingError) {
+      // Fallback: If organization blocks ANYONE_WITH_LINK, it just stays private but saved.
+    }
+    
+    return file.getUrl();
+  } catch (e) {
+    return "Error saving image: " + e.message;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -364,10 +758,15 @@ function parseRequestBody_(e) {
   return {};
 }
 
-function getSheetOrThrow_(ss, sheetName) {
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) throw new Error('Sheet not found: ' + sheetName);
-  return sheet;
+function getSheetOrThrow_(ss, name) {
+  const target = name.trim().toLowerCase();
+  const sheets = ss.getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName().trim().toLowerCase() === target) {
+      return sheets[i];
+    }
+  }
+  throw new Error(`Sheet "${name}" not found in spreadsheet "${ss.getName()}". Available: ${sheets.map(s => s.getName()).join(', ')}`);
 }
 
 function getHeaders_(sheet) {
@@ -400,7 +799,7 @@ function findColumnIndex_(headers, aliasList) {
   return -1;
 }
 
-function buildNewRowValuesOptimized_(headerKeys, record) {
+function buildRowValuesFromHeaderKeys_(headerKeys, record) {
   return headerKeys.map(key => key ? safeSheetValue_(record[key]) : '');
 }
 
@@ -468,8 +867,11 @@ function assignIfPresent_(target, key, value, allowZero) {
 }
 
 function rowHasData_(row) {
+  const skipValues = ['CM', 'KGS', '0', '0.00'];
   return Object.keys(row || {}).some(function(key) {
-    return String(row[key] || '').trim() !== '';
+    if (['sno', 's_no', 'unit', 'size_unit', 'weight_unit', 'mrr_no', 'ge_no'].indexOf(key) !== -1) return false;
+    const val = String(row[key] || '').trim();
+    return val !== '' && skipValues.indexOf(val) === -1;
   });
 }
 
@@ -483,6 +885,77 @@ function round2_(value) {
 
 function safeSheetValue_(value) {
   return value === undefined || value === null ? '' : value;
+}
+
+function extractSequenceNumber_(value) {
+  const text = String(value || '').trim();
+  if (!text) return 0;
+  const tailMatch = text.match(/(\d+)\s*$/);
+  if (tailMatch) return Number(tailMatch[1]) || 0;
+  return Number(text.replace(/\D/g, '')) || 0;
+}
+
+function normalizeFirmCode_(value) {
+  const code = String(value || '').trim().toUpperCase().replace(/[^A-Z0-9-]+/g, '');
+  return code || 'GE';
+}
+
+function parseDateValue_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return value;
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return new Date();
+
+  const parts = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (parts) {
+    const day = Number(parts[1]);
+    const month = Number(parts[2]) - 1;
+    const year = Number(parts[3].length === 2 ? '20' + parts[3] : parts[3]);
+    return new Date(year, month, day);
+  }
+
+  const parsed = new Date(text);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function getFinancialYearLabel_(value) {
+  const date = parseDateValue_(value);
+  const year = date.getFullYear();
+  const fyStart = date.getMonth() >= 3 ? year : year - 1;
+  const fyEnd = fyStart + 1;
+  return String(fyStart).slice(-2) + '-' + String(fyEnd).slice(-2);
+}
+
+function formatGeNo_(firmCode, dateValue, sequence) {
+  return normalizeFirmCode_(firmCode) + '/' + getFinancialYearLabel_(dateValue) + '/' + Utilities.formatString('%04d', Number(sequence) || 0);
+}
+
+function shouldAutoGenerateGeNo_(value) {
+  const text = String(value || '').trim();
+  return !text || text === '0' || /^\d+$/.test(text);
+}
+
+function getNextFormattedGeNo_(sheet, geIndex, dateValueOrFirmCode, maybeDateValue) {
+  const firmCode = maybeDateValue === undefined ? normalizeFirmCode_(sheet.getParent().getName()) : normalizeFirmCode_(dateValueOrFirmCode);
+  const dateValue = maybeDateValue === undefined ? dateValueOrFirmCode : maybeDateValue;
+  const fy = getFinancialYearLabel_(dateValue);
+  const prefix = firmCode + '/' + fy + '/';
+  const lastRow = sheet.getLastRow();
+  let maxSequence = 0;
+
+  if (lastRow >= 2) {
+    const values = sheet.getRange(2, geIndex + 1, lastRow - 1, 1).getDisplayValues();
+    for (let i = 0; i < values.length; i++) {
+      const text = String(values[i][0] || '').trim().toUpperCase();
+      if (!text || text.indexOf(prefix) !== 0) continue;
+      const sequence = extractSequenceNumber_(text);
+      if (sequence > maxSequence) maxSequence = sequence;
+    }
+  }
+
+  return formatGeNo_(firmCode, dateValue, maxSequence + 1);
 }
 
 function jsonOutput_(data) {
