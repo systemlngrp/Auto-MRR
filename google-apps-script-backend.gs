@@ -110,7 +110,10 @@ function doGet(e) {
       
       if (lastRow >= 2) {
         const mrrIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.mrr_number);
-        const geIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.ge_no);
+        let geIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.ge_no);
+        if (geIndex === -1) {
+          geIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.ge_no);
+        }
         
         if (mrrIndex !== -1) {
           const mrrValues = sheet.getRange(2, mrrIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
@@ -213,14 +216,43 @@ function doGet(e) {
       const geSheet = getSheetOrThrow_(ss, geSheetName);
       const geHeaders = getHeaders_(geSheet);
       const lastGeRow = geSheet.getLastRow();
+      const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
+      const mrrSheet = mrrSheetName ? getSheetOrThrow_(ss, mrrSheetName) : null;
+      const mrrHeaders = mrrSheet ? getHeaders_(mrrSheet) : [];
+      const lastMrrRow = mrrSheet ? mrrSheet.getLastRow() : 0;
+      const existingMrrSet = {};
+      const existingGeSet = {};
+
+      if (mrrSheet && lastMrrRow >= 2 && mrrHeaders.length > 0) {
+        const mrrDataAll = mrrSheet.getRange(2, 1, lastMrrRow - 1, mrrHeaders.length).getDisplayValues();
+        const mrrKeyIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_number);
+        const mrrGeIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.ge_no);
+
+        for (let i = 0; i < mrrDataAll.length; i++) {
+          if (mrrKeyIndex !== -1) {
+            const mrrVal = normalizeKey_(mrrDataAll[i][mrrKeyIndex]);
+            if (mrrVal) existingMrrSet[mrrVal] = true;
+          }
+          if (mrrGeIndex !== -1) {
+            const geVal = normalizeKey_(mrrDataAll[i][mrrGeIndex]);
+            if (geVal) existingGeSet[geVal] = true;
+          }
+        }
+      }
 
       if (lastGeRow >= 2) {
         const geData = geSheet.getRange(2, 1, lastGeRow - 1, geHeaders.length).getDisplayValues();
         const mrrColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.mrr_no);
+        const geColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.ge_no);
 
         geData.forEach(function(row) {
           const mrrVal = mrrColIndex === -1 ? '' : String(row[mrrColIndex]).trim();
-          if (mrrVal !== '') return;
+          const geVal = geColIndex === -1 ? '' : String(row[geColIndex]).trim();
+          if (!mrrVal && !geVal) return;
+          const mrrExistsInMrrForm = !!existingMrrSet[normalizeKey_(mrrVal)];
+          const geExistsInMrrForm = !!existingGeSet[normalizeKey_(geVal)];
+          // Pending MRR should include only GE rows not yet reflected in MRR FORM
+          if (mrrExistsInMrrForm || geExistsInMrrForm) return;
 
           const obj = {
             pending_stage: 'pending_mrr',
@@ -240,13 +272,7 @@ function doGet(e) {
         });
       }
 
-      const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
-      if (mrrSheetName) {
-        const mrrSheet = getSheetOrThrow_(ss, mrrSheetName);
-        const mrrHeaders = getHeaders_(mrrSheet);
-        const lastMrrRow = mrrSheet.getLastRow();
-
-        if (lastMrrRow >= 2 && mrrHeaders.length > 0) {
+      if (mrrSheet && lastMrrRow >= 2 && mrrHeaders.length > 0) {
           const mrrData = mrrSheet.getRange(2, 1, lastMrrRow - 1, mrrHeaders.length).getDisplayValues();
           const mrrIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_number);
           const geIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.ge_no);
@@ -307,7 +333,6 @@ function doGet(e) {
             });
             result.push(obj);
           });
-        }
       }
 
       result.sort(function(a, b) {
@@ -332,6 +357,7 @@ function doGet(e) {
         const invColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.invoice_no);
         const supColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.supplier);
         const geColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.ge_no);
+        const mrrColIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.mrr_no);
 
         if (invColIndex !== -1 && geColIndex !== -1) {
           const geData = geSheet.getRange(2, 1, lastGeRow - 1, geHeaders.length).getDisplayValues();
@@ -339,7 +365,11 @@ function doGet(e) {
             const rowInv = String(geData[i][invColIndex]).trim().toLowerCase();
             const rowSup = supColIndex !== -1 ? String(geData[i][supColIndex]).trim().toLowerCase() : '';
             if (rowInv === invoiceNo && (!supplier || rowSup.includes(supplier) || supplier.includes(rowSup))) {
-              return jsonOutput_({ ok: true, ge_no: geData[i][geColIndex] });
+              return jsonOutput_({
+                ok: true,
+                ge_no: geData[i][geColIndex],
+                mrr_no: mrrColIndex === -1 ? '' : geData[i][mrrColIndex]
+              });
             }
           }
         }
@@ -625,12 +655,24 @@ function saveGeEntryRow_(ss, data) {
   }
   
   const geIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.ge_no);
+  const mrrIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.mrr_no);
+  const requestedGeNo = String(record.ge_no || '').trim();
+  const originalGeNo = String(record.original_ge_no || '').trim();
+  if (!requestedGeNo && originalGeNo) {
+    record.ge_no = originalGeNo;
+  }
   
-  // Auto-generate formatted GE No if missing or still numeric placeholder.
-  if (shouldAutoGenerateGeNo_(record.ge_no)) {
-    if (geIndex !== -1) {
+  // Generate only when GE is missing/placeholder. Existing GE should update in place.
+  if (geIndex !== -1) {
+    const isAuto = shouldAutoGenerateGeNo_(record.ge_no);
+    if (isAuto) {
       record.ge_no = getNextFormattedGeNo_(sheet, geIndex, firmCode, record.date);
     }
+  }
+
+  // Auto-generate formatted MRR No when MRR is blank/placeholder.
+  if (mrrIndex !== -1 && shouldAutoGenerateMrrNo_(record.mrr_no)) {
+    record.mrr_no = getNextMrrNo_(ss, sheet, mrrIndex, firmCode, record.date);
   }
 
   // Check if we should update an existing row (if ge_no exists)
@@ -638,17 +680,20 @@ function saveGeEntryRow_(ss, data) {
   if (record.ge_no && geIndex !== -1) {
     existingRow = findRowNumberByKey_(sheet, geIndex, record.ge_no);
   }
+  if (existingRow < 0 && originalGeNo && geIndex !== -1) {
+    existingRow = findRowNumberByKey_(sheet, geIndex, originalGeNo);
+  }
 
   const newRow = buildRowValuesFromAliases_(headers, record, GE_ENTRY_ALIASES);
   
   if (existingRow > 0) {
     // Update existing row
     sheet.getRange(existingRow, 1, 1, newRow.length).setValues([newRow]);
-    return { ok: true, ge_no: record.ge_no, row: existingRow, updated: true };
+    return { ok: true, ge_no: record.ge_no, mrr_no: record.mrr_no || '', row: existingRow, updated: true };
   } else {
     // Append new row
     sheet.appendRow(newRow);
-    return { ok: true, ge_no: record.ge_no, row: sheet.getLastRow(), updated: false };
+    return { ok: true, ge_no: record.ge_no, mrr_no: record.mrr_no || '', row: sheet.getLastRow(), updated: false };
   }
 }
 
@@ -932,9 +977,51 @@ function formatGeNo_(firmCode, dateValue, sequence) {
   return normalizeFirmCode_(firmCode) + '/' + getFinancialYearLabel_(dateValue) + '/' + Utilities.formatString('%04d', Number(sequence) || 0);
 }
 
+function formatMrrNo_(firmCode, dateValue, sequence) {
+  return normalizeFirmCode_(firmCode) + '/' + getFinancialYearLabel_(dateValue) + '/' + Utilities.formatString('%04d', Number(sequence) || 0);
+}
+
 function shouldAutoGenerateGeNo_(value) {
   const text = String(value || '').trim();
   return !text || text === '0' || /^\d+$/.test(text);
+}
+
+function shouldAutoGenerateMrrNo_(value) {
+  const text = String(value || '').trim();
+  return !text || text === '0' || /^\d+$/.test(text);
+}
+
+function getNextMrrNo_(ss, geSheet, geMrrIndex, firmCode, dateValue) {
+  let maxMrr = 0;
+
+  // 1) Check MRR FORM (authoritative)
+  try {
+    const mrrSheet = getSheetOrThrow_(ss, DEFAULT_SHEETS.mrrForm);
+    const mrrHeaders = getHeaders_(mrrSheet);
+    const mrrIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_number);
+    const lastMrrRow = mrrSheet.getLastRow();
+    if (mrrIndex !== -1 && lastMrrRow >= 2) {
+      const values = mrrSheet.getRange(2, mrrIndex + 1, lastMrrRow - 1, 1).getDisplayValues();
+      for (let i = 0; i < values.length; i++) {
+        const seq = extractSequenceNumber_(values[i][0]);
+        if (seq > maxMrr) maxMrr = seq;
+      }
+    }
+  } catch (e) {
+    // ignore and continue with GE ENTRY-based fallback
+  }
+
+  // 2) Check GE ENTRY MRR column too (avoid duplicate pending numbers)
+  const lastGeRow = geSheet.getLastRow();
+  if (geMrrIndex !== -1 && lastGeRow >= 2) {
+    const geMrrValues = geSheet.getRange(2, geMrrIndex + 1, lastGeRow - 1, 1).getDisplayValues();
+    for (let i = 0; i < geMrrValues.length; i++) {
+      const seq = extractSequenceNumber_(geMrrValues[i][0]);
+      if (seq > maxMrr) maxMrr = seq;
+    }
+  }
+
+  return formatMrrNo_(firmCode, dateValue, maxMrr + 1);
 }
 
 function getNextFormattedGeNo_(sheet, geIndex, dateValueOrFirmCode, maybeDateValue) {

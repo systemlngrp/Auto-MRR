@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, HELPER_SHEET_NAME, SCRIPT_URL, PO_SHEET_NAME } from './sheetSync';
 import QRCodePackage from 'react-qr-code';
@@ -57,7 +57,16 @@ const styles = `
 `;
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL = 'gemini-2.5-flash';
+const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.0-flash,gemini-1.5-flash')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+const GEMINI_MODELS = Array.from(new Set([GEMINI_PRIMARY_MODEL, ...GEMINI_FALLBACK_MODELS]));
+const GEMINI_RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const GEMINI_API_BASES = ['https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1'];
+const GEMINI_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS || 45000);
+let GEMINI_COOLDOWN_UNTIL = 0;
 
 
 const FIRMS = [
@@ -163,7 +172,7 @@ const blankPoRow = () => ({ sno: '', po_no: '', date: '', supplier: '', po_detai
 
 const blankInvoice = {
   header: { ...defaultHeader(), note: '' },
-  doc_title: 'Tax Invoice Against GST',
+  doc_title: 'MRR',
   invoice_no: '',
   date: '',
   eway_no: '',
@@ -326,7 +335,16 @@ function parseModelJson(text) {
   } catch {
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace > firstBrace) return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const sliced = cleaned.slice(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(sliced);
+      } catch {
+        // Basic repair: remove trailing commas before } or ]
+        const repaired = sliced.replace(/,\s*([}\]])/g, '$1');
+        return JSON.parse(repaired);
+      }
+    }
     throw new Error(`Gemini did not return valid JSON: ${cleaned.slice(0, 180)}`);
   }
 }
@@ -613,6 +631,10 @@ function mergePackingItemsIntoInvoiceGoods(invoiceGoods = [], packingItems = [])
 function normalizeInvoice(data = {}) {
   const invoice = merge(blankInvoice, data);
   invoice.header = normalizeHeaderStructure(data.header || {}, 'invoice');
+  const docTitle = String(invoice.doc_title || '').trim().toLowerCase();
+  if (!docTitle || docTitle === 'tax invoice' || docTitle === 'tax invoice against gst') {
+    invoice.doc_title = 'MRR';
+  }
   invoice.goods = ensureRows(invoice.goods).filter((row) => !isTotalLikeInvoiceRow(row)).map((row) => {
     const mergedRow = merge(blankInvoiceRow(), row);
     if (!mergedRow.amount && n(mergedRow.weight) && n(mergedRow.rate)) mergedRow.amount = String(n(mergedRow.weight) * n(mergedRow.rate));
@@ -869,36 +891,175 @@ function formatGeminiHttpError(status, payload, fallbackText) {
     return 'Gemini API key is invalid or restricted. Check the key and Gemini API permissions.';
   }
   if (status === 400) {
+    if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(`${apiMessage} ${detailsText}`)) {
+      return 'Gemini API key is invalid. Create a new Google AI Studio key (starts with "AIza") and restart the app.';
+    }
+    if (/referer|HTTP referrer|API_KEY_HTTP_REFERRER_BLOCKED|ip.*not.*allowed/i.test(`${apiMessage} ${detailsText}`)) {
+      return 'Gemini API key restrictions are blocking this app (localhost). Update key restrictions in Google Cloud/AI Studio.';
+    }
     return `Gemini could not process this image request. ${apiMessage || 'Try a clearer image under 18 MB.'}`.trim();
+  }
+  if (status === 503) {
+    return `Gemini is temporarily unavailable.${retryText} Please retry in a few seconds.`.trim();
   }
   return `Gemini request failed (${status}). ${apiMessage || 'Please try again.'}`.trim();
 }
 
-async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseJsonSchema: inferJsonSchema(shape),
-        temperature: 0.1
-      }
-    })
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let payload = null;
-    try {
-      payload = JSON.parse(errorText);
-    } catch {
-      payload = null;
-    }
-    throw new Error(formatGeminiHttpError(response.status, payload, errorText));
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getGeminiRetryDelayMs(payload, fallbackText) {
+  const detailsText = JSON.stringify(payload?.error?.details || '');
+  const combined = `${detailsText} ${fallbackText || ''}`;
+
+  const quotedMatch = combined.match(/"retryDelay"\s*:\s*"(\d+)s"/i);
+  if (quotedMatch) return Number(quotedMatch[1]) * 1000;
+
+  const plainMatch = combined.match(/retry(?:\s+again)?\s+in\s+(\d+)\s*s/i);
+  if (plainMatch) return Number(plainMatch[1]) * 1000;
+
+  return 0;
+}
+
+function getCooldownRemainingMs() {
+  return Math.max(0, GEMINI_COOLDOWN_UNTIL - Date.now());
+}
+
+function isRetryableGeminiError(status, payload, fallbackText) {
+  const detail = `${payload?.error?.status || ''} ${payload?.error?.message || ''} ${fallbackText || ''}`;
+  return GEMINI_RETRYABLE_STATUS.has(status) || /UNAVAILABLE|RESOURCE_EXHAUSTED|temporar|overloaded|backend|internal/i.test(detail);
+}
+
+function canTryNextGeminiModel(error) {
+  if (!error) return false;
+  const status = Number(error.status || 0);
+  return !status || status === 404 || status === 429 || status >= 500;
+}
+
+function isLikelyGoogleApiKey(value) {
+  const key = String(value || '').trim();
+  return /^AIza[0-9A-Za-z_-]{20,}$/.test(key);
+}
+
+async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
+  let lastError;
+  const cooldownMs = getCooldownRemainingMs();
+  if (cooldownMs > 0) {
+    const waitSeconds = Math.ceil(cooldownMs / 1000);
+    throw new Error(`Gemini is rate-limited right now. Please retry in about ${waitSeconds} seconds.`);
   }
-  const data = await response.json();
-  return parseModelJson(extractCandidateText(data));
+
+  for (let baseIndex = 0; baseIndex < GEMINI_API_BASES.length; baseIndex += 1) {
+    const baseUrl = GEMINI_API_BASES[baseIndex];
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      let timeoutId = null;
+      try {
+        const controller = new AbortController();
+        timeoutId = window.setTimeout(() => controller.abort(), GEMINI_REQUEST_TIMEOUT_MS);
+        const response = await fetch(`${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(API_KEY || '')}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        window.clearTimeout(timeoutId);
+
+        if (response.ok) return response.json();
+
+        const errorText = await response.text();
+        let payload = null;
+        try {
+          payload = JSON.parse(errorText);
+        } catch {
+          payload = null;
+        }
+
+        const err = new Error(formatGeminiHttpError(response.status, payload, errorText));
+        err.status = response.status;
+        err.payload = payload;
+        err.retryable = isRetryableGeminiError(response.status, payload, errorText);
+        err.baseUrl = baseUrl;
+        lastError = err;
+        if (response.status === 429 || response.status === 503) {
+          const retryDelayMs = getGeminiRetryDelayMs(payload, errorText) || (response.status === 429 ? 30000 : 10000);
+          GEMINI_COOLDOWN_UNTIL = Math.max(GEMINI_COOLDOWN_UNTIL, Date.now() + retryDelayMs);
+        }
+
+        const shouldSwitchBase = response.status === 404 || response.status === 400;
+        if (shouldSwitchBase || (!err.retryable && baseIndex < GEMINI_API_BASES.length - 1)) {
+          break;
+        }
+        if (!err.retryable || attempt === maxAttempts) throw err;
+        await waitMs(1000 * attempt);
+        continue;
+      } catch (networkErr) {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        const err = networkErr instanceof Error ? networkErr : new Error('Gemini network request failed.');
+        if (err.name === 'AbortError') {
+          err.message = 'Gemini request timed out while reading the image. Please retry with a clearer or smaller image.';
+        }
+        if (err.status) throw err;
+        err.retryable = true;
+        err.baseUrl = baseUrl;
+        lastError = err;
+        if (attempt === maxAttempts) break;
+        await waitMs(1000 * attempt);
+      }
+    }
+  }
+
+  throw lastError || new Error('Gemini request failed.');
+}
+
+async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
+  const schema = inferJsonSchema(shape);
+  const mainRequest = {
+    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseJsonSchema: schema,
+      temperature: 0.1
+    }
+  };
+
+  let lastError = null;
+  for (let i = 0; i < GEMINI_MODELS.length; i += 1) {
+    const model = GEMINI_MODELS[i];
+    try {
+      const data = await postGeminiGenerateContent(model, mainRequest, 3);
+      const candidateText = extractCandidateText(data);
+      try {
+        return parseModelJson(candidateText);
+      } catch (parseErr) {
+        // Retry once by asking Gemini to repair invalid JSON into the exact schema.
+        const repairRequest = {
+          contents: [{
+            parts: [{
+              text: `Fix this invalid JSON and return ONLY valid JSON matching the schema. Do not add explanation.\n\n${candidateText}`
+            }]
+          }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: schema,
+            temperature: 0
+          }
+        };
+        const repairedData = await postGeminiGenerateContent(model, repairRequest, 3);
+        return parseModelJson(extractCandidateText(repairedData));
+      }
+    } catch (err) {
+      lastError = err;
+      if (i < GEMINI_MODELS.length - 1 && canTryNextGeminiModel(err)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  const modelsTried = GEMINI_MODELS.join(', ');
+  const baseHint = lastError?.baseUrl ? ` Last endpoint: ${lastError.baseUrl}` : '';
+  throw new Error(`${lastError?.message || 'Gemini request failed.'} Tried models: ${modelsTried}.${baseHint}`);
 }
 
 function mergeScanRows(baseRows = [], focusedRows = [], makeBlankRow) {
@@ -922,9 +1083,6 @@ function mergeFocusedInvoiceData(data, focused = {}) {
     irn: data.irn || focused.irn || '',
     ack_no: data.ack_no || focused.ack_no || '',
     ack_date: data.ack_date || focused.ack_date || '',
-    declaration: data.declaration || focused.declaration || '',
-    terms: data.terms || focused.terms || '',
-    extra_details: data.extra_details || focused.extra_details || '',
     goods: mergeScanRows(data.goods, focused.goods, blankInvoiceRow)
   };
 }
@@ -940,7 +1098,6 @@ function mergeFocusedPackingData(data, focused = {}) {
     actual_total: data.actual_total || focused.actual_total || '',
     total_reels: data.total_reels || focused.total_reels || '',
     total_weight: data.total_weight || focused.total_weight || '',
-    extra_details: data.extra_details || focused.extra_details || '',
     receiver_label: data.receiver_label || focused.receiver_label || '',
     signer_name: data.signer_name || focused.signer_name || '',
     approval_text: data.approval_text || focused.approval_text || '',
@@ -951,6 +1108,9 @@ function mergeFocusedPackingData(data, focused = {}) {
 
 async function fetchGeminiJson(file, kind) {
   if (!API_KEY) throw new Error('Missing Gemini API key');
+  if (!isLikelyGoogleApiKey(API_KEY)) {
+    throw new Error('Invalid Gemini API key format. Use a Google AI Studio key that starts with "AIza".');
+  }
   const shape = kind === 'invoice' ? blankInvoice : blankPacking;
   const dataUrl = await fileToBase64(file);
   const mimeType = getDataUrlMimeType(dataUrl, file.type || 'image/jpeg');
@@ -959,7 +1119,7 @@ async function fetchGeminiJson(file, kind) {
     throw new Error('Processed image is still too large for Gemini. Please use a clearer crop or a smaller photo.');
   }
   const base64 = getDataUrlBase64(dataUrl);
-  const prompt = `Read this ${kind === 'invoice' ? 'tax invoice' : 'packing slip'} image and extract every visible dynamic value into JSON. Include company/header block, document title, copy note, party details, transport fields, bank details, declaration/terms/signature labels, totals, all table rows, extra header lines, and any leftover visible document text. Put unmatched visible text into extra_details. Return only the fields from the schema, keep dates in YYYY-MM-DD where possible, preserve row order carefully, and use empty strings or 0 when a field is unreadable.`;
+  const prompt = `Read this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
   let data = await fetchGeminiStructured(base64, mimeType, prompt, shape);
 
   if (kind === 'invoice' && needsInvoiceRowRetry(data.goods)) {
@@ -967,8 +1127,8 @@ async function fetchGeminiJson(file, kind) {
       const focused = await fetchGeminiStructured(
         base64,
         mimeType,
-        'Focus on the invoice goods table and the nearby PIN, GE No, MRR No, date of receipt, truck number, actual weight, IRN, Ack, declaration, terms, and extra details sections. Read each visible row cell by cell in order. Extract description, HSN, sort_no, party_order, gsm, size, size_unit, reels, weight, weight_unit, rate, and amount for every row. Do not invent values. Leave unreadable cells empty.',
-        { pin: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', declaration: '', terms: '', extra_details: '', goods: [blankInvoiceRow()] }
+        'Focus on the invoice goods table and nearby PIN, GE No, MRR No, date of receipt, truck number, actual weight, IRN, and Ack sections. Read each visible row cell by cell in order. Extract description, HSN, sort_no, party_order, gsm, size, size_unit, reels, weight, weight_unit, rate, and amount for every row. Do not invent values. Leave unreadable cells empty.',
+        { pin: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', goods: [blankInvoiceRow()] }
       );
       data = mergeFocusedInvoiceData(data, focused);
     } catch {
@@ -980,8 +1140,8 @@ async function fetchGeminiJson(file, kind) {
       const focused = await fetchGeminiStructured(
         base64,
         mimeType,
-        'Focus on the packing slip item table and the nearby intro line, GE No, MRR No, date of receipt, truck number, actual total, totals, received by, approval text, signatory, and extra details sections. Read each visible row cell by cell in order. Extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for every row. Supplier reel number should come from the photo. Leave erp_code empty unless it is clearly visible in the photo. Do not invent values. Leave unreadable cells empty.',
-        { intro_line: '', ge_no: '', mrr_no: '', receipt_date: '', truck_no: '', actual_total: '', total_reels: '', total_weight: '', extra_details: '', receiver_label: '', signer_name: '', approval_text: '', signatory_label: '', items: [blankPackingRow()] }
+        'Focus on the packing slip item table and the nearby intro line, GE No, MRR No, date of receipt, truck number, actual total, totals, received by, approval text, and signatory sections. Read each visible row cell by cell in order. Extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for every row. Supplier reel number should come from the photo. Leave erp_code empty unless clearly visible. Do not invent values. Leave unreadable cells empty.',
+        { intro_line: '', ge_no: '', mrr_no: '', receipt_date: '', truck_no: '', actual_total: '', total_reels: '', total_weight: '', receiver_label: '', signer_name: '', approval_text: '', signatory_label: '', items: [blankPackingRow()] }
       );
       data = mergeFocusedPackingData(data, focused);
     } catch {
@@ -1000,7 +1160,6 @@ function Header({ header }) {
         <p>{header.works}</p>
         <p>{header.meta}</p>
         <p>{header.contact}</p>
-        <p>{header.gstin}</p>
         {header.extra_lines?.map((line, index) => <p key={index}>{line}</p>)}
       </div>
       <div className="note">{header.note}</div>
@@ -1049,15 +1208,15 @@ function Field({ label, value, onChange, full }) {
   return <div className={full ? 'row full' : 'row'}><span>{label}</span><input value={value || ''} onChange={(e) => onChange(e.target.value)} /></div>;
 }
 
-function PartyCard({ label, data, onText, onField, contact, code, extras = [] }) {
+function PartyCard({ label, data, onText, onField, contact, code, hideGstin = false, extras = [] }) {
   return (
     <div className="card">
       <div className="cardTitle">{label}</div>
       <textarea value={data.name_address || ''} onChange={(e) => onText(e.target.value)} />
       <div className="pairs">
-        <Field label="GSTIN" value={data.gstin || ''} onChange={(v) => onField('gstin', v)} />
+        {!hideGstin ? <Field label="GSTIN" value={data.gstin || ''} onChange={(v) => onField('gstin', v)} /> : null}
         {contact ? <Field label="Contact" value={data.contact || ''} onChange={(v) => onField('contact', v)} /> : <Field label="State" value={data.state || ''} onChange={(v) => onField('state', v)} />}
-        {contact ? <Field label="State" value={data.state || ''} onChange={(v) => onField('state', v)} /> : <Field label="GSTIN" value={data.gstin || ''} onChange={(v) => onField('gstin', v)} />}
+        {contact ? <Field label="State" value={data.state || ''} onChange={(v) => onField('state', v)} /> : (!hideGstin ? <Field label="GSTIN" value={data.gstin || ''} onChange={(v) => onField('gstin', v)} /> : <Field label="State" value={data.state || ''} onChange={(v) => onField('state', v)} />)}
         {code ? <Field label="Code" value={data.state_code || ''} onChange={(v) => onField('state_code', v)} /> : <Field label="State" value={data.state || ''} onChange={(v) => onField('state', v)} />}
         {extras.map(([lab, val, fn]) => <Field key={lab} label={lab} value={val} onChange={fn} full />)}
       </div>
@@ -1228,70 +1387,165 @@ function formatGateEntryNumber(firm, dateValue, sequence) {
   return `${getFirmCode(firm)}/${getFinancialYearLabel(dateValue)}/${safeSequence}`;
 }
 
-function openGateEntryPdfWindow(firm, entry, previewPics = []) {
-  const popup = window.open('', '_blank', 'noopener,noreferrer,width=900,height=850');
-  if (!popup) return;
+function shouldAutoNumber(value) {
+  const text = String(value || '').trim();
+  return !text || text === '0' || text === '1' || /^\d+$/.test(text);
+}
 
-  const photoMarkup = previewPics
-    .filter(Boolean)
-    .map((pic, index) => `<div class="photo-card"><img src="${pic}" alt="Pic ${index + 1}" /><div>Pic ${index + 1}</div></div>`)
-    .join('');
+function getGateEntryNo(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  return String(source.ge_no || source.ge_entry || source.ge_entry_no || '').trim();
+}
 
-  popup.document.write(`<!doctype html>
-<html>
-<head>
-  <title>${entry.ge_no || 'GE Entry'}</title>
-  <style>
-    body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;padding:32px;color:#111;background:#f0f0f0}
-    .sheet{max-width:800px;margin:0 auto;border:2px solid #111;padding:32px;background:#fff;box-shadow:0 0 20px rgba(0,0,0,0.1)}
-    .head{text-align:center;margin-bottom:28px;border-bottom:2px double #111;padding-bottom:16px}
-    .head img{height:64px;margin-bottom:12px}
-    .head h1{margin:0;font-size:28px;color:#0f4f93;text-transform:uppercase;letter-spacing:2px}
-    .head p{margin:6px 0 0;font-weight:700;color:#555;font-size:14px}
-    .grid{display:grid;grid-template-columns:180px 1fr;gap:12px 24px;margin-bottom:24px}
-    .label{font-weight:700;color:#0f4f93;text-transform:uppercase;font-size:13px}
-    .val{font-size:15px;border-bottom:1px solid #eee}
-    .photos{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:24px}
-    .photo-card{border:1px solid #ddd;padding:10px;text-align:center;font-size:12px;background:#fcfcfc}
-    .photo-card img{width:100%;height:220px;object-fit:cover;border-radius:4px}
-    .actions{display:flex;justify-content:center;gap:16px;margin:30px auto 0;max-width:800px}
-    button{padding:10px 24px;font-size:14px;font-weight:bold;cursor:pointer;border:2px solid #111;background:#111;color:#fff}
-    button.alt{background:#fff;color:#111}
-    @media print {
-      .actions{display:none} 
-      body{padding:0;background:#fff} 
-      .sheet{border:none;box-shadow:none;width:100%}
+function getMrrNo(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  return String(source.mrr_no || source.mrr_number || '').trim();
+}
+
+function normalizeGateEntryInitialData(initialData, geNo, defaultDate) {
+  const source = initialData || {};
+  return {
+    supplier: source.supplier || source.supplier_name || '',
+    invoice_no: source.invoice_no || '',
+    total_value: source.total_value || source.total_invocie_value || '',
+    truck_no: source.truck_no || source.vehicle_no || '',
+    ge_no: getGateEntryNo(source) || geNo || '',
+    mrr_no: getMrrNo(source) || '',
+    date: source.date || defaultDate
+  };
+}
+
+let jsPdfLoaderPromise = null;
+
+function ensureJsPdfLoaded_() {
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (jsPdfLoaderPromise) return jsPdfLoaderPromise;
+
+  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.jspdf?.jsPDF) resolve(window.jspdf.jsPDF);
+      else reject(new Error('jsPDF loaded but not available on window.'));
+    };
+    script.onerror = () => reject(new Error('Could not load jsPDF library.'));
+    document.head.appendChild(script);
+  });
+
+  return jsPdfLoaderPromise;
+}
+
+function fileSafeName_(value) {
+  return String(value || 'gate-entry').replace(/[^\w.-]+/g, '_');
+}
+
+async function toDataUrlIfPossible_(url) {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  if (/^data:/i.test(text)) return text;
+  try {
+    const res = await fetch(text, { mode: 'cors' });
+    if (!res.ok) return '';
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+}
+
+async function downloadGateEntryPdfDirect(firm, entry, previewPics = []) {
+  try {
+    const jsPDFClass = await ensureJsPdfLoaded_();
+    const pdf = new jsPDFClass({ orientation: 'p', unit: 'pt', format: 'a4' });
+
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 36;
+    let y = margin;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(18);
+    pdf.text('GATE ENTRY PASS', pageWidth / 2, y, { align: 'center' });
+    y += 22;
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(String(firm?.name || ''), pageWidth / 2, y, { align: 'center' });
+    y += 24;
+
+    pdf.setDrawColor(180);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 18;
+
+    const fields = [
+      ['GE Entry No', entry?.ge_no || ''],
+      ['Date', entry?.date || ''],
+      ['Supplier Name', entry?.supplier || ''],
+      ['Invoice No', entry?.invoice_no || ''],
+      ['Invoice Value', entry?.total_value || ''],
+      ['Truck / Vehicle No', entry?.truck_no || '']
+    ];
+
+    fields.forEach(([label, value]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text(`${label}:`, margin, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(String(value || ''), margin + 110, y);
+      y += 18;
+    });
+
+    const pictures = (previewPics || []).filter(Boolean);
+    if (pictures.length) {
+      y += 8;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.text('ATTACHED PHOTOS', margin, y);
+      y += 12;
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 12;
+
+      const colGap = 12;
+      const boxW = (pageWidth - margin * 2 - colGap) / 2;
+      const boxH = 140;
+      let col = 0;
+
+      for (let i = 0; i < pictures.length; i += 1) {
+        const dataUrl = await toDataUrlIfPossible_(pictures[i]);
+        if (!dataUrl) continue;
+
+        const x = margin + col * (boxW + colGap);
+        if (y + boxH > pageHeight - margin - 26) {
+          pdf.addPage();
+          y = margin;
+        }
+
+        try {
+          const format = /data:image\/png/i.test(dataUrl) ? 'PNG' : 'JPEG';
+          pdf.addImage(dataUrl, format, x, y, boxW, boxH, undefined, 'FAST');
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.text(`Pic ${i + 1}`, x, y + boxH + 10);
+        } catch {
+          // Skip invalid image content silently
+        }
+
+        col = col ? 0 : 1;
+        if (col === 0) y += boxH + 18;
+      }
     }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="head">
-      <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" alt="Logo" />
-      <p>${firm?.name || ''}</p>
-      <h1>GATE ENTRY PASS</h1>
-    </div>
-    <div class="grid">
-      <div class="label">GE Entry No</div><div class="val"><b>${entry.ge_no || ''}</b></div>
-      <div class="label">Date</div><div class="val">${entry.date || ''}</div>
-      <div class="label">Supplier Name</div><div class="val">${entry.supplier || ''}</div>
-      <div class="label">Invoice No</div><div class="val">${entry.invoice_no || ''}</div>
-      <div class="label">Invoice Value</div><div class="val">${entry.total_value || ''}</div>
-      <div class="label">Truck / Vehicle No</div><div class="val">${entry.truck_no || ''}</div>
-    </div>
-    ${photoMarkup ? `<div><div class="label" style="margin-bottom:12px;border-top:1px solid #111;padding-top:16px">Captured Photos</div><div class="photos">${photoMarkup}</div></div>` : ''}
-    <div style="margin-top:60px;display:flex;justify-content:space-between">
-      <div style="border-top:1px solid #111;width:150px;text-align:center;padding-top:8px;font-size:12px">Guard Signature</div>
-      <div style="border-top:1px solid #111;width:150px;text-align:center;padding-top:8px;font-size:12px">Receiver Signature</div>
-    </div>
-  </div>
-  <div class="actions">
-    <button onclick="window.print()">Download PDF</button>
-    <button class="alt" onclick="window.close()">Close Preview</button>
-  </div>
-</body>
-</html>`);
-  popup.document.close();
+
+    const fileName = `${fileSafeName_(entry?.ge_no || 'gate-entry')}.pdf`;
+    pdf.save(fileName);
+  } catch (err) {
+    alert((err && err.message) ? err.message : 'Could not download PDF.');
+  }
 }
 
 function GateEntrySavedModal({ isOpen, firm, entry, previewPics, onClose }) {
@@ -1364,7 +1618,7 @@ function GateEntrySavedModal({ isOpen, firm, entry, previewPics, onClose }) {
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
-          <button className="btn main" style={{ padding: '12px 32px', fontSize: '14px' }} onClick={() => openGateEntryPdfWindow(firm, entry, previewPics)}>
+          <button className="btn main" style={{ padding: '12px 32px', fontSize: '14px' }} onClick={() => downloadGateEntryPdfDirect(firm, entry, previewPics)}>
             Download PDF
           </button>
           <button className="btn" style={{ padding: '12px 32px', fontSize: '14px' }} onClick={onClose}>
@@ -1379,7 +1633,7 @@ function GateEntrySavedModal({ isOpen, firm, entry, previewPics, onClose }) {
 function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
   const [pics, setPics] = useState(Array(8).fill(null));
   const defaultDate = new Date().toLocaleDateString('en-GB');
-  const [data, setData] = useState(initialData || { supplier: '', invoice_no: '', total_value: '', truck_no: '', ge_no: geNo || '', date: defaultDate });
+  const [data, setData] = useState(() => normalizeGateEntryInitialData(initialData, geNo, defaultDate));
   const [status, setStatus] = useState('');
   const [suppliers, setSuppliers] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -1402,8 +1656,13 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
   }, [initialData]);
 
   useEffect(() => {
-    setData((prev) => ({ ...prev, date: prev.date || defaultDate, ge_no: prev.ge_no || geNo || '' }));
-  }, [defaultDate, geNo]);
+    setData((prev) => ({
+      ...prev,
+      date: prev.date || defaultDate,
+      ge_no: prev.ge_no || geNo || getGateEntryNo(initialData) || '',
+      mrr_no: prev.mrr_no || getMrrNo(initialData) || ''
+    }));
+  }, [defaultDate, geNo, initialData]);
 
   useEffect(() => {
     async function loadSuppliers() {
@@ -1420,7 +1679,7 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
   useEffect(() => {
     async function loadNextGeNo() {
       if (!firm?.scriptUrl) return;
-      if (initialData?.ge_no || geNo || data.ge_no) return;
+      if (getGateEntryNo(initialData) || geNo || data.ge_no) return;
       try {
         const prefix = `${getFirmCode(firm)}/${getFinancialYearLabel(data.date || defaultDate)}/`;
         const latest = await fetchLatestMrrGe('GE ENTRY', firm.spreadsheetId, firm.scriptUrl, prefix);
@@ -1453,7 +1712,13 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
     setIsSaving(true);
     setStatus('Uploading Gate Entry...');
     try {
-      const payload = { ...data, firm_code: getFirmCode(firm) };
+      const payload = {
+        ...data,
+        ge_no: data.ge_no || getGateEntryNo(initialData) || geNo || '',
+        mrr_no: data.mrr_no || getMrrNo(initialData) || '',
+        original_ge_no: getGateEntryNo(initialData) || '',
+        firm_code: getFirmCode(firm)
+      };
       pics.forEach((pic, i) => {
         if (pic) payload[`pic${i + 1}`] = pic;
       });
@@ -1462,7 +1727,7 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
         scriptUrl: firm.scriptUrl,
         spreadsheetId: firm.spreadsheetId
       });
-      const finalEntry = { ...payload, ge_no: res.ge_no || data.ge_no };
+      const finalEntry = { ...payload, ge_no: res.ge_no || data.ge_no, mrr_no: res.mrr_no || data.mrr_no || '' };
       setData(finalEntry);
       setSavedEntry(finalEntry);
       setStatus('Gate Entry saved successfully.');
@@ -1561,6 +1826,9 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
 
 function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect }) {
   if (!isOpen) return null;
+  const pendingTableStyle = { width: '100%', tableLayout: 'auto' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '8px 10px' };
+  const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 10px' };
   return (
     <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 10000 }}>
       <div style={{ background: '#fff', padding: '24px', maxWidth: '800px', width: '90%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid #111' }}>
@@ -1569,31 +1837,41 @@ function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect }) {
           <button className="btn" onClick={onClose}>Close</button>
         </div>
         {!pendingGEs.length ? <p>No pending entries found.</p> : (
-          <table className="table" style={{ width: '100%', fontSize: '11px' }}>
+          <table className="table" style={pendingTableStyle}>
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Date</th>
-                <th>GE No</th>
-                <th>MRR No</th>
-                <th>Supplier</th>
-                <th>Invoice</th>
-                <th>Truck No</th>
-                <th>Action</th>
+                <th style={pendingHeaderCellStyle}>S No</th>
+                <th style={pendingHeaderCellStyle}>Date</th>
+                <th style={pendingHeaderCellStyle}>GE No</th>
+                <th style={pendingHeaderCellStyle}>MRR No</th>
+                <th style={pendingHeaderCellStyle}>Supplier</th>
+                <th style={pendingHeaderCellStyle}>Invoice</th>
+                <th style={pendingHeaderCellStyle}>Invoice Value</th>
+                <th style={pendingHeaderCellStyle}>Truck No</th>
+                <th style={pendingHeaderCellStyle}>Action</th>
               </tr>
             </thead>
             <tbody>
               {pendingGEs.map((ge, idx) => (
                 <tr key={idx}>
-                  <td>{ge.pending_label || 'Pending MRR'}</td>
-                  <td>{ge.date}</td>
-                  <td className="c">{ge.ge_entry || ge.ge_no}</td>
-                  <td className="c">{ge.mrr_number || ge.mrr_no || ''}</td>
-                  <td>{ge.supplier_name || ge.supplier}</td>
-                  <td>{ge.invoice_no}</td>
-                  <td>{ge.truck_no}</td>
-                  <td className="c">
-                    <button className="btn main small" onClick={() => onSelect(ge)}>Select</button>
+                  <td className="c" style={pendingBodyCellStyle}>{idx + 1}</td>
+                  <td style={pendingBodyCellStyle}>{ge.date}</td>
+                  <td className="c" style={pendingBodyCellStyle}>{ge.ge_entry || ge.ge_no}</td>
+                  <td className="c" style={pendingBodyCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
+                  <td style={pendingBodyCellStyle}>{ge.supplier_name || ge.supplier}</td>
+                  <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
+                  <td style={pendingBodyCellStyle}>{ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || ''}</td>
+                  <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
+                  <td className="c" style={pendingBodyCellStyle}>
+                    <button
+                      className="btn main small"
+                      style={{ fontSize: '12px', padding: '7px 12px', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f2937'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.color = ''; }}
+                      onClick={() => onSelect(ge)}
+                    >
+                      Select
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -1613,15 +1891,22 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [editData, setEditData] = useState(null);
   const [pendingFilter, setPendingFilter] = useState('pending_mrr');
+  const safeEditData = editData && typeof editData === 'object' ? editData : null;
 
-  const pendingCounts = {
+  const pendingCounts = useMemo(() => ({
     pending_mrr: pendingGEs.filter((item) => item.pending_stage === 'pending_mrr').length,
     pending_accounts_approval: pendingGEs.filter((item) => item.pending_stage === 'pending_accounts_approval').length,
     pending_md_approval: pendingGEs.filter((item) => item.pending_stage === 'pending_md_approval').length,
     pending_tally_posting: pendingGEs.filter((item) => item.pending_stage === 'pending_tally_posting').length
-  };
+  }), [pendingGEs]);
 
-  const filteredPendingGEs = pendingGEs.filter((item) => item.pending_stage === pendingFilter);
+  const filteredPendingGEs = useMemo(
+    () => pendingGEs.filter((item) => item.pending_stage === pendingFilter),
+    [pendingGEs, pendingFilter]
+  );
+  const pendingTableStyle = { width: '100%', tableLayout: 'auto' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '8px 10px' };
+  const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 10px' };
 
   useEffect(() => {
     if (step === 3 && tempFirm) {
@@ -1659,7 +1944,7 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
               </button>
             ))}
           </div>
-          <p style={{ marginTop: '30px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700 }}>Auto MRR System v4.0</p>
+          <p style={{ marginTop: '30px', fontSize: '11px', color: 'var(--muted)', fontWeight: 700 }}>MRR Management v4.0</p>
         </div>
       </div>
     );
@@ -1729,7 +2014,8 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
       <GateEntryForm 
         firm={tempFirm} 
         mrrType={tempType} 
-        initialData={editData}
+        initialData={safeEditData}
+        geNo={getGateEntryNo(safeEditData)}
         onBack={() => { setEditData(null); setStep(3); }} 
         onSave={(geNo, geData) => {
           setEditData(null);
@@ -1742,10 +2028,10 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
 
   if (step === 6) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
-        <div style={{ margin: 'auto', background: '#fff', padding: '30px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-             <h2 style={{ margin: 0 }}>
+             <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>
                {pendingFilter === 'pending_mrr' ? 'Pending MRR' :
                 pendingFilter === 'pending_accounts_approval' ? 'Pending Account Approval' :
                 pendingFilter === 'pending_md_approval' ? 'Pending MD Approval' :
@@ -1754,32 +2040,37 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
              <button className="btn" onClick={() => setStep(3)}>← Back</button>
           </div>
           {!filteredPendingGEs.length ? <p>No pending entries found.</p> : (
-            <table className="table" style={{ width: '100%', fontSize: '11px' }}>
+            <table className="table" style={pendingTableStyle}>
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>GE No</th>
-                  <th>MRR No</th>
-                  <th>Supplier</th>
-                  <th>Invoice</th>
-                  <th>Truck No</th>
-                  <th>Action</th>
+                  <th style={pendingHeaderCellStyle}>S No</th>
+                  <th style={pendingHeaderCellStyle}>Date</th>
+                  <th style={pendingHeaderCellStyle}>GE No</th>
+                  <th style={pendingHeaderCellStyle}>MRR No</th>
+                  <th style={pendingHeaderCellStyle}>Supplier</th>
+                  <th style={pendingHeaderCellStyle}>Invoice</th>
+                  <th style={pendingHeaderCellStyle}>Invoice Value</th>
+                  <th style={pendingHeaderCellStyle}>Truck No</th>
+                  <th style={pendingHeaderCellStyle}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPendingGEs.map((ge, idx) => (
                   <tr key={idx}>
-                    <td>{ge.pending_label || 'Pending MRR'}</td>
-                    <td>{ge.date}</td>
-                    <td className="c">{ge.ge_no || ge.ge_entry}</td>
-                    <td className="c">{ge.mrr_number || ge.mrr_no || ''}</td>
-                    <td>{ge.supplier || ge.supplier_name}</td>
-                    <td>{ge.invoice_no}</td>
-                    <td>{ge.truck_no}</td>
-                    <td className="c" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                    <td className="c" style={pendingBodyCellStyle}>{idx + 1}</td>
+                    <td style={pendingBodyCellStyle}>{ge.date}</td>
+                    <td className="c" style={pendingBodyCellStyle}>{ge.ge_no || ge.ge_entry}</td>
+                    <td className="c" style={pendingBodyCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
+                    <td style={pendingBodyCellStyle}>{ge.supplier || ge.supplier_name}</td>
+                    <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
+                    <td style={pendingBodyCellStyle}>{ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || ''}</td>
+                    <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
+                    <td className="c" style={{ ...pendingBodyCellStyle, display: 'flex', gap: '4px', justifyContent: 'center' }}>
                       <button 
                         className="btn main small" 
+                        style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
                         onClick={() => {
                           onGeSubmit(ge.ge_no || ge.ge_entry, ge);
                           onSelect(tempFirm, tempType);
@@ -1789,13 +2080,15 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
                       </button>
                       <button 
                         className="btn small" 
-                        style={{ background: '#7f8c8d' }}
+                        style={{ background: '#7f8c8d', color: '#111', fontSize: '13px', padding: '8px 12px', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#9ca3af'; e.currentTarget.style.color = '#111'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#7f8c8d'; e.currentTarget.style.color = '#111'; }}
                         onClick={() => {
                           setEditData(ge);
                           setStep(4);
                         }}
                       >
-                        EDIT / FIX
+                        EDIT
                       </button>
                     </td>
                   </tr>
@@ -1836,6 +2129,7 @@ function App() {
   const invoiceRef = useRef(null);
   const packingRef = useRef(null);
   const popupTimerRef = useRef(null);
+  const scanLockRef = useRef(false);
 
   const syncInvoiceFieldToPacking = {
     vehicle_no: 'truck_no',
@@ -2107,7 +2401,7 @@ function App() {
       const enrichedPacking = enrichPackingWithPoRows(packing, rows);
       setPoRows(rows);
       setPacking(enrichedPacking);
-      setStatus(`Loaded ${rows.length} PO rows for ${selectedFirm.name}.`);
+      setStatus('');
     } catch (err) {
       setStatus(err?.message || 'Could not load PO details.');
     } finally {
@@ -2127,17 +2421,18 @@ function App() {
       const lastGe = Number(data.ge) || 0;
       
       console.log(`${selectedFirm.name} Latest IDs:`, { mrr: lastMrr, ge: lastGe });
-      const nextMrr = String(lastMrr + 1);
-      const nextGe = String(lastGe + 1);
+      const baseDate = invoice.date || packing.date || new Date().toLocaleDateString('en-GB');
+      const nextMrr = formatGateEntryNumber(selectedFirm, baseDate, lastMrr + 1);
+      const nextGe = formatGateEntryNumber(selectedFirm, baseDate, lastGe + 1);
       
       setInvoice(prev => ({ 
         ...prev, 
-        mrr_no: prev.mrr_no && prev.mrr_no !== '1' ? prev.mrr_no : nextMrr, 
-        ge_no: prev.ge_no && prev.ge_no !== '1' ? prev.ge_no : nextGe 
+        mrr_no: shouldAutoNumber(prev.mrr_no) ? nextMrr : prev.mrr_no, 
+        ge_no: shouldAutoNumber(prev.ge_no) ? nextGe : prev.ge_no 
       }));
       setPacking(prev => {
-        const targetMrr = prev.mrr_no && prev.mrr_no !== '1' ? prev.mrr_no : nextMrr;
-        const targetGe = prev.ge_no && prev.ge_no !== '1' ? prev.ge_no : nextGe;
+        const targetMrr = shouldAutoNumber(prev.mrr_no) ? nextMrr : prev.mrr_no;
+        const targetGe = shouldAutoNumber(prev.ge_no) ? nextGe : prev.ge_no;
         return { 
           ...prev, 
           mrr_no: targetMrr, 
@@ -2299,6 +2594,10 @@ function App() {
   }, []);
 
   const scan = async (kind, file) => {
+    if (scanLockRef.current || isScanning) {
+      return;
+    }
+    scanLockRef.current = true;
     setIsScanning(true);
     setStatus(`Reading ${kind} with Gemini...`);
     try {
@@ -2342,8 +2641,13 @@ function App() {
         setInvoice(syncedInvoice);
         setStatus('Packing slip scanned with Gemini. Synced MRR/GE numbers preserved.');
       }
+    } catch (err) {
+      const message = err?.message || 'Gemini scan failed.';
+      setStatus(message);
+      showPopup(message, 'error');
     } finally {
       setIsScanning(false);
+      scanLockRef.current = false;
     }
   };
 
@@ -2363,36 +2667,25 @@ function App() {
       <style>{labelStyles}</style>
       {popupMessage ? <div className={`toast ${popupTone}`}>{popupMessage}</div> : null}
 
-      {(isScanning || isSaving || isLoadingPo) && (
+      {(isScanning || isSaving) && (
         <div className="loading-overlay">
           <div className="spinner" />
-          <h2>{isScanning ? 'Reading document...' : isSaving ? 'Saving to sheets...' : 'Loading reference data...'}</h2>
+          <h2>{isScanning ? 'Reading document...' : 'Saving to sheets...'}</h2>
           <p>{statusText}</p>
         </div>
       )}
 
       <div className="pageHeader no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <h1 style={{ margin: 0 }}>Auto MRR System</h1>
+          <h1 style={{ margin: 0 }}>MRR Management</h1>
           <div className="toolbar" style={{ marginTop: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>Firm:</span>
-              <select 
-                value={selectedFirm?.id || ''} 
-                onChange={(e) => {
-                  const firm = FIRMS.find(f => f.id === e.target.value);
-                  if (firm) setSelectedFirm(firm);
-                }}
-                style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, border: '1px solid #a8a8a8' }}
-              >
-                {FIRMS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
+              <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, border: '1px solid #a8a8a8', background: '#f5f5f5', minWidth: '68px', textAlign: 'center' }}>
+                {selectedFirm?.name || '-'}
+              </div>
             </div>
             <button className={`btn ${activeTab === 'invoice' ? 'main' : ''}`} onClick={() => setActiveTab('invoice')}>Invoice{mrrType !== 'other' ? ' & Packing' : ''}</button>
-            {mrrType !== 'other' && <button className={`btn ${activeTab === 'labels' ? 'main' : ''}`} onClick={() => setActiveTab('labels')}>Labels</button>}
-            <button className="btn" onClick={loadPendingGEs} disabled={isFetchingGEs}>
-              {isFetchingGEs ? <span className="spinner" /> : 'Pick GE'}
-            </button>
             <div style={{ marginLeft: '12px', padding: '4px 8px', background: '#eee', borderRadius: '4px', fontSize: '10px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ opacity: 0.6 }}>MODE:</span>
               <select 
@@ -2412,9 +2705,7 @@ function App() {
                 <option value="reel">Reel MRR</option>
                 <option value="other">Other MRR</option>
               </select>
-              <button onClick={fetchLastIds} title="Sync Numbers" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: '12px', opacity: 0.7 }}>🔄</button>
             </div>
-            <button className="btn small" onClick={() => setIsFirmSelected(false)} style={{ marginLeft: '8px' }}>Reset</button>
           </div>
         </div>
 
@@ -2451,6 +2742,14 @@ function App() {
                 </tr>
               </tbody>
             </table>
+            <div style={{ borderTop: '1px dashed #b6ad9e', padding: '8px 10px', fontSize: '11px', fontWeight: 700, background: '#fffdf7' }}>
+              GE ENTRY Details:
+              {' '}GE No: <span style={{ color: 'var(--primary)' }}>{geData?.ge_no || invoice.ge_no || packing.ge_no || '-'}</span>
+              {' '}| MRR No: <span style={{ color: 'var(--primary)' }}>{geData?.mrr_no || geData?.mrr_number || invoice.mrr_no || packing.mrr_no || '-'}</span>
+              {' '}| Supplier: <span>{geData?.supplier || invoice.bill_to?.name_address || packing.distributor || '-'}</span>
+              {' '}| Invoice: <span>{geData?.invoice_no || invoice.invoice_no || packing.challan_no || '-'}</span>
+              {' '}| Truck: <span>{geData?.truck_no || invoice.vehicle_no || packing.truck_no || '-'}</span>
+            </div>
           </div>
         )}
       </div>
@@ -2467,7 +2766,6 @@ function App() {
             )}
             {mrrType === 'other' && <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--warn)', border: '1px solid currentColor', padding: '6px 12px', background: '#fff' }}>MANUAL ENTRY MODE ACTIVE</div>}
             <button className="btn" disabled={isScanning || isSaving} onClick={() => window.print()}>Print All</button>
-            <span className={`status ${statusTone}`}>{isScanning || isLoadingPo || isSaving ? <span className="spinner" aria-hidden="true" /> : null}{statusText}</span>
           </div>
         )}
 
@@ -2477,7 +2775,7 @@ function App() {
           <section className="doc">
             <div className="sectionHead">
               <div>
-                <h2>Tax Invoice{mrrType === 'other' ? ' (OTHER MRR)' : ''}</h2>
+                <h2>MRR Entry{mrrType === 'other' ? ' (OTHER MRR)' : ''}</h2>
               </div>
             </div>
             <div className="sheet">
@@ -2501,7 +2799,7 @@ function App() {
                   ]} />
                 ) : (
                   <>
-                    <PartyCard label="Details of Supplier" data={invoice.bill_to} onText={(v) => setInvNest('bill_to', 'name_address', v)} onField={(f, v) => setInvNest('bill_to', f, v)} contact code />
+                    <PartyCard label="MRR Entry Details" data={invoice.bill_to} onText={(v) => setInvNest('bill_to', 'name_address', v)} onField={(f, v) => setInvNest('bill_to', f, v)} contact code hideGstin />
                     <MetaTable rows={[
                       ['Invoice No.', invoice.invoice_no, (v) => setInv('invoice_no', v)], 
                       ['Date', invoice.date, (v) => setInv('date', v), 'date'], 
@@ -2519,17 +2817,6 @@ function App() {
                   </>
                 )}
               </div>
-
-              {mrrType !== 'other' && (
-                <div className="grid2">
-                  <PartyCard label="Consignee Details" data={invoice.consignee} onText={(v) => setInvNest('consignee', 'name_address', v)} onField={(f, v) => setInvNest('consignee', f, v)} contact code />
-                  <PartyCard label="Delivery At (Shipped To)" data={invoice.delivery} onText={(v) => setInvNest('delivery', 'name_address', v)} onField={(f, v) => setInvNest('delivery', f, v)} contact code extras={[['Transporter', invoice.transporter, (v) => setInv('transporter', v)], ['PIN', invoice.pin, (v) => setInv('pin', v)]]} />
-                </div>
-              )}
-
-              {mrrType !== 'other' && (
-                <div className="line"><Field label="IRN" value={invoice.irn} onChange={(v) => setInv('irn', v)} /><Field label="Ack" value={invoice.ack_no} onChange={(v) => setInv('ack_no', v)} /><Field label="Ack Dt" value={invoice.ack_date} onChange={(v) => setInv('ack_date', v)} /></div>
-              )}
 
               {mrrType === 'other' ? (
                 <div className="wrap">
@@ -2648,24 +2935,12 @@ function App() {
               )}
 
               <div className="summary">
-                <div className="panel">
-                  <div className="cardTitle">Declaration</div>
-                  <textarea value={invoice.declaration} onChange={(e) => setInv('declaration', e.target.value)} />
-                  <div className="cardTitle">Bank Details</div>
-                  <Field label="Bank" value={invoice.bank.name} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, name: v } }))} />
-                  <Field label="A/C" value={invoice.bank.account_no} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, account_no: v } }))} />
-                  <Field label="IFSC" value={invoice.bank.ifsc} onChange={(v) => setInvoice((p) => ({ ...p, bank: { ...p.bank, ifsc: v } }))} />
-                </div>
-                <div className="panel">
+                <div className="panel" style={{ borderRight: 0, gridColumn: '1 / -1' }}>
                   <MetaTable rows={[
-                    ['Gross Amount', money(invoice.totals.gross_amount || gross), () => { }], 
-                    [mrrType === 'other' ? 'INVOICE BASIC VALUE' : 'Insurance', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))], 
-                    [mrrType === 'other' ? 'MRR BASIC VALUE' : 'Taxable GST', money(invoice.totals.taxable_gst || taxable), () => { }], 
-                    ['CGST %', invoice.totals.cgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, cgst_pct: v } }))], 
-                    ['CGST Value', money(invoice.totals.cgst_value || cg), () => { }], 
-                    ['SGST %', invoice.totals.sgst_pct, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, sgst_pct: v } }))], 
-                    ['SGST Value', money(invoice.totals.sgst_value || sg), () => { }], 
-                    ['Round Off', invoice.totals.round_off, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, round_off: v } }))], 
+                    ['Gross Amount', money(invoice.totals.gross_amount || gross), () => { }],
+                    ['INVOICE BASIC VALUE', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))],
+                    ['MRR BASIC VALUE', money(invoice.totals.taxable_gst || taxable), () => { }],
+                    ['Round Off', invoice.totals.round_off, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, round_off: v } }))],
                     ['Net Amount', money(invoice.totals.net_amount || net), () => { }]
                   ]} />
                 </div>
@@ -2677,8 +2952,6 @@ function App() {
                 <div>
                   <div className="cardTitle">Terms & Condition</div>
                   <textarea value={invoice.terms} onChange={(e) => setInv('terms', e.target.value)} />
-                  <div className="cardTitle">Extra Details</div>
-                  <textarea value={invoice.extra_details} onChange={(e) => setInv('extra_details', e.target.value)} />
                 </div>
                 <div className="sign">
                   <textarea value={invoice.certification} onChange={(e) => setInv('certification', e.target.value)} />
@@ -2705,12 +2978,98 @@ function App() {
                 <Header header={packing.header} />
                 <div className="title">{packing.doc_title}</div>
                 <div className="grid2">
-                  <div className="card"><SimplePartyCard label="Name & Address of Consignee" data={packing.consignee} onText={(v) => setPackNest('consignee', 'name_address', v)} onField={(f, v) => setPackNest('consignee', f, v)} /><SimplePartyCard label="Name & Address of Buyer" data={packing.buyer} onText={(v) => setPackNest('buyer', 'name_address', v)} onField={(f, v) => setPackNest('buyer', f, v)} /></div>
+                  <div className="card"><SimplePartyCard label="Name & Address of Buyer" data={packing.buyer} onText={(v) => setPackNest('buyer', 'name_address', v)} onField={(f, v) => setPackNest('buyer', f, v)} /></div>
                   <MetaTable rows={[['Challan No.', packing.challan_no, (v) => setPack('challan_no', v)], ['Date', packing.date, (v) => setPack('date', v), 'date'], ['Order Date', packing.order_date, (v) => setPack('order_date', v), 'date'], ['L.R. No.', packing.lr_no, (v) => setPack('lr_no', v)], ['L.R. Dt', packing.lr_date, (v) => setPack('lr_date', v), 'date'], ['GE No.', packing.ge_no, (v) => setPack('ge_no', v)], ['MRR No.', packing.mrr_no, (v) => setPack('mrr_no', v)], ['Dt of Receipt', packing.receipt_date, (v) => setPack('receipt_date', v), 'date'], ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v)], ['Actual Total', packing.actual_total, (v) => setPack('actual_total', v)], ['Carrier', packing.carrier, (v) => setPack('carrier', v)], ['Distributor', packing.distributor, (v) => setPack('distributor', v)], ['Total Reel', packing.total_reels || packingReels, (v) => setPack('total_reels', v)], ['Total Weight', packing.total_weight || packingWeight, (v) => setPack('total_weight', v)]]} />
                 </div>
                 <div className="line"><input value={packing.intro_line} onChange={(e) => setPack('intro_line', e.target.value)} /></div>
-                <div className="wrap"><table className="table packingTable"><colgroup><col style={{ width: "4%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "14%" }} /><col style={{ width: "16%" }} /><col style={{ width: "9%" }} /><col style={{ width: "8%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "12%" }} /><col style={{ width: "5%" }} /><col style={{ width: "5%" }} /><col style={{ width: "6%" }} /><col style={{ width: "5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /><col style={{ width: "5%" }} /></colgroup><thead><tr><th>Sr.</th><th>MRR No.</th><th>GE No.</th><th>PO No.</th><th>PO Details</th><th>Description</th><th>Supplier Reel No.</th><th>ERP Code</th><th>Reel No.</th><th>Sort No.</th><th>Party Order No.</th><th>BF</th><th>GSM</th><th>Size</th><th>Unit</th><th>Rate</th><th>PO Rate</th><th>Net Wt(Kgs.)</th><th>Action</th></tr></thead><tbody>{packing.items.map((row, i) => <tr key={i}><td className="c">{i + 1}</td><td><input value={row.mrr_no} onChange={(e) => setPackRow(i, 'mrr_no', e.target.value)} /></td><td><input value={row.ge_no} onChange={(e) => setPackRow(i, 'ge_no', e.target.value)} /></td><td><select value={getSelectValue(poNoOptions, row.po_no)} onChange={(e) => handlePoNoSelect(i, e.target.value)}><option value="">Select PO</option>{poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getPoDetailOptions(row), row.po_details)} onChange={(e) => handlePoDetailsSelect(i, e.target.value)}><option value="">Select PO Details</option>{getPoDetailOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><select value={getSelectValue(getDescriptionOptions(row), row.item_name || row.reel_details)} onChange={(e) => handleDescriptionSelect(i, e.target.value)}><option value="">Select Description</option>{getDescriptionOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.supplier_reel_no} onChange={(e) => setPackRow(i, 'supplier_reel_no', e.target.value)} /></td><td><select value={getSelectValue(getErpCodeOptions(row), row.erp_code)} onChange={(e) => handleErpCodeSelect(i, e.target.value)}><option value="">Select ERP Code</option>{getErpCodeOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td><td><input value={row.reel_no} onChange={(e) => setPackRow(i, 'reel_no', e.target.value)} /></td><td><input value={row.sort_no} onChange={(e) => setPackRow(i, 'sort_no', e.target.value)} /></td><td><input value={row.party_order} onChange={(e) => setPackRow(i, 'party_order', e.target.value)} /></td><td><input value={row.bf} onChange={(e) => setPackRow(i, 'bf', e.target.value)} /></td><td><input value={row.gsm} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td><td><input value={row.size} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td><td><input value={row.unit} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td><td><input value={row.rate} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td><td><input value={row.po_rate} onChange={(e) => setPackRow(i, 'po_rate', e.target.value)} /></td><td><input value={row.net_wt} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td><td className="c"><button className="btn small" onClick={() => setPacking((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }))}>Del</button></td></tr>)}</tbody><tfoot><tr><td colSpan="15" className="r"><b>Grand Total</b></td><td className="c">{packing.total_reels || packingReels} Reels</td><td></td><td className="r">{money(packing.total_weight || packingWeight)}</td><td></td></tr><tr><td colSpan={19} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}><button className="btn main" onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))} style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #111', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title="Add New Row">+</button></td></tr></tfoot></table></div>
-                <div className="foot"><div><div className="cardTitle">Extra Details</div><textarea value={packing.extra_details} onChange={(e) => setPack('extra_details', e.target.value)} /><div className="cardTitle">Received By</div><input value={packing.receiver_label} onChange={(e) => setPack('receiver_label', e.target.value)} /></div><div className="sign"><div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div><textarea value={packing.approval_text} onChange={(e) => setPack('approval_text', e.target.value)} /><div className="sigLine"><input value={packing.signatory_label} onChange={(e) => setPack('signatory_label', e.target.value)} /></div></div></div>
+                <div className="wrap">
+                  <table className="table packingTable">
+                    <colgroup>
+                      <col style={{ width: "4%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "9%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "5%" }} />
+                      <col style={{ width: "5%" }} />
+                      <col style={{ width: "6%" }} />
+                      <col style={{ width: "5%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "5%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Sr.</th>
+                        <th>MRR No.</th>
+                        <th>GE No.</th>
+                        <th>Party Order No.</th>
+                        <th>PO No.</th>
+                        <th>PO Details</th>
+                        <th>Description</th>
+                        <th>Supplier Reel No.</th>
+                        <th>ERP Code</th>
+                        <th>Reel No.</th>
+                        <th>Sort No.</th>
+                        <th>BF</th>
+                        <th>GSM</th>
+                        <th>Size</th>
+                        <th>Unit</th>
+                        <th>Rate</th>
+                        <th>PO Rate</th>
+                        <th>Net Wt(Kgs.)</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {packing.items.map((row, i) => (
+                        <tr key={i}>
+                          <td className="c">{i + 1}</td>
+                          <td><input value={row.mrr_no} onChange={(e) => setPackRow(i, 'mrr_no', e.target.value)} /></td>
+                          <td><input value={row.ge_no} onChange={(e) => setPackRow(i, 'ge_no', e.target.value)} /></td>
+                          <td><input value={row.party_order} onChange={(e) => setPackRow(i, 'party_order', e.target.value)} /></td>
+                          <td><select value={getSelectValue(poNoOptions, row.po_no)} onChange={(e) => handlePoNoSelect(i, e.target.value)}><option value="">Select PO</option>{poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
+                          <td><select value={getSelectValue(getPoDetailOptions(row), row.po_details)} onChange={(e) => handlePoDetailsSelect(i, e.target.value)}><option value="">Select PO Details</option>{getPoDetailOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
+                          <td><select value={getSelectValue(getDescriptionOptions(row), row.item_name || row.reel_details)} onChange={(e) => handleDescriptionSelect(i, e.target.value)}><option value="">Select Description</option>{getDescriptionOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
+                          <td><input value={row.supplier_reel_no} onChange={(e) => setPackRow(i, 'supplier_reel_no', e.target.value)} /></td>
+                          <td><select value={getSelectValue(getErpCodeOptions(row), row.erp_code)} onChange={(e) => handleErpCodeSelect(i, e.target.value)}><option value="">Select ERP Code</option>{getErpCodeOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
+                          <td><input value={row.reel_no} onChange={(e) => setPackRow(i, 'reel_no', e.target.value)} /></td>
+                          <td><input value={row.sort_no} onChange={(e) => setPackRow(i, 'sort_no', e.target.value)} /></td>
+                          <td><input value={row.bf} onChange={(e) => setPackRow(i, 'bf', e.target.value)} /></td>
+                          <td><input value={row.gsm} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td>
+                          <td><input value={row.size} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td>
+                          <td><input value={row.unit} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td>
+                          <td><input value={row.rate} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td>
+                          <td><input value={row.po_rate} onChange={(e) => setPackRow(i, 'po_rate', e.target.value)} /></td>
+                          <td><input value={row.net_wt} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td>
+                          <td className="c"><button className="btn small" onClick={() => setPacking((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }))}>Del</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="15" className="r"><b>Grand Total</b></td>
+                        <td className="c">{packing.total_reels || packingReels} Reels</td>
+                        <td></td>
+                        <td className="r">{money(packing.total_weight || packingWeight)}</td>
+                        <td></td>
+                      </tr>
+                      <tr>
+                        <td colSpan={19} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
+                          <button className="btn main" onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))} style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #111', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title="Add New Row">+</button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="foot"><div><div className="cardTitle">Received By</div><input value={packing.receiver_label} onChange={(e) => setPack('receiver_label', e.target.value)} /></div><div className="sign"><div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div><textarea value={packing.approval_text} onChange={(e) => setPack('approval_text', e.target.value)} /><div className="sigLine"><input value={packing.signatory_label} onChange={(e) => setPack('signatory_label', e.target.value)} /></div></div></div>
               </div>
               <div className="actions"><button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))}>Add Packing Row</button><button className="btn main" disabled={isSavingInvoice || isSavingPacking} onClick={saveAllData}>{isSaving ? 'Saving...' : 'Save All Data'}</button></div>
             </section>
@@ -2718,7 +3077,6 @@ function App() {
         </>
       )}
 
-      {activeTab === 'labels' && <ReelLabelsTab initialMrr={invoice.mrr_no || packing.mrr_no} helperSheetName={getSheetName(selectedFirm?.helper, mrrType)} />}
     </div>
   );
 }

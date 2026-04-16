@@ -20,6 +20,24 @@ const normalizeText = (value) => String(value ?? '').trim().toLowerCase();
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const VERIFY_TIMEOUT_MS = 45000;
 const VERIFY_INTERVAL_MS = 2000;
+const SHEET_FETCH_TIMEOUT_MS = 20000;
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const payload = await response.json().catch(() => null);
+    return { response, payload };
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please check Apps Script URL/deployment and internet.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function findMatchingPoRow(row = {}, poRows = []) {
   const poNo = String(row.po_no || row.party_order || '').trim();
@@ -135,8 +153,7 @@ export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
   if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
-  const response = await fetch(url);
-  const payload = await response.json().catch(() => null);
+  const { response, payload } = await fetchJsonWithTimeout(url);
   if (!response.ok || payload?.ok === false) {
     throw new Error(payload?.error || payload?.message || 'Could not load PO details from Google Apps Script.');
   }
@@ -156,8 +173,7 @@ export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
     }
   });
 
-  const response = await fetch(url.toString());
-  const payload = await response.json().catch(() => null);
+  const { response, payload } = await fetchJsonWithTimeout(url.toString());
   if (!response.ok || payload?.ok === false) {
     if (params.action === 'verify' || params.action === 'verify_ge') return null;
     throw new Error(payload?.error || payload?.message || 'Error: Could not verify Google Sheets write.');
@@ -179,8 +195,7 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
   if (prefix) urlParams.set('prefix', prefix);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
-  const response = await fetch(url);
-  const payload = await response.json().catch(() => null);
+  const { response, payload } = await fetchJsonWithTimeout(url);
   if (!response.ok || payload?.ok === false) {
     throw new Error(payload?.error || payload?.message || 'Could not fetch latest MRR/GE IDs.');
   }
@@ -203,8 +218,7 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
   if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
-  const response = await fetch(url);
-  const payload = await response.json().catch(() => null);
+  const { response, payload } = await fetchJsonWithTimeout(url);
   if (!response.ok || payload?.ok === false) {
     throw new Error(payload?.error || payload?.message || 'Could not fetch pending Gate Entries.');
   }
@@ -217,8 +231,7 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
 export async function fetchUniqueSuppliers(firm) {
   if (!firm?.scriptUrl) throw new Error(`Script URL missing for firm ${firm?.name}`);
   const url = `${firm.scriptUrl}?action=get_suppliers&sheet=PO DETAILS&spreadsheetId=${firm.spreadsheetId || ''}`;
-  const res = await fetch(url);
-  const data = await res.json();
+  const { response: res, payload: data } = await fetchJsonWithTimeout(url);
   if (!data?.ok) throw new Error(data?.error || `Failed to fetch suppliers for ${firm.name}.`);
   return data.values || [];
 }
@@ -299,7 +312,7 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
       }, scriptUrl);
       
       if (payload?.ge_no) {
-        return { ok: true, ge_no: payload.ge_no };
+        return { ok: true, ge_no: payload.ge_no, mrr_no: payload.mrr_no || geEntry.mrr_no || '' };
       }
 
       const pendingPayload = await fetchSheetRangeWithParams({
@@ -317,13 +330,18 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
       });
 
       if (pendingMatch) {
-        return { ok: true, ge_no: pendingMatch.ge_no || geEntry.ge_no || '' };
+        return {
+          ok: true,
+          ge_no: pendingMatch.ge_no || geEntry.ge_no || '',
+          mrr_no: pendingMatch.mrr_no || pendingMatch.mrr_number || geEntry.mrr_no || ''
+        };
       }
       await wait(VERIFY_INTERVAL_MS);
     }
     return {
       ok: true,
       ge_no: geEntry.ge_no || '',
+      mrr_no: geEntry.mrr_no || '',
       pendingVerification: true,
       message: 'Gate Entry save request was sent, but verification timed out. Please confirm it in the Pending MRR list.'
     };
