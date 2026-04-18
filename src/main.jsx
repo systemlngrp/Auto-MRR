@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, HELPER_SHEET_NAME, SCRIPT_URL, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, HELPER_SHEET_NAME, SCRIPT_URL, PO_SHEET_NAME } from './sheetSync';
 import QRCodePackage from 'react-qr-code';
 const QRCode = typeof QRCodePackage === 'function' ? QRCodePackage : (QRCodePackage.default || QRCodePackage.QRCode || QRCodePackage);
 
@@ -58,11 +58,26 @@ const styles = `
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.0-flash,gemini-1.5-flash')
+const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
-const GEMINI_MODELS = Array.from(new Set([GEMINI_PRIMARY_MODEL, ...GEMINI_FALLBACK_MODELS]));
+const GEMINI_MODEL_ALIASES = {
+  'gemini-2.0-flash': 'gemini-2.5-flash',
+  'gemini-2.0-flash-latest': 'gemini-2.5-flash'
+};
+
+function normalizeGeminiModelName(name) {
+  const model = String(name || '').trim();
+  if (!model) return '';
+  const normalized = model.toLowerCase();
+  return GEMINI_MODEL_ALIASES[normalized] || normalized;
+}
+
+const GEMINI_MODELS = Array.from(new Set([
+  GEMINI_PRIMARY_MODEL,
+  ...GEMINI_FALLBACK_MODELS
+].map(normalizeGeminiModelName).filter(Boolean)));
 const GEMINI_RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const GEMINI_API_BASES = ['https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1'];
 const GEMINI_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS || 45000);
@@ -128,6 +143,7 @@ const FIRMS = [
     }
   }
 ];
+const AUTH_STORAGE_KEY = 'mrr_auth_user';
 
 const getSheetName = (base, type) => {
   if (typeof base === 'object' && base !== null) {
@@ -237,6 +253,13 @@ const blankPacking = {
 
 const n = (v) => Number(v) || 0;
 const money = (v) => n(v).toFixed(2);
+const getTodayInputDate = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 const merge = (base, patch) => Array.isArray(base) ? (Array.isArray(patch) && patch.length ? patch : base) : (base && typeof base === 'object' ? Object.keys({ ...base, ...(patch || {}) }).reduce((out, key) => ({ ...out, [key]: merge(base[key], patch?.[key]) }), {}) : (patch === undefined || patch === null || patch === '' ? base : patch));
 
 function words(value) {
@@ -404,6 +427,83 @@ function uniqueText(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function cleanSingleLineText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function extractSupplierName(value) {
+  const text = String(value || '').replace(/\r/g, '\n');
+  if (!text.trim()) return '';
+  const lines = text.split('\n').map(cleanSingleLineText).filter(Boolean);
+  const source = lines[0] || cleanSingleLineText(text);
+  const trimmed = source
+    .replace(/^(supplier|name|party)\s*[:\-]\s*/i, '')
+    .split(/\b(works?\s*:|address\s*:|village\s*:|dist(?:rict)?\s*:|state\s*:|pin\s*:|gstin\s*:|pan\s*:|contact\s*:)\b/i)[0]
+    .replace(/[,;:\-]+$/g, '')
+    .trim();
+  return trimmed || source;
+}
+
+function extractStateName(value) {
+  const text = cleanSingleLineText(value);
+  if (!text) return '';
+  const stateLabelMatch = text.match(/state\s*[:\-]?\s*([A-Za-z ]+)/i);
+  const base = stateLabelMatch?.[1] || text;
+  return base
+    .replace(/\b(code|gstin|pan|contact|pin)\b.*$/i, '')
+    .replace(/[0-9]/g, '')
+    .replace(/[-,;:]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCompanyKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function isInternalFirmName(name, selectedFirm) {
+  const candidate = normalizeCompanyKey(name);
+  if (!candidate) return false;
+  const known = [
+    selectedFirm?.name,
+    selectedFirm?.header?.title,
+    ...FIRMS.map((firm) => firm?.name),
+    ...FIRMS.map((firm) => firm?.header?.title)
+  ]
+    .map(normalizeCompanyKey)
+    .filter(Boolean);
+
+  return known.some((item) => item && (candidate.includes(item) || item.includes(candidate)));
+}
+
+function resolveScannedSupplierName({ scannedBillToName = '', focusedSupplierName = '', headerSupplierName = '', selectedFirm = null }) {
+  const focused = extractSupplierName(focusedSupplierName);
+  const header = extractSupplierName(headerSupplierName);
+  const billTo = extractSupplierName(scannedBillToName);
+
+  // Prefer explicit supplier extraction, then top header company name.
+  if (focused && !isInternalFirmName(focused, selectedFirm)) return focused;
+  if (header && !isInternalFirmName(header, selectedFirm)) return header;
+
+  // Use bill_to only when it is not our own/party internal firm name.
+  if (billTo && !isInternalFirmName(billTo, selectedFirm)) return billTo;
+  return focused || header || billTo || '';
+}
+
+function normalizeScannedParty(party = {}) {
+  const name = extractSupplierName(party.name_address || '');
+  const state = extractStateName(party.state || party.state_code || '');
+  return {
+    ...party,
+    name_address: name || '',
+    state: state || '',
+    state_code: String(party.state_code || '').match(/\b\d{2}\b/)?.[0] || ''
+  };
+}
+
 function normalizeHeaderText(value) {
   return String(value || '')
     .toLowerCase()
@@ -486,7 +586,9 @@ function normalizeHeaderStructure(header = {}, kind) {
   lines = removeLine(lines, works);
 
   const brand_box = compactBrandBox(source.brand_box, title, kind);
-  const note = source.note || (title || works || meta || contact || gstin ? (kind === 'invoice' ? 'Original For Buyer' : 'Dispatch Copy') : '');
+  const note = (kind === 'invoice' || kind === 'packing')
+    ? ''
+    : (source.note || (title || works || meta || contact || gstin ? 'Dispatch Copy' : ''));
   const extra_lines = uniqueText(lines).filter((line) => !isRedundantHeaderLine(line, [
     title,
     works,
@@ -570,9 +672,74 @@ function packingItemsToInvoiceRows(items = []) {
   }));
 }
 
+function isMeaningfulInvoiceRowForSync(row = {}) {
+  const meaningfulFields = [
+    row.description,
+    row.sort_no,
+    row.party_order,
+    row.po_no,
+    row.po_details,
+    row.gsm,
+    row.size,
+    row.reels,
+    row.weight,
+    row.rate,
+    row.amount
+  ];
+  return meaningfulFields.some((value) => isMeaningful(value));
+}
+
+function isMeaningfulPackingRowForSync(row = {}) {
+  const meaningfulFields = [
+    row.item_name,
+    row.reel_details,
+    row.supplier_reel_no,
+    row.reel_no,
+    row.sort_no,
+    row.party_order,
+    row.po_no,
+    row.po_details,
+    row.bf,
+    row.gsm,
+    row.size,
+    row.rate,
+    row.po_rate,
+    row.net_wt
+  ];
+  return meaningfulFields.some((value) => isMeaningful(value));
+}
+
+function sanitizeScannedPackingRows(rows = [], totalReelsHint = '') {
+  const normalized = ensureRows(rows).filter(isMeaningfulPackingRowForSync);
+  if (!normalized.length) return [];
+
+  const seen = new Set();
+  const deduped = [];
+  for (const row of normalized) {
+    const key = [
+      String(row.supplier_reel_no || '').trim().toLowerCase(),
+      String(row.reel_no || '').trim().toLowerCase(),
+      String(row.net_wt || '').trim().toLowerCase(),
+      String(row.item_name || row.reel_details || '').trim().toLowerCase(),
+      String(row.party_order || row.po_no || '').trim().toLowerCase(),
+      String(row.gsm || '').trim().toLowerCase(),
+      String(row.size || '').trim().toLowerCase()
+    ].join('|');
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(row);
+  }
+
+  const totalReels = Number(totalReelsHint);
+  if (Number.isFinite(totalReels) && totalReels > 0 && deduped.length > totalReels) {
+    return deduped.slice(0, totalReels);
+  }
+  return deduped;
+}
+
 function mergeInvoiceGoodsIntoPackingItems(packingItems = [], invoiceGoods = []) {
-  const packingRows = ensureRows(packingItems);
-  const invoiceRows = ensureRows(invoiceGoods);
+  const packingRows = ensureRows(packingItems).filter(isMeaningfulPackingRowForSync);
+  const invoiceRows = ensureRows(invoiceGoods).filter(isMeaningfulInvoiceRowForSync);
   if (!packingRows.length) return invoiceRows.flatMap(row => invoiceRowsToPackingItems([row]));
   
   return packingRows.map(pRow => {
@@ -601,8 +768,8 @@ function mergeInvoiceGoodsIntoPackingItems(packingItems = [], invoiceGoods = [])
 }
 
 function mergePackingItemsIntoInvoiceGoods(invoiceGoods = [], packingItems = []) {
-  const invoiceRows = ensureRows(invoiceGoods);
-  const packingRows = ensureRows(packingItems);
+  const invoiceRows = ensureRows(invoiceGoods).filter(isMeaningfulInvoiceRowForSync);
+  const packingRows = ensureRows(packingItems).filter(isMeaningfulPackingRowForSync);
   if (!invoiceRows.length) return packingRows.flatMap(row => packingItemsToInvoiceRows([row]));
   
   // We don't want to overwrite a grouped invoice with individual packing rows.
@@ -631,15 +798,21 @@ function mergePackingItemsIntoInvoiceGoods(invoiceGoods = [], packingItems = [])
 function normalizeInvoice(data = {}) {
   const invoice = merge(blankInvoice, data);
   invoice.header = normalizeHeaderStructure(data.header || {}, 'invoice');
+  invoice.bill_to = normalizeScannedParty(invoice.bill_to || {});
+  invoice.consignee = normalizeScannedParty(invoice.consignee || {});
+  invoice.delivery = normalizeScannedParty(invoice.delivery || {});
   const docTitle = String(invoice.doc_title || '').trim().toLowerCase();
   if (!docTitle || docTitle === 'tax invoice' || docTitle === 'tax invoice against gst') {
     invoice.doc_title = 'MRR';
   }
-  invoice.goods = ensureRows(invoice.goods).filter((row) => !isTotalLikeInvoiceRow(row)).map((row) => {
-    const mergedRow = merge(blankInvoiceRow(), row);
-    if (!mergedRow.amount && n(mergedRow.weight) && n(mergedRow.rate)) mergedRow.amount = String(n(mergedRow.weight) * n(mergedRow.rate));
-    return mergedRow;
-  });
+  invoice.goods = ensureRows(invoice.goods)
+    .filter((row) => !isTotalLikeInvoiceRow(row))
+    .map((row) => {
+      const mergedRow = merge(blankInvoiceRow(), row);
+      if (!mergedRow.amount && n(mergedRow.weight) && n(mergedRow.rate)) mergedRow.amount = String(n(mergedRow.weight) * n(mergedRow.rate));
+      return mergedRow;
+    })
+    .filter((row) => isMeaningfulInvoiceRowForSync(row));
   const grossAmount = invoice.goods.reduce((sum, row) => sum + (n(row.amount) || n(row.weight) * n(row.rate)), 0);
   const totalWeight = invoice.goods.reduce((sum, row) => sum + n(row.weight), 0);
   const insurance = n(invoice.totals.insurance);
@@ -687,6 +860,7 @@ function normalizePacking(data = {}) {
       po_rate: mergedRow.po_rate || ''
     };
   });
+  packing.items = sanitizeScannedPackingRows(packing.items, packing.total_reels);
   packing.total_reels = packing.total_reels || String(packing.items.filter(isMeaningful).length || 0);
   packing.total_weight = packing.total_weight || String(packing.items.reduce((sum, row) => sum + n(row.net_wt), 0));
   packing.approval_text = packing.approval_text || '';
@@ -892,7 +1066,7 @@ function formatGeminiHttpError(status, payload, fallbackText) {
   }
   if (status === 400) {
     if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(`${apiMessage} ${detailsText}`)) {
-      return 'Gemini API key is invalid. Create a new Google AI Studio key (starts with "AIza") and restart the app.';
+      return 'Gemini API key is invalid for this endpoint. Use a valid Google AI Studio Gemini API key and restart the app.';
     }
     if (/referer|HTTP referrer|API_KEY_HTTP_REFERRER_BLOCKED|ip.*not.*allowed/i.test(`${apiMessage} ${detailsText}`)) {
       return 'Gemini API key restrictions are blocking this app (localhost). Update key restrictions in Google Cloud/AI Studio.';
@@ -934,12 +1108,18 @@ function isRetryableGeminiError(status, payload, fallbackText) {
 function canTryNextGeminiModel(error) {
   if (!error) return false;
   const status = Number(error.status || 0);
-  return !status || status === 404 || status === 429 || status >= 500;
+  if (!status || status === 404 || status === 429 || status >= 500) return true;
+  if (status === 400) {
+    const detail = `${error?.payload?.error?.status || ''} ${error?.payload?.error?.message || ''} ${error?.message || ''}`;
+    return /(model|not\s*found|unsupported|responsejsonschema|responseschema|invalid\s*argument)/i.test(detail);
+  }
+  return false;
 }
 
-function isLikelyGoogleApiKey(value) {
+function isLikelyGeminiApiKey(value) {
   const key = String(value || '').trim();
-  return /^AIza[0-9A-Za-z_-]{20,}$/.test(key);
+  // Accept non-empty keys and let Gemini API validate exact format.
+  return key.length >= 16;
 }
 
 async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
@@ -1018,7 +1198,7 @@ async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseJsonSchema: schema,
+      responseSchema: schema,
       temperature: 0.1
     }
   };
@@ -1041,7 +1221,7 @@ async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
           }],
           generationConfig: {
             responseMimeType: 'application/json',
-            responseJsonSchema: schema,
+            responseSchema: schema,
             temperature: 0
           }
         };
@@ -1063,18 +1243,25 @@ async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
 }
 
 function mergeScanRows(baseRows = [], focusedRows = [], makeBlankRow) {
-  const focused = ensureRows(focusedRows);
-  if (!focused.length) return baseRows;
   const base = ensureRows(baseRows);
-  return focused.map((row, index) => merge(
+  const focused = ensureRows(focusedRows);
+  if (!focused.length) return base;
+  const maxLength = Math.max(base.length, focused.length);
+  return Array.from({ length: maxLength }, (_, index) => merge(
     typeof makeBlankRow === 'function' ? makeBlankRow() : {},
-    merge(base[index] || {}, row)
+    merge(base[index] || {}, focused[index] || {})
   ));
 }
 
 function mergeFocusedInvoiceData(data, focused = {}) {
   return {
     ...data,
+    invoice_no: data.invoice_no || focused.invoice_no || '',
+    date: data.date || focused.date || '',
+    eway_no: data.eway_no || focused.eway_no || '',
+    eway_date: data.eway_date || focused.eway_date || '',
+    lr_no: data.lr_no || focused.lr_no || '',
+    vehicle_no: data.vehicle_no || focused.vehicle_no || '',
     pin: data.pin || focused.pin || '',
     ge_no: data.ge_no || focused.ge_no || '',
     mrr_no: data.mrr_no || focused.mrr_no || '',
@@ -1083,7 +1270,30 @@ function mergeFocusedInvoiceData(data, focused = {}) {
     irn: data.irn || focused.irn || '',
     ack_no: data.ack_no || focused.ack_no || '',
     ack_date: data.ack_date || focused.ack_date || '',
+    totals: {
+      ...(data?.totals || {}),
+      gross_amount: data.totals?.gross_amount || focused.totals?.gross_amount || '',
+      insurance: data.totals?.insurance || focused.totals?.insurance || 0,
+      taxable_gst: data.totals?.taxable_gst || focused.totals?.taxable_gst || '',
+      cgst_pct: data.totals?.cgst_pct || focused.totals?.cgst_pct || 9,
+      sgst_pct: data.totals?.sgst_pct || focused.totals?.sgst_pct || 9,
+      round_off: data.totals?.round_off || focused.totals?.round_off || 0
+    },
     goods: mergeScanRows(data.goods, focused.goods, blankInvoiceRow)
+  };
+}
+
+function mergeFocusedInvoiceSupplierData(data, focused = {}) {
+  const focusedParty = focused?.bill_to || {};
+  return {
+    ...data,
+    bill_to: {
+      ...(data?.bill_to || {}),
+      name_address: extractSupplierName(focusedParty.name_address || data?.bill_to?.name_address || ''),
+      state: extractStateName(focusedParty.state || data?.bill_to?.state || ''),
+      state_code: focusedParty.state_code || data?.bill_to?.state_code || String(focusedParty.state || data?.bill_to?.state || '').match(/\b\d{2}\b/)?.[0] || '',
+      gstin: cleanSingleLineText(focusedParty.gstin || data?.bill_to?.gstin || '')
+    }
   };
 }
 
@@ -1108,8 +1318,8 @@ function mergeFocusedPackingData(data, focused = {}) {
 
 async function fetchGeminiJson(file, kind) {
   if (!API_KEY) throw new Error('Missing Gemini API key');
-  if (!isLikelyGoogleApiKey(API_KEY)) {
-    throw new Error('Invalid Gemini API key format. Use a Google AI Studio key that starts with "AIza".');
+  if (!isLikelyGeminiApiKey(API_KEY)) {
+    throw new Error('Gemini API key looks too short. Please check your .env key value.');
   }
   const shape = kind === 'invoice' ? blankInvoice : blankPacking;
   const dataUrl = await fileToBase64(file);
@@ -1122,15 +1332,37 @@ async function fetchGeminiJson(file, kind) {
   const prompt = `Read this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
   let data = await fetchGeminiStructured(base64, mimeType, prompt, shape);
 
-  if (kind === 'invoice' && needsInvoiceRowRetry(data.goods)) {
+  if (kind === 'invoice') {
     try {
       const focused = await fetchGeminiStructured(
         base64,
         mimeType,
-        'Focus on the invoice goods table and nearby PIN, GE No, MRR No, date of receipt, truck number, actual weight, IRN, and Ack sections. Read each visible row cell by cell in order. Extract description, HSN, sort_no, party_order, gsm, size, size_unit, reels, weight, weight_unit, rate, and amount for every row. Do not invent values. Leave unreadable cells empty.',
-        { pin: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', goods: [blankInvoiceRow()] }
+        'Extract MRR entry metadata and goods table: GE No, Date, MRR No, Dt. of Receipt, Sup Doc No, Truck Number, Invoice Total Weight (Kgs), Actual MRR Total Weight (Kgs), E-Way Bill No, E-Way Date, L.R No, Supplier/Bill To name and state, Gross Amount, Invoice Basic Value, MRR Basic Value, Insurance, Taxable GST, CGST %, SGST %, Round Off. Also extract the goods table: Description, HSN, Sort, Party Order, GSM, Size, Unit, Reels, Weight, Unit, Rate, Amount. Read row-by-row in order. Return only rows that contain at least one real item value (for example description, party order, gsm, size, reels, weight, rate, amount). Skip blank separator/total/empty lines. Do not invent values; leave unreadable cells empty.',
+        { 
+          invoice_no: '', date: '', eway_no: '', eway_date: '', lr_no: '', vehicle_no: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', 
+          bill_to: { name_address: '', state: '', gstin: '', state_code: '' },
+          totals: { gross_amount: '', insurance: 0, taxable_gst: '', cgst_pct: 9, sgst_pct: 9, round_off: 0 },
+          goods: [blankInvoiceRow()] 
+        }
       );
       data = mergeFocusedInvoiceData(data, focused);
+    } catch {
+    }
+
+    try {
+      const focusedSupplier = await fetchGeminiStructured(
+        base64,
+        mimeType,
+        'Extract only seller/supplier party details from this invoice. Supplier means the company issuing the invoice (usually top header company name), not buyer/consignee/delivery party. Return supplier_name, supplier_state, supplier_state_code, supplier_gstin. If unsure, leave empty.',
+        { supplier_name: '', supplier_state: '', supplier_state_code: '', supplier_gstin: '' }
+      );
+      data = {
+        ...data,
+        supplier_name: focusedSupplier?.supplier_name || data?.supplier_name || '',
+        supplier_state: focusedSupplier?.supplier_state || data?.supplier_state || '',
+        supplier_state_code: focusedSupplier?.supplier_state_code || data?.supplier_state_code || '',
+        supplier_gstin: focusedSupplier?.supplier_gstin || data?.supplier_gstin || ''
+      };
     } catch {
     }
   }
@@ -1140,7 +1372,7 @@ async function fetchGeminiJson(file, kind) {
       const focused = await fetchGeminiStructured(
         base64,
         mimeType,
-        'Focus on the packing slip item table and the nearby intro line, GE No, MRR No, date of receipt, truck number, actual total, totals, received by, approval text, and signatory sections. Read each visible row cell by cell in order. Extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for every row. Supplier reel number should come from the photo. Leave erp_code empty unless clearly visible. Do not invent values. Leave unreadable cells empty.',
+        'Focus on the packing slip item table and the nearby intro line, GE No, MRR No, date of receipt, truck number, actual total, totals, received by, approval text, and signatory sections. Read each visible row cell by cell in order. Extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for every row. Supplier reel number should come from the photo. Leave erp_code empty unless clearly visible. Return only real item rows; skip blank lines, total/subtotal rows, signature/footer lines, and rows with only MRR/GE values but no item data. Do not invent values. Leave unreadable cells empty.',
         { intro_line: '', ge_no: '', mrr_no: '', receipt_date: '', truck_no: '', actual_total: '', total_reels: '', total_weight: '', receiver_label: '', signer_name: '', approval_text: '', signatory_label: '', items: [blankPackingRow()] }
       );
       data = mergeFocusedPackingData(data, focused);
@@ -1148,7 +1380,47 @@ async function fetchGeminiJson(file, kind) {
     }
   }
 
+  if (kind === 'packing') {
+    try {
+      const focusedInvoiceData = await fetchGeminiStructured(
+        base64,
+        mimeType,
+        'If this packing slip has an embedded invoice or MRR reference section with supplier/seller details, extract: supplier name (bill_to.name_address), state name (bill_to.state), GSTIN (bill_to.gstin), gross amount, invoice/MRR basic value, and any tax or total information. If no invoice section is visible on this packing slip, return empty fields.',
+        { 
+          bill_to: { name_address: '', state: '', gstin: '', state_code: '' },
+          totals: { gross_amount: '', insurance: 0, taxable_gst: '', cgst_pct: 9, sgst_pct: 9, round_off: 0 }
+        }
+      );
+      data = mergeFocusedPackingInvoiceData(data, focusedInvoiceData);
+    } catch {
+    }
+  }
+
   return data;
+}
+
+function mergeFocusedPackingInvoiceData(data, focused = {}) {
+  const focusedParty = focused?.bill_to || {};
+  const focusedTotals = focused?.totals || {};
+  return {
+    ...data,
+    bill_to: {
+      ...(data?.bill_to || {}),
+      name_address: extractSupplierName(focusedParty.name_address || data?.bill_to?.name_address || ''),
+      state: extractStateName(focusedParty.state || data?.bill_to?.state || ''),
+      state_code: focusedParty.state_code || data?.bill_to?.state_code || String(focusedParty.state || data?.bill_to?.state || '').match(/\b\d{2}\b/)?.[0] || '',
+      gstin: cleanSingleLineText(focusedParty.gstin || data?.bill_to?.gstin || '')
+    },
+    totals: {
+      ...(data?.totals || {}),
+      gross_amount: data.totals?.gross_amount || focusedTotals.gross_amount || '',
+      insurance: data.totals?.insurance || focusedTotals.insurance || 0,
+      taxable_gst: data.totals?.taxable_gst || focusedTotals.taxable_gst || '',
+      cgst_pct: data.totals?.cgst_pct || focusedTotals.cgst_pct || 9,
+      sgst_pct: data.totals?.sgst_pct || focusedTotals.sgst_pct || 9,
+      round_off: data.totals?.round_off || focusedTotals.round_off || 0
+    }
+  };
 }
 
 function Header({ header }) {
@@ -1170,19 +1442,51 @@ function Header({ header }) {
 function normalizeInputDateValue(value) {
   const text = String(value || '').trim();
   if (!text) return '';
+  const toIso = (year, month, day) => {
+    const y = String(year || '').padStart(4, '0');
+    const m = Number(month);
+    const d = Number(day);
+    if (!Number.isFinite(m) || !Number.isFinite(d)) return '';
+    if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  };
+
   const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+  if (iso) {
+    const year = iso[1];
+    const a = Number(iso[2]);
+    const b = Number(iso[3]);
+    if (a >= 1 && a <= 12) return toIso(year, a, b);
+    if (b >= 1 && b <= 12) return toIso(year, b, a);
+    return '';
+  }
+
   const slash = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (slash) {
     const year = slash[3].length === 2 ? `20${slash[3]}` : slash[3];
-    return `${year}-${slash[1].padStart(2, '0')}-${slash[2].padStart(2, '0')}`;
+    const first = Number(slash[1]);
+    const second = Number(slash[2]);
+    if (first > 12 && second <= 12) return toIso(year, second, first); // dd/mm/yyyy
+    if (second > 12 && first <= 12) return toIso(year, first, second); // mm/dd/yyyy
+    return toIso(year, first, second);
   }
+
+  const dash = text.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+  if (dash) {
+    const year = dash[3].length === 2 ? `20${dash[3]}` : dash[3];
+    const first = Number(dash[1]);
+    const second = Number(dash[2]);
+    if (first > 12 && second <= 12) return toIso(year, second, first); // dd-mm-yyyy
+    if (second > 12 && first <= 12) return toIso(year, first, second); // mm-dd-yyyy
+    return toIso(year, first, second);
+  }
+
   const monthNames = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
   const named = text.match(/^(\d{1,2})[\/-\s]([A-Za-z]{3,})[\/-\s](\d{2,4})$/);
   if (named) {
     const year = named[3].length === 2 ? `20${named[3]}` : named[3];
     const month = monthNames[named[2].slice(0, 3).toLowerCase()];
-    if (month) return `${year}-${month}-${named[1].padStart(2, '0')}`;
+    if (month) return toIso(year, Number(month), named[1]);
   }
   return '';
 }
@@ -1883,14 +2187,62 @@ function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect }) {
   );
 }
 
-function StartupOverlay({ onSelect, onGeSubmit, firms }) {
+function ProfileMenu({ currentUser, onLogout, top = '12px', right = '14px', zIndex = 10002 }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(event.target)) setOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  if (!currentUser) return null;
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'fixed', top, right, zIndex }}>
+      <button
+        className="btn small"
+        style={{ padding: '4px 8px', background: '#111', color: '#fff', border: '1px solid #333', fontSize: '11px', fontWeight: 700 }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {currentUser.name || currentUser.email}
+      </button>
+      {open ? (
+        <div style={{ marginTop: '4px', background: '#fff', border: '1px solid #333', boxShadow: '0 8px 20px rgba(0,0,0,0.16)', minWidth: '120px', padding: '6px' }}>
+          <button
+            className="btn small"
+            style={{ width: '100%', fontSize: '11px', padding: '6px 8px' }}
+            onClick={() => {
+              setOpen(false);
+              onLogout?.();
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, firms }) {
   const [step, setStep] = useState(1);
   const [tempFirm, setTempFirm] = useState(null);
-  const tempType = 'reel';
+  const [tempType, setTempType] = useState('reel');
   const [pendingGEs, setPendingGEs] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
+  const [isApprovingPending, setIsApprovingPending] = useState(false);
   const [editData, setEditData] = useState(null);
   const [pendingFilter, setPendingFilter] = useState('pending_mrr');
+  const [loginId, setLoginId] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const safeEditData = editData && typeof editData === 'object' ? editData : null;
 
   const pendingCounts = useMemo(() => ({
@@ -1908,27 +2260,30 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
   const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '8px 10px' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 10px' };
 
-  useEffect(() => {
-    if (step === 3 && tempFirm) {
-      async function loadCount() {
-        setIsLoadingPending(true);
-        try {
-          const mrrSheet = getSheetName(tempFirm.mrr, tempType);
-          const list = await fetchPendingGeEntries(mrrSheet, tempFirm.spreadsheetId, tempFirm.scriptUrl);
-          setPendingGEs(list || []);
-        } catch (err) {
-          console.error('Failed to load pending count:', err);
-        } finally {
-          setIsLoadingPending(false);
-        }
-      }
-      loadCount();
+  const loadPendingList = async () => {
+    if (!tempFirm) return;
+    setIsLoadingPending(true);
+    try {
+      const mrrSheet = getSheetName(tempFirm.mrr, tempType);
+      const list = await fetchPendingGeEntries(mrrSheet, tempFirm.spreadsheetId, tempFirm.scriptUrl);
+      setPendingGEs(list || []);
+    } catch (err) {
+      console.error('Failed to load pending list:', err);
+    } finally {
+      setIsLoadingPending(false);
     }
+  };
+
+  useEffect(() => {
+    if (step === 3 && tempFirm) loadPendingList();
   }, [step, tempFirm, tempType]);
+
+  const userBadge = <ProfileMenu currentUser={currentUser} onLogout={onLogout} zIndex={10001} />;
 
   if (step === 1) {
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
           <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '80px', marginBottom: '20px' }} alt="Logo" />
           <h2 style={{ color: 'var(--ink)', fontSize: '24px', marginBottom: '30px', letterSpacing: '0.02em' }}>SELECT FIRM</h2>
@@ -1938,7 +2293,15 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
                 key={firm.id} 
                 className="btn main" 
                 style={{ padding: '16px', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                onClick={() => { setTempFirm(firm); setStep(3); }}
+                onClick={() => {
+                  setTempFirm(firm);
+                  setTempType('reel');
+                  setLoginId('');
+                  setLoginPassword('');
+                  setLoginError('');
+                  if (currentUser?.firmId === firm.id) setStep(3);
+                  else setStep(2);
+                }}
               >
                 {firm.name}
               </button>
@@ -1950,12 +2313,73 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
     );
   }
 
+  if (step === 2) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 'auto', background: '#fff', padding: '34px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '520px', width: '90%' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '8px' }}>Login - {tempFirm?.name || ''}</h2>
+          <p style={{ marginTop: 0, marginBottom: '16px', fontSize: '12px', color: '#555', fontWeight: 700 }}>Use User ID or Email and Password from Users sheet.</p>
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="User ID or Email" style={{ border: '1px solid #aaa', padding: '10px' }} />
+            <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Password" style={{ border: '1px solid #aaa', padding: '10px' }} />
+          </div>
+          {loginError ? <div style={{ marginTop: '10px', color: '#9b1c1c', fontSize: '12px', fontWeight: 700 }}>{loginError}</div> : null}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', gap: '8px' }}>
+            <button className="btn" onClick={() => setStep(1)} disabled={isLoggingIn}>Back</button>
+            <button
+              className="btn main"
+              disabled={isLoggingIn}
+              onClick={async () => {
+                setLoginError('');
+                if (!loginId.trim() || !loginPassword.trim()) {
+                  setLoginError('User ID and Password are required.');
+                  return;
+                }
+                setIsLoggingIn(true);
+                try {
+                  const user = await authenticateUser(loginId, loginPassword, {
+                    spreadsheetId: tempFirm?.spreadsheetId,
+                    scriptUrl: tempFirm?.scriptUrl
+                  });
+                  onLogin?.({
+                    ...user,
+                    firmId: tempFirm?.id || ''
+                  });
+                  setStep(3);
+                } catch (err) {
+                  setLoginError(err?.message || 'Invalid login.');
+                } finally {
+                  setIsLoggingIn(false);
+                }
+              }}
+            >
+              {isLoggingIn ? 'Signing In...' : 'Login'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 3) {
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
           <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px', marginBottom: '10px' }} alt="Logo" />
           <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm.name}</p>
+          <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>MODE:</span>
+            <select
+              value={tempType}
+              onChange={(e) => setTempType(e.target.value)}
+              style={{ border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', fontWeight: 700, background: '#fff' }}
+            >
+              <option value="reel">REEL MRR</option>
+              <option value="other">OTHER MRR</option>
+            </select>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button 
               className="btn main" 
@@ -2011,24 +2435,28 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
 
   if (step === 4) {
     return (
-      <GateEntryForm 
-        firm={tempFirm} 
-        mrrType={tempType} 
-        initialData={safeEditData}
-        geNo={getGateEntryNo(safeEditData)}
-        onBack={() => { setEditData(null); setStep(3); }} 
-        onSave={(geNo, geData) => {
-          setEditData(null);
-          onGeSubmit(geNo, geData);
-          setStep(3);
-        }} 
-      />
+      <>
+        {userBadge}
+        <GateEntryForm 
+          firm={tempFirm} 
+          mrrType={tempType} 
+          initialData={safeEditData}
+          geNo={getGateEntryNo(safeEditData)}
+          onBack={() => { setEditData(null); setStep(3); }} 
+          onSave={(geNo, geData) => {
+            setEditData(null);
+            onGeSubmit(geNo, geData);
+            setStep(3);
+          }} 
+        />
+      </>
     );
   }
 
   if (step === 6) {
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
              <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>
@@ -2065,30 +2493,39 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
                     <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
                     <td style={pendingBodyCellStyle}>{ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || ''}</td>
                     <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
-                    <td className="c" style={{ ...pendingBodyCellStyle, display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                    <td className="c" style={{ ...pendingBodyCellStyle }}>
                       <button 
                         className="btn main small" 
                         style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
-                        onClick={() => {
-                          onGeSubmit(ge.ge_no || ge.ge_entry, ge);
-                          onSelect(tempFirm, tempType);
+                        disabled={isApprovingPending}
+                        onClick={async () => {
+                          if (pendingFilter === 'pending_mrr') {
+                            onGeSubmit(ge.ge_no || ge.ge_entry, ge);
+                            onSelect(tempFirm, tempType);
+                            return;
+                          }
+                          try {
+                            setIsApprovingPending(true);
+                            await approvePendingStage({
+                              stage: pendingFilter,
+                              mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                              userEmail: currentUser?.email || '',
+                              mrrSheetName: getSheetName(tempFirm.mrr, tempType),
+                              helperSheetName: getSheetName(tempFirm.helper, tempType),
+                              spreadsheetId: tempFirm?.spreadsheetId,
+                              scriptUrl: tempFirm?.scriptUrl
+                            });
+                            await loadPendingList();
+                          } catch (err) {
+                            alert(err?.message || 'Approval failed.');
+                          } finally {
+                            setIsApprovingPending(false);
+                          }
                         }}
                       >
-                        PROCEED
-                      </button>
-                      <button 
-                        className="btn small" 
-                        style={{ background: '#7f8c8d', color: '#111', fontSize: '13px', padding: '8px 12px', transition: 'background-color 0.2s ease, color 0.2s ease' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#9ca3af'; e.currentTarget.style.color = '#111'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#7f8c8d'; e.currentTarget.style.color = '#111'; }}
-                        onClick={() => {
-                          setEditData(ge);
-                          setStep(4);
-                        }}
-                      >
-                        EDIT
+                        {pendingFilter === 'pending_mrr' ? 'OPEN' : (isApprovingPending ? 'APPROVING...' : 'APPROVE')}
                       </button>
                     </td>
                   </tr>
@@ -2106,6 +2543,14 @@ function StartupOverlay({ onSelect, onGeSubmit, firms }) {
 
 function App() {
   const [activeTab, setActiveTab] = useState('invoice');
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [invoice, setInvoice] = useState(blankInvoice);
   const [packing, setPacking] = useState(blankPacking);
   const [geData, setGeData] = useState(null);
@@ -2204,6 +2649,8 @@ function App() {
   const sg = taxable * n(invoice.totals.sgst_pct) / 100;
   const net = taxable + cg + sg + n(invoice.totals.round_off);
   const packingWeight = packing.items.reduce((sum, row) => sum + n(row.net_wt), 0);
+  const invoiceBasicValue = Number(invoice.goods.reduce((sum, row) => sum + (n(row.amount) || (n(row.weight) * n(row.rate))), 0).toFixed(2));
+  const mrrBasicValue = Number(packing.items.reduce((sum, row) => sum + (n(row.rate) * n(row.net_wt)), 0).toFixed(2));
   const invoiceRowCount = invoice.goods.filter(isMeaningful).length;
   const packingRowCount = packing.items.filter(isMeaningful).length;
   const packingReels = packing.items.filter(isMeaningful).length;
@@ -2416,7 +2863,7 @@ function App() {
     setStatus(`Syncing ${selectedFirm.name} IDs (Next Number + 1)...`);
     
     try {
-      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
+      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl, getFirmCode(selectedFirm), 'GE ENTRY');
       const lastMrr = Number(data.mrr) || 0;
       const lastGe = Number(data.ge) || 0;
       
@@ -2454,8 +2901,25 @@ function App() {
     setTriggerPendingModal(openPending);
     if (firm.header) {
       setInvoice(prev => ({ ...prev, header: firm.header }));
-      setPacking(prev => ({ ...prev, header: firm.header }));
+      setPacking(prev => ({ ...prev, header: firm.header, receiver_label: firm.name }));
+    } else {
+      setPacking(prev => ({ ...prev, receiver_label: firm.name }));
     }
+  };
+
+  const handleUserLogin = (user) => {
+    setCurrentUser(user || null);
+    try {
+      if (user) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      else localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+    }
+  };
+
+  const handleUserLogout = () => {
+    handleUserLogin(null);
+    setIsFirmSelected(false);
+    setSelectedFirm(null);
   };
 
   const saveAllData = async () => {
@@ -2481,13 +2945,12 @@ function App() {
           spreadsheetId: selectedFirm.spreadsheetId,
           scriptUrl: selectedFirm.scriptUrl
         });
-        const helperDeleted = Number(result?.helperSheet?.deletedRows || 0);
-        const helperInserted = Number(result?.helperSheet?.insertedRows || 0);
-        const mrrUpdated = Number(result?.mrrForm?.updatedRows || 0);
-        const mrrInserted = Number(result?.mrrForm?.insertedRows || 0);
-        const successMessage = `Saved both sheets successfully. ${helperSheet} replaced ${helperDeleted} old row(s), inserted ${helperInserted} new row(s). ${mrrSheet} updated ${mrrUpdated} row(s), inserted ${mrrInserted} row(s).`;
-        setStatus(successMessage);
-        showPopup(successMessage, 'success');
+        const successMessage = result?.verificationSkipped
+          ? `Saved for ${mrrNumber}.`
+          : `Saved for ${mrrNumber}. ${helperSheet} rows found: ${Number(result?.helperSheet?.insertedRows || 0)}. ${mrrSheet} rows found: ${Number(result?.mrrForm?.updatedRows || 0)}.`;
+        const finalMessage = result?.warning ? `${successMessage} ${result.warning}` : successMessage;
+        setStatus(finalMessage);
+        showPopup(finalMessage, 'success');
         setTimeout(() => fetchLastIds(), 500);
       } catch (err) {
         setStatus(err?.message || 'Could not save data to Google Sheets.');
@@ -2501,19 +2964,33 @@ function App() {
 
     setStatus(`Saving data to ${mrrSheet} and ${helperSheet}...`);
     try {
-      const result = await savePackingToSheets(invoice, packing, poRows, {
+      const todayReceiptDate = getTodayInputDate();
+      const firmHeader = selectedFirm?.header ? { ...selectedFirm.header, note: '' } : invoice.header;
+      const preparedInvoice = {
+        ...invoice,
+        header: firmHeader,
+        receipt_date: todayReceiptDate,
+        signatory_label: selectedFirm?.name || invoice.signatory_label || ''
+      };
+      const preparedPacking = {
+        ...packing,
+        header: firmHeader,
+        receipt_date: todayReceiptDate,
+        signatory_label: selectedFirm?.name || packing.signatory_label || ''
+      };
+
+      const result = await savePackingToSheets(preparedInvoice, preparedPacking, poRows, {
         mrrSheetName: mrrSheet,
         helperSheetName: helperSheet,
         spreadsheetId: selectedFirm.spreadsheetId,
         scriptUrl: selectedFirm.scriptUrl
       });
-      const helperDeleted = Number(result?.helperSheet?.deletedRows || 0);
-      const helperInserted = Number(result?.helperSheet?.insertedRows || 0);
-      const mrrUpdated = Number(result?.mrrForm?.updatedRows || 0);
-      const mrrInserted = Number(result?.mrrForm?.insertedRows || 0);
-      const successMessage = `Saved both sheets successfully. HELPER SHEET replaced ${helperDeleted} old row(s), inserted ${helperInserted} new row(s). MRR FORM updated ${mrrUpdated} row(s), inserted ${mrrInserted} row(s).`;
-      setStatus(successMessage);
-      showPopup(successMessage, 'success');
+      const successMessage = result?.verificationSkipped
+        ? `Saved for ${mrrNumber}.`
+        : `Saved for ${mrrNumber}. HELPER SHEET rows found: ${Number(result?.helperSheet?.insertedRows || 0)}. MRR FORM rows found: ${Number(result?.mrrForm?.updatedRows || 0)}.`;
+      const finalMessage = result?.warning ? `${successMessage} ${result.warning}` : successMessage;
+      setStatus(finalMessage);
+      showPopup(finalMessage, 'success');
       
       setTimeout(() => fetchLastIds(), 500);
     } catch (err) {
@@ -2548,7 +3025,7 @@ function App() {
     const invNo = ge.invoice_no || '';
     const mrrNo = ge.mrr_number || ge.mrr_no || '';
     const docDate = ge.date || '';
-    const receiptDate = ge.dt_of_receipt || ge.dt_of_receipts || ge.receipt_date || '';
+    const receiptDate = getTodayInputDate();
 
     setGeData(ge);
     setInv('ge_no', String(geNo));
@@ -2565,7 +3042,6 @@ function App() {
     if (receiptDate) setPack('receipt_date', receiptDate);
     setPack('truck_no', truck);
     setPack('challan_no', invNo);
-    setPack('distributor', supplier);
   };
 
   const handleSelectPendingGE = (ge) => {
@@ -2604,42 +3080,44 @@ function App() {
       const data = await fetchGeminiJson(file, kind);
       if (kind === 'invoice') {
         const normalizedInvoice = normalizeInvoice(data);
-        
-        // Fix: Preserve the currently selected firm's header
-        // and move the scanned supplier info into bill_to (Supplier details)
-        const scannedSupplier = normalizedInvoice.header;
+        const scannedBillTo = normalizeScannedParty(normalizedInvoice.bill_to || {});
+        const scannedHeaderSupplier = extractSupplierName(data?.header?.title || normalizedInvoice?.header?.title || '');
+        const resolvedSupplierName = resolveScannedSupplierName({
+          scannedBillToName: scannedBillTo.name_address,
+          focusedSupplierName: data?.supplier_name,
+          headerSupplierName: scannedHeaderSupplier,
+          selectedFirm
+        });
         normalizedInvoice.bill_to = {
-          ...normalizedInvoice.bill_to,
-          name_address: (scannedSupplier.title || '') + (scannedSupplier.works ? '\n' + scannedSupplier.works : ''),
-          gstin: scannedSupplier.gstin || '',
-          state: scannedSupplier.meta || ''
+          ...scannedBillTo,
+          name_address: resolvedSupplierName || scannedBillTo.name_address || scannedHeaderSupplier || '',
+          state: extractStateName(data?.supplier_state || scannedBillTo.state || ''),
+          state_code: String(data?.supplier_state_code || scannedBillTo.state_code || '').match(/\b\d{2}\b/)?.[0] || '',
+          gstin: cleanSingleLineText(data?.supplier_gstin || scannedBillTo.gstin || '')
         };
         normalizedInvoice.header = invoice.header; 
 
         if (invoice.mrr_no) normalizedInvoice.mrr_no = invoice.mrr_no;
         if (invoice.ge_no) normalizedInvoice.ge_no = invoice.ge_no;
-        
-        const syncedPacking = enrichPackingWithPoRows(syncPackingFromInvoice(normalizedInvoice, packing));
+
         setInvoice(normalizedInvoice);
-        setPacking(syncedPacking);
-        setStatus('Invoice scanned with Gemini. Firm header preserved; supplier details updated.');
+        setStatus('Invoice scanned with Gemini. Updated invoice section only.');
       } else {
-        let normalizedPacking = enrichPackingWithPoRows(normalizePacking(data));
+        let normalizedPacking = normalizePacking(data);
         if (packing.mrr_no) normalizedPacking.mrr_no = packing.mrr_no;
         if (packing.ge_no) normalizedPacking.ge_no = packing.ge_no;
         
         normalizedPacking = {
           ...normalizedPacking,
-          items: mergeInvoiceGoodsIntoPackingItems(normalizedPacking.items, invoice.goods).map(row => ({
+          header: selectedFirm?.header ? { ...selectedFirm.header, note: '' } : packing.header,
+          items: normalizedPacking.items.map(row => ({
             ...row,
             mrr_no: normalizedPacking.mrr_no,
             ge_no: normalizedPacking.ge_no
           }))
         };
-        const syncedInvoice = syncInvoiceFromPacking(invoice, normalizedPacking);
         setPacking(normalizedPacking);
-        setInvoice(syncedInvoice);
-        setStatus('Packing slip scanned with Gemini. Synced MRR/GE numbers preserved.');
+        setStatus('Packing slip scanned with Gemini. Updated packing section only.');
       }
     } catch (err) {
       const message = err?.message || 'Gemini scan failed.';
@@ -2657,7 +3135,7 @@ function App() {
       <style>{labelStyles}</style>
       <StartupOverlay firms={FIRMS} onSelect={handleFirmSelection} onGeSubmit={(geNo, data) => { 
         applyPendingItem({ ...data, ge_no: geNo });
-      }} />
+      }} onLogin={handleUserLogin} onLogout={handleUserLogout} currentUser={currentUser} />
     </>
   );
 
@@ -2665,6 +3143,7 @@ function App() {
     <div className="app">
       <style>{styles}</style>
       <style>{labelStyles}</style>
+      <ProfileMenu currentUser={currentUser} onLogout={handleUserLogout} zIndex={10002} />
       {popupMessage ? <div className={`toast ${popupTone}`}>{popupMessage}</div> : null}
 
       {(isScanning || isSaving) && (
@@ -2746,7 +3225,7 @@ function App() {
               GE ENTRY Details:
               {' '}GE No: <span style={{ color: 'var(--primary)' }}>{geData?.ge_no || invoice.ge_no || packing.ge_no || '-'}</span>
               {' '}| MRR No: <span style={{ color: 'var(--primary)' }}>{geData?.mrr_no || geData?.mrr_number || invoice.mrr_no || packing.mrr_no || '-'}</span>
-              {' '}| Supplier: <span>{geData?.supplier || invoice.bill_to?.name_address || packing.distributor || '-'}</span>
+              {' '}| Supplier: <span>{geData?.supplier || invoice.bill_to?.name_address || packing.buyer?.name_address || '-'}</span>
               {' '}| Invoice: <span>{geData?.invoice_no || invoice.invoice_no || packing.challan_no || '-'}</span>
               {' '}| Truck: <span>{geData?.truck_no || invoice.vehicle_no || packing.truck_no || '-'}</span>
             </div>
@@ -2783,39 +3262,24 @@ function App() {
               <div className="title">{invoice.doc_title}</div>
               
               <div className="grid2">
-                {mrrType === 'other' ? (
-                  <MetaTable rows={[
-                    ['G. E. No.', invoice.ge_no, (v) => setInv('ge_no', v), 'text', isGateEntryLocked],
-                    ['Date', invoice.date, (v) => setInv('date', v), 'date', isGateEntryLocked],
-                    ['MRR Number', invoice.mrr_no, (v) => setInv('mrr_no', v)],
-                    ['Dt. of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'],
-                    ['Sup Doc No.', invoice.invoice_no, (v) => setInv('invoice_no', v), 'text', isGateEntryLocked],
-                    ['Truck Number', invoice.vehicle_no, (v) => setInv('vehicle_no', v), 'text', isGateEntryLocked],
-                    ['Invoice Ttl Weight (Kgs)', invoice.actual_weight, (v) => setInv('actual_weight', v)],
-                    ['Actual MRR Ttl Weight (Kgs)', invoice.actual_mrr_weight, (v) => setInv('actual_mrr_weight', v)],
-                    ['SUPPLIER', invoice.bill_to?.name_address, (v) => setInvNest('bill_to', 'name_address', v), 'text', isGateEntryLocked],
-                    ['INVOICE BASIC VALUE', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } }))],
-                    ['MRR BASIC VALUE', invoice.totals.taxable_gst, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, taxable_gst: v } }))]
-                  ]} />
-                ) : (
-                  <>
-                    <PartyCard label="MRR Entry Details" data={invoice.bill_to} onText={(v) => setInvNest('bill_to', 'name_address', v)} onField={(f, v) => setInvNest('bill_to', f, v)} contact code hideGstin />
-                    <MetaTable rows={[
-                      ['Invoice No.', invoice.invoice_no, (v) => setInv('invoice_no', v)], 
-                      ['Date', invoice.date, (v) => setInv('date', v), 'date'], 
-                      ['E-Way Bill No.', invoice.eway_no, (v) => setInv('eway_no', v)], 
-                      ['E-Way Date', invoice.eway_date, (v) => setInv('eway_date', v), 'date'], 
-                      ['L.R No.', invoice.lr_no, (v) => setInv('lr_no', v)], 
-                      ['Truck No.', invoice.vehicle_no, (v) => setInv('vehicle_no', v)], 
-                      ['GE No.', invoice.ge_no, (v) => setInv('ge_no', v)], 
-                      ['MRR No.', invoice.mrr_no, (v) => setInv('mrr_no', v)], 
-                      ['Dt Of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'], 
-                      ['Actual Total', invoice.actual_weight, (v) => setInv('actual_weight', v)], 
-                      ['Due Days', invoice.due_days, (v) => setInv('due_days', v), 'number'], 
-                      ['Freight Type', invoice.freight_type, (v) => setInv('freight_type', v)]
-                    ]} />
-                  </>
-                )}
+                <MetaTable rows={[
+                  ['G. E. No.', invoice.ge_no, (v) => setInv('ge_no', v), 'text', isGateEntryLocked],
+                  ['Date', invoice.date, (v) => setInv('date', v), 'date', isGateEntryLocked],
+                  ['MRR Number', invoice.mrr_no, (v) => setInv('mrr_no', v)],
+                  ['Dt. of Receipt', invoice.receipt_date, (v) => setInv('receipt_date', v), 'date'],
+                  ['Sup Doc No.', invoice.invoice_no, (v) => setInv('invoice_no', v), 'text', isGateEntryLocked],
+                  ['Truck Number', invoice.vehicle_no, (v) => setInv('vehicle_no', v), 'text', isGateEntryLocked],
+                  ['Invoice Ttl Weight (Kgs)', invoice.actual_weight, (v) => setInv('actual_weight', v)],
+                  ['Actual MRR Ttl Weight (Kgs)', invoice.actual_mrr_weight, (v) => setInv('actual_mrr_weight', v)]
+                ]} />
+                <MetaTable rows={[
+                  ['SUPPLIER', invoice.bill_to?.name_address, (v) => setInvNest('bill_to', 'name_address', v), 'text', isGateEntryLocked],
+                  ['INVOICE BASIC VALUE', invoiceBasicValue, undefined],
+                  ['MRR BASIC VALUE', mrrBasicValue, undefined],
+                  ['E-Way Bill No.', invoice.eway_no, (v) => setInv('eway_no', v)],
+                  ['E-Way Date', invoice.eway_date, (v) => setInv('eway_date', v), 'date'],
+                  ['L.R No.', invoice.lr_no, (v) => setInv('lr_no', v)]
+                ]} />
               </div>
 
               {mrrType === 'other' ? (
@@ -2949,14 +3413,10 @@ function App() {
               <div className="valueLine"><span>{invoice.total_label}:</span> <input value={invoice.total_words || words(invoice.totals.net_amount || net)} onChange={(e) => setInv('total_words', e.target.value)} /></div>
               
               <div className="foot">
-                <div>
-                  <div className="cardTitle">Terms & Condition</div>
-                  <textarea value={invoice.terms} onChange={(e) => setInv('terms', e.target.value)} />
-                </div>
                 <div className="sign">
                   <textarea value={invoice.certification} onChange={(e) => setInv('certification', e.target.value)} />
                   <div><input value={invoice.signer_name} onChange={(e) => setInv('signer_name', e.target.value)} /></div>
-                  <div className="sigLine"><input value={invoice.signatory_label} onChange={(e) => setInv('signatory_label', e.target.value)} /></div>
+                  <div className="sigLine">{selectedFirm?.name || invoice.signatory_label || ''}</div>
                 </div>
               </div>
             </div>
@@ -2978,8 +3438,22 @@ function App() {
                 <Header header={packing.header} />
                 <div className="title">{packing.doc_title}</div>
                 <div className="grid2">
-                  <div className="card"><SimplePartyCard label="Name & Address of Buyer" data={packing.buyer} onText={(v) => setPackNest('buyer', 'name_address', v)} onField={(f, v) => setPackNest('buyer', f, v)} /></div>
-                  <MetaTable rows={[['Challan No.', packing.challan_no, (v) => setPack('challan_no', v)], ['Date', packing.date, (v) => setPack('date', v), 'date'], ['Order Date', packing.order_date, (v) => setPack('order_date', v), 'date'], ['L.R. No.', packing.lr_no, (v) => setPack('lr_no', v)], ['L.R. Dt', packing.lr_date, (v) => setPack('lr_date', v), 'date'], ['GE No.', packing.ge_no, (v) => setPack('ge_no', v)], ['MRR No.', packing.mrr_no, (v) => setPack('mrr_no', v)], ['Dt of Receipt', packing.receipt_date, (v) => setPack('receipt_date', v), 'date'], ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v)], ['Actual Total', packing.actual_total, (v) => setPack('actual_total', v)], ['Carrier', packing.carrier, (v) => setPack('carrier', v)], ['Distributor', packing.distributor, (v) => setPack('distributor', v)], ['Total Reel', packing.total_reels || packingReels, (v) => setPack('total_reels', v)], ['Total Weight', packing.total_weight || packingWeight, (v) => setPack('total_weight', v)]]} />
+                  <MetaTable rows={[
+                    ['Challan No.', packing.challan_no, (v) => setPack('challan_no', v)],
+                    ['Date', packing.date, (v) => setPack('date', v), 'date'],
+                    ['Order Date', packing.order_date, (v) => setPack('order_date', v), 'date'],
+                    ['L.R. No.', packing.lr_no, (v) => setPack('lr_no', v)],
+                    ['L.R. Dt', packing.lr_date, (v) => setPack('lr_date', v), 'date'],
+                    ['GE No.', packing.ge_no, (v) => setPack('ge_no', v)],
+                    ['MRR No.', packing.mrr_no, (v) => setPack('mrr_no', v)],
+                    ['Dt of Receipt', packing.receipt_date, (v) => setPack('receipt_date', v), 'date']
+                  ]} />
+                  <MetaTable rows={[
+                    ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v)],
+                    ['Actual Total', packing.actual_total, (v) => setPack('actual_total', v)],
+                    ['Total Reel', packing.total_reels || packingReels, (v) => setPack('total_reels', v)],
+                    ['Total Weight', packing.total_weight || packingWeight, (v) => setPack('total_weight', v)]
+                  ]} />
                 </div>
                 <div className="line"><input value={packing.intro_line} onChange={(e) => setPack('intro_line', e.target.value)} /></div>
                 <div className="wrap">
@@ -3069,7 +3543,12 @@ function App() {
                     </tfoot>
                   </table>
                 </div>
-                <div className="foot"><div><div className="cardTitle">Received By</div><input value={packing.receiver_label} onChange={(e) => setPack('receiver_label', e.target.value)} /></div><div className="sign"><div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div><textarea value={packing.approval_text} onChange={(e) => setPack('approval_text', e.target.value)} /><div className="sigLine"><input value={packing.signatory_label} onChange={(e) => setPack('signatory_label', e.target.value)} /></div></div></div>
+                <div className="foot" style={{ display: 'block', borderBottom: '1px solid var(--line)' }}>
+                  <div className="sign" style={{ minHeight: '56px', marginLeft: 'auto', width: '220px' }}>
+                    <div><input value={packing.signer_name} onChange={(e) => setPack('signer_name', e.target.value)} /></div>
+                    <div className="sigLine">{selectedFirm?.name || packing.signatory_label || ''}</div>
+                  </div>
+                </div>
               </div>
               <div className="actions"><button className="btn" disabled={isSavingInvoice || isSavingPacking} onClick={() => setPacking((p) => ({ ...p, items: [...p.items, blankPackingRow()] }))}>Add Packing Row</button><button className="btn main" disabled={isSavingInvoice || isSavingPacking} onClick={saveAllData}>{isSaving ? 'Saving...' : 'Save All Data'}</button></div>
             </section>

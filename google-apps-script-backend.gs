@@ -4,7 +4,8 @@
 const DEFAULT_SHEETS = {
   poDetails: 'PO DETAILS',
   mrrForm: 'MRR FORM',
-  helper: 'HELPER SHEET'
+  helper: 'HELPER SHEET',
+  users: 'Users'
 };
 
 /**
@@ -24,6 +25,9 @@ const MRR_FORM_ALIASES = {
   supplier: ['SUPPLIER', 'supplier'],
   invoice_basic_value: ['INVOICE BASIC VALUE', 'Invoice Basic Value', 'invoice_basic_value'],
   mrr_basic_value: ['MRR BASIC VALUE', 'MRR Basic Value', 'mrr_basic_value'],
+  e_way_bill_no: ['E-Way Bill No.', 'Eway Bill No.', 'eway_bill_no', 'e_way_bill_no', 'eway_no'],
+  e_way_date: ['E-Way Date', 'Eway Date', 'eway_date', 'e_way_date'],
+  l_r_no: ['L.R No.', 'LR No.', 'L R No.', 'l_r_no', 'lr_no'],
   accounts_approval_timestamp: ['Accounts Approval Timestamp', 'accounts_approval_timestamp'],
   accounts_approval_useremail: ['Accounts Approval Useremail', 'accounts_approval_useremail'],
   md_approval_timestamp: ['MD Approval Timestamp', 'md_approval_timestamp'],
@@ -96,40 +100,94 @@ function doGet(e) {
     
     if (!ss) throw new Error('Spreadsheet not bound. Provide "spreadsheetId" or use container-bound script.');
 
+    if (action === 'authenticate_user') {
+      const loginId = String(e.parameter.login_id || e.parameter.email || e.parameter.user || '').trim();
+      const password = String(e.parameter.password || '').trim();
+      const user = authenticateUser_(ss, loginId, password);
+      if (!user) return jsonOutput_({ ok: false, error: 'Invalid user ID or password.' });
+      return jsonOutput_({ ok: true, user: user });
+    }
+
+    if (action === 'approve_pending_stage') {
+      const stage = String(e.parameter.stage || '').trim().toLowerCase();
+      const mrrNumber = String(e.parameter.mrr_number || '').trim();
+      const userEmail = String(e.parameter.user_email || '').trim();
+      const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
+      const helperSheetName = String(e.parameter.helperSheet || DEFAULT_SHEETS.helper).trim();
+      const result = approvePendingStage_(ss, {
+        stage: stage,
+        mrrNumber: mrrNumber,
+        userEmail: userEmail,
+        mrrSheetName: mrrSheetName,
+        helperSheetName: helperSheetName
+      });
+      return jsonOutput_(Object.assign({ ok: true }, result));
+    }
+
     // Custom action to get the last MRR and GE numbers for auto-incrementing
     if (action === 'get_latest_ids') {
-      const sheetName = String(e.parameter.sheet || '').trim();
-      const sheet = getSheetOrThrow_(ss, sheetName);
-      const headers = getHeaders_(sheet);
-      const lastRow = sheet.getLastRow();
+      const mrrSheetName = String(e.parameter.mrrSheet || e.parameter.sheet || DEFAULT_SHEETS.mrrForm).trim();
+      const geSheetName = String(e.parameter.geSheet || 'GE ENTRY').trim();
       const prefix = String(e.parameter.prefix || '').trim().toUpperCase();
+      const mrrSheet = getSheetOrThrow_(ss, mrrSheetName);
+      const geSheet = getSheetOrThrow_(ss, geSheetName);
+      const mrrHeaders = getHeaders_(mrrSheet);
+      const geHeaders = getHeaders_(geSheet);
+      const mrrLastRow = mrrSheet.getLastRow();
+      const geLastRow = geSheet.getLastRow();
       
       let lastMrr = 0;
       let lastGe = 0;
       let lastGeText = '';
       
-      if (lastRow >= 2) {
-        const mrrIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.mrr_number);
-        let geIndex = findColumnIndex_(headers, MRR_FORM_ALIASES.ge_no);
-        if (geIndex === -1) {
-          geIndex = findColumnIndex_(headers, GE_ENTRY_ALIASES.ge_no);
-        }
-        
+      if (mrrLastRow >= 2) {
+        const mrrIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_number);
         if (mrrIndex !== -1) {
-          const mrrValues = sheet.getRange(2, mrrIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
+          const mrrValues = mrrSheet.getRange(2, mrrIndex + 1, mrrLastRow - 1, 1).getDisplayValues().flat();
           for (let i = mrrValues.length - 1; i >= 0; i--) {
-            const val = String(mrrValues[i]).trim();
-            if (val) {
-              lastMrr = extractSequenceNumber_(val);
-              if (lastMrr > 0) break;
+            const val = String(mrrValues[i]).trim().toUpperCase();
+            if (!val) continue;
+            if (prefix && val.indexOf(prefix + '/') !== 0 && val.indexOf(prefix) !== 0) continue;
+            const seq = extractSequenceNumber_(val);
+            if (seq > lastMrr) lastMrr = seq;
+          }
+        } else {
+          // Fallback: infer from formatted IDs if header alias doesn't match exactly.
+          const values = mrrSheet.getRange(2, 1, mrrLastRow - 1, mrrHeaders.length).getDisplayValues();
+          for (let i = 0; i < values.length; i++) {
+            for (let j = 0; j < values[i].length; j++) {
+              const text = String(values[i][j] || '').trim().toUpperCase();
+              if (text.split('/').length < 3) continue;
+              if (prefix && text.indexOf(prefix + '/') !== 0 && text.indexOf(prefix) !== 0) continue;
+              const seq = extractSequenceNumber_(text);
+              if (seq > lastMrr) lastMrr = seq;
             }
           }
         }
-        
+      }
+
+      // Extra fallback: if MRR FORM has no usable MRR yet, inspect GE ENTRY MRR column.
+      if (lastMrr === 0 && geLastRow >= 2) {
+        const geMrrIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.mrr_no);
+        if (geMrrIndex !== -1) {
+          const geMrrValues = geSheet.getRange(2, geMrrIndex + 1, geLastRow - 1, 1).getDisplayValues().flat();
+          for (let i = 0; i < geMrrValues.length; i++) {
+            const val = String(geMrrValues[i] || '').trim().toUpperCase();
+            if (!val) continue;
+            if (prefix && val.indexOf(prefix + '/') !== 0 && val.indexOf(prefix) !== 0) continue;
+            const seq = extractSequenceNumber_(val);
+            if (seq > lastMrr) lastMrr = seq;
+          }
+        }
+      }
+
+      if (geLastRow >= 2) {
+        let geIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.ge_no);
+        if (geIndex === -1) geIndex = findColumnIndex_(geHeaders, MRR_FORM_ALIASES.ge_no);
         if (geIndex !== -1) {
-          const geValues = sheet.getRange(2, geIndex + 1, lastRow - 1, 1).getDisplayValues().flat();
+          const geValues = geSheet.getRange(2, geIndex + 1, geLastRow - 1, 1).getDisplayValues().flat();
           if (prefix) {
-            // Find max sequence specifically for this prefix (FIRM/FY/)
+            // Find max sequence specifically for this prefix.
             let maxInPrefix = 0;
             for (let i = 0; i < geValues.length; i++) {
               const val = String(geValues[i]).trim().toUpperCase();
@@ -139,16 +197,29 @@ function doGet(e) {
               }
             }
             lastGe = maxInPrefix;
-            // ge_text is less relevant here but we can reconstruct it
             lastGeText = lastGe > 0 ? prefix + Utilities.formatString('%04d', lastGe) : '';
           } else {
-            // Traditional backward search
             for (let i = geValues.length - 1; i >= 0; i--) {
               const val = String(geValues[i]).trim();
               if (val) {
                 lastGeText = val;
                 lastGe = extractSequenceNumber_(val);
                 if (lastGe > 0) break;
+              }
+            }
+          }
+        } else {
+          // Fallback: infer from formatted IDs if GE header alias doesn't match exactly.
+          const values = geSheet.getRange(2, 1, geLastRow - 1, geHeaders.length).getDisplayValues();
+          for (let i = 0; i < values.length; i++) {
+            for (let j = 0; j < values[i].length; j++) {
+              const text = String(values[i][j] || '').trim().toUpperCase();
+              if (text.split('/').length < 3) continue;
+              if (prefix && text.indexOf(prefix) !== 0) continue;
+              const seq = extractSequenceNumber_(text);
+              if (seq > lastGe) {
+                lastGe = seq;
+                lastGeText = text;
               }
             }
           }
@@ -451,9 +522,20 @@ function doPost(e) {
       const helperRows = buildHelperRows_(invoice, packing, poRows);
       const mrrRecord = buildMrrFormRecord_(invoice, packing, poRows, helperRows);
 
+      // 1) Upsert parent first so we never end with child-only rows.
+      const initialMrrResult = upsertMrrFormRow_(mrrSheet, mrrRecord);
+
+      // 2) Replace child/helper rows.
       const helperResult = replaceHelperRows_(helperSheet, mrrRecord.mrr_number, helperRows);
-      // Ensure we include updated helper info (like rows with serials) for MRR calculation if needed
-      const mrrResult = upsertMrrFormRow_(mrrSheet, buildMrrFormRecord_(invoice, packing, poRows, helperResult.rowsWithSerial));
+
+      // 3) Refresh parent once more using final helper rows (serials/derived values), if available.
+      let mrrResult = initialMrrResult;
+      try {
+        mrrResult = upsertMrrFormRow_(mrrSheet, buildMrrFormRecord_(invoice, packing, poRows, helperResult.rowsWithSerial));
+      } catch (mrrRefreshError) {
+        // Parent already exists from step 1; keep flow successful to avoid child-only state.
+      }
+
       updateGeEntryWithMrr_(ss, mrrRecord.ge_no, mrrRecord.mrr_number);
 
       return jsonOutput_({
@@ -477,19 +559,21 @@ function doPost(e) {
 function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
   const rows = Array.isArray(helperRows) ? helperRows : [];
   const invoiceGoods = Array.isArray(invoice.goods) ? invoice.goods : [];
+  const packingItems = Array.isArray(packing.items) ? packing.items : [];
+  const todayReceiptDate = formatDateForSheet_(new Date());
   
   const invoiceWeight = round2_(invoiceGoods.reduce((sum, row) => sum + n_(row.weight), 0));
   const invoiceReels = round2_(invoiceGoods.reduce((sum, row) => sum + n_(row.reels), 0));
   const grossAmount = round2_(invoiceGoods.reduce((sum, row) => sum + (n_(row.amount) || (n_(row.weight) * n_(row.rate))), 0));
-  const taxableAmount = round2_(grossAmount + n_(invoice.totals && invoice.totals.insurance));
   const helperWeight = round2_(rows.reduce((sum, row) => sum + n_(row.weight), 0));
   const helperValue = round2_(rows.reduce((sum, row) => sum + n_(row.value), 0));
+  const packingBasicValue = round2_(packingItems.reduce((sum, row) => sum + (n_(row.rate) * n_(row.net_wt || row.weight)), 0));
 
   const record = {};
   assignIfPresent_(record, 'ge_no', firstFilled_(invoice.ge_no, packing.ge_no));
   assignIfPresent_(record, 'date', firstFilled_(invoice.date, packing.date));
   assignIfPresent_(record, 'mrr_number', firstFilled_(invoice.mrr_no, packing.mrr_no));
-  assignIfPresent_(record, 'dt_of_receipt', firstFilled_(invoice.receipt_date, packing.receipt_date));
+  assignIfPresent_(record, 'dt_of_receipt', todayReceiptDate);
   assignIfPresent_(record, 'sup_doc_no', firstFilled_(invoice.invoice_no, packing.challan_no));
   assignIfPresent_(record, 'truck_number', firstFilled_(invoice.vehicle_no, packing.truck_no));
   assignIfPresent_(record, 'invoice_ttl_weight_kgs', invoiceWeight, true);
@@ -498,9 +582,14 @@ function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
   assignIfPresent_(record, 'actual_mrr_ttl_weight_kgs', round2_(firstFilled_(invoice.actual_weight, packing.actual_total, packing.total_weight, helperWeight)), true);
   assignIfPresent_(record, 'required_reel', firstFilled_(invoiceReels ? String(invoiceReels) : '', packing.total_reels, String(rows.length)));
   assignIfPresent_(record, 'rows_added', rows.length, true);
-  assignIfPresent_(record, 'supplier', firstFilled_(packing.distributor, packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address));
-  assignIfPresent_(record, 'invoice_basic_value', taxableAmount, true);
-  assignIfPresent_(record, 'mrr_basic_value', helperValue, true);
+  assignIfPresent_(record, 'supplier', firstFilled_(packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address));
+  // INVOICE BASIC VALUE = sum of amount of MRR reels (invoice goods amount)
+  assignIfPresent_(record, 'invoice_basic_value', grossAmount, true);
+  // MRR BASIC VALUE = sum of rate * net weight from packing slip rows
+  assignIfPresent_(record, 'mrr_basic_value', packingBasicValue, true);
+  assignIfPresent_(record, 'e_way_bill_no', firstFilled_(invoice.eway_no));
+  assignIfPresent_(record, 'e_way_date', firstFilled_(invoice.eway_date));
+  assignIfPresent_(record, 'l_r_no', firstFilled_(invoice.lr_no, packing.lr_no));
   
   return record;
 }
@@ -510,10 +599,10 @@ function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
  */
 function buildHelperRows_(invoice, packing, poRows) {
   const baseDate = firstFilled_(packing.date, invoice.date);
-  const receiptDate = firstFilled_(packing.receipt_date, invoice.receipt_date);
+  const receiptDate = formatDateForSheet_(new Date());
   const supplierDocNo = firstFilled_(invoice.invoice_no, packing.challan_no);
   const mrrNumber = firstFilled_(packing.mrr_no, invoice.mrr_no);
-  const supplierName = firstFilled_(packing.distributor, packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address);
+  const supplierName = firstFilled_(packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address);
 
   // Heuristic: Use packing.items if it has meaningful data, otherwise invoice.goods
   const packingItems = Array.isArray(packing.items) ? packing.items.filter(rowHasData_) : [];
@@ -557,46 +646,52 @@ function replaceHelperRows_(sheet, mrrNumber, helperRows) {
   
   const keyIndex = findColumnIndex_(headers, HELPER_SHEET_ALIASES.mrr_number);
   if (keyIndex === -1) throw new Error('HELPER SHEET is missing MRR Number column.');
-
   const normalizedKey = normalizeKey_(mrrNumber);
   const lastRow = sheet.getLastRow();
-  let deletedCount = 0;
+  const existingRows = lastRow >= 2 ? sheet.getRange(2, 1, lastRow - 1, headers.length).getValues() : [];
 
-  // Mass deletion logic for efficiency
-  if (lastRow >= 2 && normalizedKey) {
-    // Fetches entire column efficiently at once
-    const values = sheet.getRange(2, keyIndex + 1, lastRow - 1, 1).getDisplayValues();
-    
-    // Process backwards to delete accurately without messing up row loop iteration numbers
-    for (let i = values.length - 1; i >= 0; i--) {
-      if (normalizeKey_(values[i][0]) === normalizedKey) {
-        sheet.deleteRow(i + 2); // i is 0-indexed relative to row 2
-        deletedCount++;
-      }
+  const keptRows = [];
+  let deletedCount = 0;
+  for (let i = 0; i < existingRows.length; i++) {
+    if (normalizeKey_(existingRows[i][keyIndex]) === normalizedKey) {
+      deletedCount++;
+    } else {
+      keptRows.push(existingRows[i]);
     }
   }
 
-  const nextSerial = getNextSerialNumber_(sheet, headers);
+  const serialIndex = findColumnIndex_(headers, HELPER_SHEET_ALIASES.s_no);
+  let maxSerial = 0;
+  if (serialIndex !== -1) {
+    for (let i = 0; i < keptRows.length; i++) {
+      const n = Number(keptRows[i][serialIndex]);
+      if (!isNaN(n) && n > maxSerial) maxSerial = n;
+    }
+  }
+  const nextSerial = maxSerial + 1;
+
   const rowsWithSerial = helperRows.map(function(row, index) {
     return Object.assign({}, row, { s_no: nextSerial + index });
   });
 
-  if (!rowsWithSerial.length) {
-    return { deletedRows: deletedCount, insertedRows: 0, rowsWithSerial: [] };
-  }
-
   // Precompile reverse map for highly optimized header mapping
   const aliasReverseMap = buildReverseAliasMap_(HELPER_SHEET_ALIASES);
   const headerKeys = headers.map(h => aliasReverseMap[normalizeHeader_(h)]);
-
-  const values = rowsWithSerial.map(function(row) {
+  const insertedRows = rowsWithSerial.map(function(row) {
     return buildRowValuesFromHeaderKeys_(headerKeys, row);
   });
 
-  // Append everything efficiently in a single bulk operation
-  sheet.getRange(sheet.getLastRow() + 1, 1, values.length, headers.length).setValues(values);
-  
-  return { deletedRows: deletedCount, insertedRows: values.length, rowsWithSerial: rowsWithSerial };
+  const finalRows = keptRows.concat(insertedRows);
+
+  // Clear existing body once, then rewrite in one batch.
+  if (lastRow >= 2) {
+    sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
+  }
+  if (finalRows.length) {
+    sheet.getRange(2, 1, finalRows.length, headers.length).setValues(finalRows);
+  }
+
+  return { deletedRows: deletedCount, insertedRows: insertedRows.length, rowsWithSerial: rowsWithSerial };
 }
 
 /**
@@ -820,6 +915,123 @@ function getHeaders_(sheet) {
   return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
 }
 
+function authenticateUser_(ss, loginId, password) {
+  const normalizedLogin = normalizeKey_(loginId);
+  if (!normalizedLogin || !String(password || '').trim()) return null;
+
+  const usersSheet = getSheetOrThrow_(ss, DEFAULT_SHEETS.users);
+  const headers = getHeaders_(usersSheet);
+  const lastRow = usersSheet.getLastRow();
+  if (lastRow < 2 || !headers.length) return null;
+
+  const findUserCol = function(name) {
+    return headers.findIndex(function(h) {
+      return normalizeHeader_(h) === normalizeHeader_(name);
+    });
+  };
+
+  const userIndex = findUserCol('User');
+  const emailIndex = findUserCol('Email');
+  const passwordIndex = findUserCol('Password');
+  if (passwordIndex === -1 || (userIndex === -1 && emailIndex === -1)) {
+    throw new Error('Users sheet must have User/Email/Password columns.');
+  }
+
+  const data = usersSheet.getRange(2, 1, lastRow - 1, headers.length).getDisplayValues();
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var rowUser = userIndex === -1 ? '' : String(row[userIndex] || '').trim();
+    var rowEmail = emailIndex === -1 ? '' : String(row[emailIndex] || '').trim();
+    var rowPassword = String(row[passwordIndex] || '').trim();
+    var loginMatch = normalizeKey_(rowUser) === normalizedLogin || normalizeKey_(rowEmail) === normalizedLogin;
+    if (!loginMatch) continue;
+    if (rowPassword !== String(password || '').trim()) continue;
+    return {
+      name: rowUser || rowEmail,
+      email: rowEmail || loginId,
+      role: rowUser || ''
+    };
+  }
+  return null;
+}
+
+function approvePendingStage_(ss, params) {
+  const stage = normalizePendingStage_(params.stage);
+  const mrrNumber = String(params.mrrNumber || '').trim();
+  const userEmail = String(params.userEmail || '').trim();
+  const mrrSheetName = String(params.mrrSheetName || DEFAULT_SHEETS.mrrForm).trim();
+  const helperSheetName = String(params.helperSheetName || DEFAULT_SHEETS.helper).trim();
+
+  if (!mrrNumber) throw new Error('MRR Number is required.');
+  if (!userEmail) throw new Error('User email is required for approval.');
+
+  var timestampField = '';
+  var userField = '';
+  if (stage === 'pending_accounts_approval') {
+    timestampField = 'accounts_approval_timestamp';
+    userField = 'accounts_approval_useremail';
+  } else if (stage === 'pending_md_approval') {
+    timestampField = 'md_approval_timestamp';
+    userField = 'md_approval_useremail';
+  } else if (stage === 'pending_tally_posting') {
+    timestampField = 'pending_tally_posting_timestamp';
+    userField = 'pending_tally_posting_useremail';
+  } else {
+    throw new Error('Unsupported approval stage: ' + stage);
+  }
+
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM-yyyy HH:mm:ss');
+  const updates = {};
+  updates[timestampField] = stamp;
+  updates[userField] = userEmail;
+
+  const mrrSheet = getSheetOrThrow_(ss, mrrSheetName);
+  const helperSheet = getSheetOrThrow_(ss, helperSheetName);
+  const mrrUpdatedRows = updateApprovalColumnsByMrr_(mrrSheet, mrrNumber, MRR_FORM_ALIASES, updates);
+  const helperUpdatedRows = updateApprovalColumnsByMrr_(helperSheet, mrrNumber, HELPER_SHEET_ALIASES, updates);
+
+  return {
+    stage: stage,
+    mrr_number: mrrNumber,
+    timestamp: stamp,
+    user_email: userEmail,
+    mrr_updated_rows: mrrUpdatedRows,
+    helper_updated_rows: helperUpdatedRows
+  };
+}
+
+function updateApprovalColumnsByMrr_(sheet, mrrNumber, aliasMap, updates) {
+  const headers = getHeaders_(sheet);
+  if (!headers.length) return 0;
+  const mrrIndex = findColumnIndex_(headers, aliasMap.mrr_number);
+  if (mrrIndex === -1) return 0;
+
+  const updateIndices = {};
+  Object.keys(updates || {}).forEach(function(field) {
+    if (!aliasMap[field]) return;
+    const idx = findColumnIndex_(headers, aliasMap[field]);
+    if (idx !== -1) updateIndices[field] = idx;
+  });
+
+  if (!Object.keys(updateIndices).length) return 0;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getDisplayValues();
+  const target = normalizeKey_(mrrNumber);
+  let updated = 0;
+
+  for (var i = 0; i < data.length; i++) {
+    if (normalizeKey_(data[i][mrrIndex]) !== target) continue;
+    const rowNumber = i + 2;
+    Object.keys(updateIndices).forEach(function(field) {
+      sheet.getRange(rowNumber, updateIndices[field] + 1).setValue(safeSheetValue_(updates[field]));
+    });
+    updated++;
+  }
+  return updated;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                         Optimization & Data Mapping                        */
 /* -------------------------------------------------------------------------- */
@@ -887,6 +1099,34 @@ function findRowNumberByKey_(sheet, keyIndex, targetValue) {
 
 function normalizeAction_(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function normalizePendingStage_(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+
+  const key = raw.replace(/[^a-z]+/g, '_').replace(/^_+|_+$/g, '');
+  const compact = raw.replace(/[^a-z]+/g, '');
+
+  const map = {
+    pending_accounts_approval: 'pending_accounts_approval',
+    pending_account_approval: 'pending_accounts_approval',
+    pending_accounts: 'pending_accounts_approval',
+    pending_account: 'pending_accounts_approval',
+    pending_accounds_approval: 'pending_accounts_approval',
+    pending_accound_approval: 'pending_accounts_approval',
+    pending_md_approval: 'pending_md_approval',
+    pending_md: 'pending_md_approval',
+    pending_tally_posting: 'pending_tally_posting',
+    pending_tally: 'pending_tally_posting'
+  };
+
+  if (map[key]) return map[key];
+  if (compact.indexOf('tally') !== -1) return 'pending_tally_posting';
+  if (compact.indexOf('md') !== -1) return 'pending_md_approval';
+  if (compact.indexOf('account') !== -1 || compact.indexOf('accound') !== -1) return 'pending_accounts_approval';
+
+  return raw;
 }
 
 function normalizeHeader_(header) {
@@ -963,6 +1203,14 @@ function parseDateValue_(value) {
 
   const parsed = new Date(text);
   return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function formatDateForSheet_(value) {
+  try {
+    return Utilities.formatDate(parseDateValue_(value), Session.getScriptTimeZone(), 'dd-MM-yyyy');
+  } catch (e) {
+    return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM-yyyy');
+  }
 }
 
 function getFinancialYearLabel_(value) {

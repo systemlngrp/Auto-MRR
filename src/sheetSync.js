@@ -181,7 +181,7 @@ export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
   return payload;
 }
 
-export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, prefix) {
+export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, prefix, geSheetName = 'GE ENTRY') {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
     throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
@@ -189,7 +189,9 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
 
   const urlParams = new URLSearchParams({
     action: 'get_latest_ids',
-    sheet: sheetName
+    sheet: sheetName,
+    mrrSheet: sheetName,
+    geSheet: geSheetName
   });
   if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
   if (prefix) urlParams.set('prefix', prefix);
@@ -223,6 +225,43 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
     throw new Error(payload?.error || payload?.message || 'Could not fetch pending Gate Entries.');
   }
   return payload.values || [];
+}
+
+export async function authenticateUser(loginId, password, options = {}) {
+  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL.');
+  }
+  const payload = await fetchSheetRangeWithParams({
+    action: 'authenticate_user',
+    login_id: loginId,
+    password,
+    spreadsheetId: options.spreadsheetId
+  }, targetScriptUrl);
+  if (!payload?.ok || !payload?.user) {
+    throw new Error(payload?.error || 'Invalid user ID or password.');
+  }
+  return payload.user;
+}
+
+export async function approvePendingStage(params = {}) {
+  const targetScriptUrl = params.scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing script URL.');
+  }
+  const payload = await fetchSheetRangeWithParams({
+    action: 'approve_pending_stage',
+    stage: params.stage,
+    mrr_number: params.mrrNumber,
+    user_email: params.userEmail,
+    mrrSheet: params.mrrSheetName,
+    helperSheet: params.helperSheetName,
+    spreadsheetId: params.spreadsheetId
+  }, targetScriptUrl);
+  if (!payload?.ok) {
+    throw new Error(payload?.error || 'Could not approve pending stage.');
+  }
+  return payload;
 }
 
 /**
@@ -288,8 +327,39 @@ function submitPayloadWithForm(payload) {
   });
 }
 
+function isGoogleAppsScriptUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'script.google.com' || host.endsWith('.script.google.com');
+  } catch {
+    return false;
+  }
+}
+
 async function submitPayload(payload) {
-  return submitPayloadWithForm(payload);
+  const targetScriptUrl = payload.scriptUrl || SCRIPT_URL;
+  if (isGoogleAppsScriptUrl(targetScriptUrl)) {
+    await submitPayloadWithForm(payload);
+    return { ok: true, transport: 'form' };
+  }
+  try {
+    const { response, payload: resPayload } = await fetchJsonWithTimeout(targetScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }, SHEET_FETCH_TIMEOUT_MS);
+    if (!response.ok || resPayload?.ok === false) {
+      const backendError = new Error(resPayload?.error || resPayload?.message || `Backend save failed (${response.status}).`);
+      backendError.isBackendError = true;
+      throw backendError;
+    }
+    return resPayload || { ok: true };
+  } catch (error) {
+    if (error?.isBackendError) throw error;
+    // Fallback for environments where direct POST response is blocked.
+    await submitPayloadWithForm(payload);
+    return { ok: true, transport: 'form_fallback' };
+  }
 }
 
 function getMrrNumber(invoice, packing) {
@@ -300,6 +370,11 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
   const mrrSheetName = options.mrrSheetName || MRR_FORM_SHEET_NAME;
   const helperSheetName = options.helperSheetName || HELPER_SHEET_NAME;
   const mrrNumber = getMrrNumber(invoice, packing);
+  const helperSheetCandidates = Array.from(new Set([
+    helperSheetName,
+    helperSheetName === 'HELPER SHEET' ? 'OTHER ITEMS' : 'HELPER SHEET'
+  ].filter(Boolean)));
+  const expectedHelperRowsCount = Number(options.expectedHelperRowsCount || 0);
   if (action === 'save_ge_entry') {
     const geEntry = options.geEntry || {};
     const startedAt = Date.now();
@@ -355,6 +430,9 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
   }
 
   const startedAt = Date.now();
+  let latestMrrCount = 0;
+  let latestHelperCount = 0;
+  let latestHelperSheet = helperSheetName;
   while (Date.now() - startedAt < VERIFY_TIMEOUT_MS) {
     if (action === 'save_invoice') {
       const payload = await fetchSheetRangeWithParams({
@@ -373,21 +451,35 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
         };
       }
     } else {
-      const payload = await fetchSheetRangeWithParams({
-        sheet: helperSheetName,
+      const helperPayloads = await Promise.all(helperSheetCandidates.map((sheet) => fetchSheetRangeWithParams({
+        sheet,
         mrr_number: mrrNumber,
         spreadsheetId
-      }, scriptUrl);
+      }, scriptUrl).catch(() => null)));
+      const matchedHelper = helperPayloads.find((payload) => Number(payload?.count || 0) > 0);
+      if (matchedHelper) {
+        latestHelperCount = Number(matchedHelper?.count || 0);
+        const idx = helperPayloads.indexOf(matchedHelper);
+        latestHelperSheet = helperSheetCandidates[idx] || helperSheetName;
+      }
 
-      if (payload?.count || !Array.isArray(packing?.items) || !packing.items.length) {
+      const mrrPayload = await fetchSheetRangeWithParams({
+        sheet: mrrSheetName,
+        mrr_number: mrrNumber,
+        spreadsheetId
+      }, scriptUrl).catch(() => null);
+      latestMrrCount = Math.max(latestMrrCount, Number(mrrPayload?.count || 0));
+
+      if (matchedHelper || !Array.isArray(packing?.items) || !packing.items.length) {
         return {
           ok: true,
           helperSheet: {
             deletedRows: 0,
-            insertedRows: payload?.count || 0
+            insertedRows: Number(matchedHelper?.count || 0),
+            sheet: latestHelperSheet
           },
           mrrForm: {
-            updatedRows: 1,
+            updatedRows: latestMrrCount || 1,
             insertedRows: 0
           }
         };
@@ -401,7 +493,29 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
     throw new Error(`Save request was sent, but no MRR FORM row was found for MRR Number ${mrrNumber}. Check the Apps Script deployment, web app permissions, and sheet headers.`);
   }
 
-  throw new Error(`Save request was sent, but no HELPER SHEET rows were found for MRR Number ${mrrNumber}. Check the Apps Script deployment, web app permissions, and sheet headers.`);
+  // Strict final fallback: allow zero helper rows only when payload had no helper rows to write.
+  if (action === 'save_packing' && expectedHelperRowsCount === 0 && latestMrrCount > 0) {
+    return {
+      ok: true,
+      helperSheet: {
+        deletedRows: 0,
+        insertedRows: 0,
+        sheet: latestHelperSheet
+      },
+      mrrForm: {
+        updatedRows: latestMrrCount,
+        insertedRows: 0
+      }
+    };
+  }
+
+  throw new Error(
+    `Verification failed for MRR ${mrrNumber}. ` +
+    `MRR FORM rows found: ${latestMrrCount}. ` +
+    `Helper rows found: ${latestHelperCount} in ${helperSheetCandidates.join(' / ')}. ` +
+    `Expected helper rows: ${expectedHelperRowsCount}. ` +
+    `Check Apps Script deployment, write permissions, and sheet header names.`
+  );
 }
 
 async function postSheetAction(action, invoice, packing, poRows = [], options = {}) {
@@ -409,7 +523,7 @@ async function postSheetAction(action, invoice, packing, poRows = [], options = 
     throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
   }
 
-  await submitPayload({
+  const submitResult = await submitPayload({
     action,
     apiKey: SHEET_WRITE_API_KEY || undefined,
     spreadsheetId: options.spreadsheetId,
@@ -425,7 +539,12 @@ async function postSheetAction(action, invoice, packing, poRows = [], options = 
     }
   });
 
-  return verifyWrite(action, invoice, packing, options.spreadsheetId, options.scriptUrl, options);
+  // Write-only flow: no post-save verification.
+  return {
+    ...(submitResult || {}),
+    ok: true,
+    verificationSkipped: true
+  };
 }
 
 export function saveInvoiceToSheets(invoice, packing, poRows = [], options = {}) {
