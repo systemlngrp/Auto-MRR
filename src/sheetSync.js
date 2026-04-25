@@ -4,14 +4,25 @@ export const MRR_FORM_SHEET_NAME = import.meta.env.VITE_MRR_FORM_SHEET_NAME || '
 export const HELPER_SHEET_NAME = import.meta.env.VITE_HELPER_SHEET_NAME || 'HELPER SHEET';
 export const SHEET_WRITE_API_KEY = import.meta.env.VITE_SHEET_WRITE_API_KEY || '';
 
-const n = (value) => Number(value) || 0;
+const n = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const text = String(value ?? '').trim();
+  if (!text) return 0;
+  const cleaned = text.replace(/,/g, '').replace(/[^\d.-]/g, '');
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 const round2 = (value) => Number(n(value).toFixed(2));
 const firstFilled = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') ?? '';
 const rowHasData = (row = {}) => {
   const skipValues = ['CM', 'KGS', '0', '0.00'];
+  const keyFields = ['helper_id', 'other_child_id', 's_no', 'sort_no', 'reel_no', 'supplier_reel_no', 'po_no', 'party_order', 'po_details', 'erp_code', 'reel_details', 'item_name', 'description'];
+  for (const key of keyFields) {
+    if (String(row?.[key] ?? '').trim() !== '') return true;
+  }
   return Object.entries(row).some(([key, value]) => {
     // Skip internal/meta fields and unit fields with default values
-    if (['sno', 's_no', 'unit', 'size_unit', 'weight_unit', 'mrr_no', 'ge_no'].includes(key)) return false;
+    if (['sno', 's_no', 'unit', 'size_unit', 'weight_unit', 'mrr_no', 'ge_no', 'helper_id', 'other_child_id', 'mrr_form_id', 'other_id'].includes(key)) return false;
     const val = String(value ?? '').trim();
     return val !== '' && !skipValues.includes(val);
   });
@@ -20,7 +31,52 @@ const normalizeText = (value) => String(value ?? '').trim().toLowerCase();
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const VERIFY_TIMEOUT_MS = 45000;
 const VERIFY_INTERVAL_MS = 2000;
-const SHEET_FETCH_TIMEOUT_MS = 20000;
+const SHEET_FETCH_TIMEOUT_MS = 45000;
+const STRICT_MRR_FORM_HEADERS = [
+  'Mrr form Id',
+  'Date',
+  'Dt. of Receipt',
+  'GE Entry',
+  'MRR No',
+  'Sup Doc No',
+  'Truck Number',
+  'Invoice Ttl Weight (Kgs)',
+  'Actual MRR Ttl Weight (Kgs)',
+  'Required Reel',
+  'Rows Added',
+  'SUPPLIER',
+  'INVOICE BASIC VALUE',
+  'MRR BASIC VALUE',
+  'E-Way Bill No',
+  'E-Way Date',
+  'L.R No',
+  'Plant Head Approval',
+  'Plant Head Approval Timestamp',
+  'Accounts Approval Timestamp',
+  'Accounts Approval Useremail',
+  'MD Approval Timestamp',
+  'MD Approval Useremail',
+  'Pending Tally Posting Timesyamp',
+  'Pending Tally Posting Useremail',
+  'Plant Head Approval User Email',
+  'Accounts Approval',
+  'MD Approval',
+  'S.No',
+  'Description',
+  'HSN',
+  'Sort',
+  'Party Order',
+  'GSM',
+  'Size',
+  'Unit',
+  'Reels',
+  'Weight',
+  'Unit',
+  'Rate',
+  'Amount',
+  'Insurance',
+  'Round Off'
+];
 
 async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -36,6 +92,74 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_T
     throw error;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function normalizeStrictHeader(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function formatHeaderList(values = [], limit = 12) {
+  return values.slice(0, limit).map((v) => `"${v}"`).join(', ');
+}
+
+async function validateStrictMrrFormHeaders(spreadsheetId, scriptUrl, mrrSheetName) {
+  const payload = await fetchSheetRange(mrrSheetName, spreadsheetId, scriptUrl);
+  const rows = Array.isArray(payload?.values) ? payload.values : [];
+  const headers = Array.isArray(rows[0]) ? rows[0].map((h) => String(h || '').trim()) : [];
+  if (!headers.length) {
+    throw new Error(`MRR FORM header validation failed: sheet "${mrrSheetName}" is empty or has no header row.`);
+  }
+
+  const actualNorm = headers.map(normalizeStrictHeader);
+  const requiredNorm = STRICT_MRR_FORM_HEADERS.map(normalizeStrictHeader);
+  const actualCount = actualNorm.reduce((map, h) => {
+    map[h] = (map[h] || 0) + 1;
+    return map;
+  }, {});
+  const requiredCount = requiredNorm.reduce((map, h) => {
+    map[h] = (map[h] || 0) + 1;
+    return map;
+  }, {});
+
+  const missingHeaders = [];
+  for (const required of STRICT_MRR_FORM_HEADERS) {
+    const key = normalizeStrictHeader(required);
+    if ((actualCount[key] || 0) >= (requiredCount[key] || 0)) continue;
+    if (!missingHeaders.includes(required)) missingHeaders.push(required);
+  }
+  if (missingHeaders.length) {
+    throw new Error(
+      `MRR FORM header validation failed. Missing required columns: ${missingHeaders.join(', ')}. ` +
+      `Please update "${mrrSheetName}" headers exactly and retry save.`
+    );
+  }
+
+  let cursor = 0;
+  let orderOk = true;
+  for (const key of requiredNorm) {
+    let foundAt = -1;
+    for (let i = cursor; i < actualNorm.length; i += 1) {
+      if (actualNorm[i] === key) {
+        foundAt = i;
+        break;
+      }
+    }
+    if (foundAt === -1) {
+      orderOk = false;
+      break;
+    }
+    cursor = foundAt + 1;
+  }
+  if (!orderOk) {
+    throw new Error(
+      `MRR FORM header order mismatch. Expected sequence starts with: ${formatHeaderList(STRICT_MRR_FORM_HEADERS)}. ` +
+      `Current headers start with: ${formatHeaderList(headers)}. ` +
+      `Please align column order and retry save.`
+    );
   }
 }
 
@@ -71,24 +195,65 @@ export function buildHelperRows(invoice, packing, poRows = []) {
   const receiptDate = firstFilled(packing.receipt_date, invoice.receipt_date);
   const supplierDocNo = firstFilled(invoice.invoice_no, packing.challan_no);
   const mrrNumber = firstFilled(packing.mrr_no, invoice.mrr_no);
+  const geNumber = firstFilled(packing.ge_no, invoice.ge_no);
   const supplierName = firstFilled(packing.distributor, packing.buyer?.name_address, invoice.bill_to?.name_address);
+  const normalizeDocKey = (value) => String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const normalizedTargetMrr = normalizeDocKey(mrrNumber);
+  const normalizedTargetGe = normalizeDocKey(geNumber);
+  const isParentSummaryRow = (row = {}) => {
+    const desc = String(firstFilled(row.description, row.item_name, row.reel_details) || '').trim().toUpperCase();
+    return desc === 'PARENT SUMMARY';
+  };
+  const rowBelongsToCurrentDoc = (row = {}) => {
+    const rowMrr = normalizeDocKey(firstFilled(row.mrr_no, row.mrr_number));
+    const rowGe = normalizeDocKey(firstFilled(row.ge_no, row.ge_entry));
+    if (rowMrr && normalizedTargetMrr && rowMrr !== normalizedTargetMrr) return false;
+    if (rowGe && normalizedTargetGe && rowGe !== normalizedTargetGe) return false;
+    return true;
+  };
+  const buildRowIdentity = (row = {}) => [
+    normalizeDocKey(firstFilled(row.s_no, row.sort_no)),
+    normalizeDocKey(firstFilled(row.po_no, row.party_order)),
+    normalizeDocKey(firstFilled(row.reel_no, row.our_reel_number)),
+    normalizeDocKey(row.supplier_reel_no),
+    normalizeDocKey(firstFilled(row.reel_details, row.item_name, row.description)),
+    normalizeDocKey(row.erp_code),
+    normalizeDocKey(row.gsm),
+    normalizeDocKey(row.size),
+    normalizeDocKey(firstFilled(row.net_wt, row.weight)),
+    normalizeDocKey(row.rate)
+  ].join('|');
 
   // Heuristic: Use packing.items if it has meaningful data, otherwise invoice.goods
-  const packingRows = Array.isArray(packing.items) ? packing.items.filter(rowHasData) : [];
-  const invoiceRows = Array.isArray(invoice.goods) ? invoice.goods.filter(rowHasData) : [];
+  const packingRows = Array.isArray(packing.items) ? packing.items.filter((row) =>
+    rowHasData(row) && rowBelongsToCurrentDoc(row) && !isParentSummaryRow(row)
+  ) : [];
+  const invoiceRows = Array.isArray(invoice.goods) ? invoice.goods.filter((row) =>
+    rowHasData(row) && rowBelongsToCurrentDoc(row) && !isParentSummaryRow(row)
+  ) : [];
   
   const sourceItems = packingRows.length > 0 ? packingRows : invoiceRows;
+  const seenIdentity = new Set();
+  const dedupedItems = sourceItems.filter((row) => {
+    const identity = buildRowIdentity(row);
+    if (identity && seenIdentity.has(identity)) return false;
+    if (identity) seenIdentity.add(identity);
+    return true;
+  });
 
-  return sourceItems.map((row, index) => {
+  return dedupedItems.map((row, index) => {
       const poNo = row.po_no || row.party_order;
       const po = findMatchingPoRow({ ...row, po_no: poNo }, poRows);
       const weight = round2(row.net_wt || row.weight);
       const rate = round2(row.rate);
       return {
-        s_no: index + 1,
+        helper_id: firstFilled(row.helper_id, row.other_child_id),
+        mrr_form_id: firstFilled(row.mrr_form_id, invoice.mrr_form_id, packing.mrr_form_id),
+        s_no: firstFilled(row.s_no, row.sort_no, index + 1),
         mrr_number: firstFilled(row.mrr_no, mrrNumber),
         po_details: firstFilled(row.po_details, po?.po_details),
         po_no: firstFilled(poNo, po?.po_no),
+        party_order: firstFilled(row.party_order, row.po_no, poNo, po?.po_no),
         po_date: firstFilled(po?.date, packing.order_date, invoice.date),
         supplier: firstFilled(row.supplier, po?.supplier, supplierName),
         our_reel_number: firstFilled(row.reel_no, row.reels),
@@ -113,6 +278,8 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
   const helperRows = buildHelperRows(invoice, packing, poRows);
   const grossAmount = round2(invoice.totals?.gross_amount || invoice.goods?.reduce((sum, row) => sum + (n(row.amount) || n(row.weight) * n(row.rate)), 0));
   const taxableAmount = round2(invoice.totals?.taxable_gst || (grossAmount + n(invoice.totals?.insurance)));
+  const insurance = firstFilled(invoice.totals?.insurance, '');
+  const roundOff = firstFilled(invoice.totals?.round_off, '');
   const invoiceWeight = round2(invoice.goods?.reduce((sum, row) => sum + n(row.weight), 0));
   const invoiceReels = round2(invoice.goods?.reduce((sum, row) => sum + n(row.reels), 0));
   const helperValue = round2(helperRows.reduce((sum, row) => sum + n(row.value), 0));
@@ -132,12 +299,14 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
     sup_doc_no: firstFilled(invoice.invoice_no, packing.challan_no),
     truck_number: firstFilled(invoice.vehicle_no, packing.truck_no),
     invoice_ttl_weight_kgs: invoiceWeight,
-    actual_mrr_ttl_weight_kgs: round2(firstFilled(invoice.actual_weight, packing.actual_total, packing.total_weight, helperWeight)),
-    required_reel: firstFilled(invoiceReels || '', packing.total_reels, helperRows.length),
+    actual_mrr_ttl_weight_kgs: round2(firstFilled(invoice.actual_mrr_weight, packing.actual_total, packing.total_weight, helperWeight)),
+    required_reel: firstFilled(packing.total_reels, helperRows.length, invoiceReels || ''),
     rows_added: helperRows.length,
     supplier: supplierName,
     invoice_basic_value: taxableAmount,
-    mrr_basic_value: helperValue
+    mrr_basic_value: helperValue,
+    insurance: insurance === '' ? '' : round2(insurance),
+    round_off: roundOff === '' ? '' : round2(roundOff)
   };
 }
 
@@ -207,7 +376,7 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
   };
 }
 
-export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptUrl) {
+export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptUrl, helperSheetName) {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
     throw new Error('Missing script URL.');
@@ -217,6 +386,7 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
     action: 'get_pending_ge',
     mrrSheet: mrrSheetName
   });
+  if (helperSheetName) urlParams.set('helperSheet', helperSheetName);
   if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
@@ -254,6 +424,9 @@ export async function approvePendingStage(params = {}) {
     stage: params.stage,
     mrr_number: params.mrrNumber,
     user_email: params.userEmail,
+    debit_note: params.debitNote,
+    debit_note_date: params.debitNoteDate,
+    debit_note_amount: params.debitNoteAmount,
     mrrSheet: params.mrrSheetName,
     helperSheet: params.helperSheetName,
     spreadsheetId: params.spreadsheetId
@@ -265,11 +438,13 @@ export async function approvePendingStage(params = {}) {
 }
 
 /**
- * Fetch a list of unique suppliers from the PO DETAILS sheet.
+ * Fetch a list of unique suppliers from a PO sheet.
+ * Defaults to `PO DETAILS` for backward compatibility.
  */
-export async function fetchUniqueSuppliers(firm) {
+export async function fetchUniqueSuppliers(firm, sheetName = 'PO DETAILS') {
   if (!firm?.scriptUrl) throw new Error(`Script URL missing for firm ${firm?.name}`);
-  const url = `${firm.scriptUrl}?action=get_suppliers&sheet=PO DETAILS&spreadsheetId=${firm.spreadsheetId || ''}`;
+  const targetSheet = String(sheetName || 'PO DETAILS').trim() || 'PO DETAILS';
+  const url = `${firm.scriptUrl}?action=get_suppliers&sheet=${encodeURIComponent(targetSheet)}&spreadsheetId=${firm.spreadsheetId || ''}`;
   const { response: res, payload: data } = await fetchJsonWithTimeout(url);
   if (!data?.ok) throw new Error(data?.error || `Failed to fetch suppliers for ${firm.name}.`);
   return data.values || [];
@@ -295,6 +470,11 @@ function submitPayloadWithForm(payload) {
       input.name = 'payload';
       input.value = JSON.stringify(payload);
       form.appendChild(input);
+      const transport = document.createElement('input');
+      transport.type = 'hidden';
+      transport.name = 'transport';
+      transport.value = 'iframe_form';
+      form.appendChild(transport);
 
       const cleanup = () => {
         setTimeout(() => {
@@ -302,29 +482,51 @@ function submitPayloadWithForm(payload) {
           form.remove();
         }, 500);
       };
+      let settled = false;
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn(value);
+      };
 
       iframe.addEventListener('load', () => {
-        cleanup();
-        resolve();
+        finish(resolve);
       }, { once: true });
 
       iframe.addEventListener('error', () => {
-        cleanup();
-        reject(new Error('Could not submit data to Google Sheets.'));
+        finish(reject, new Error('Could not submit data to Google Sheets.'));
       }, { once: true });
 
       document.body.appendChild(iframe);
       document.body.appendChild(form);
       form.submit();
-
+      // Give Apps Script enough time to acquire lock and finish writes.
       setTimeout(() => {
-        cleanup();
-        resolve();
-      }, 2500);
+        finish(reject, new Error('Save request timed out. Please retry.'));
+      }, 45000);
     } catch (error) {
       reject(error);
     }
   });
+}
+
+async function submitPayloadNoCors(payload) {
+  const targetScriptUrl = payload.scriptUrl || SCRIPT_URL;
+  const formBody = new URLSearchParams();
+  formBody.set('payload', JSON.stringify(payload));
+  formBody.set('transport', 'fetch_no_cors');
+
+  await fetch(targetScriptUrl, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: formBody.toString()
+  });
+
+  return { ok: true, transport: 'fetch_no_cors' };
 }
 
 function isGoogleAppsScriptUrl(url) {
@@ -339,8 +541,12 @@ function isGoogleAppsScriptUrl(url) {
 async function submitPayload(payload) {
   const targetScriptUrl = payload.scriptUrl || SCRIPT_URL;
   if (isGoogleAppsScriptUrl(targetScriptUrl)) {
-    await submitPayloadWithForm(payload);
-    return { ok: true, transport: 'form' };
+    try {
+      return await submitPayloadNoCors(payload);
+    } catch (noCorsError) {
+      await submitPayloadWithForm(payload);
+      return { ok: true, transport: 'form_fallback' };
+    }
   }
   try {
     const { response, payload: resPayload } = await fetchJsonWithTimeout(targetScriptUrl, {
@@ -370,10 +576,7 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
   const mrrSheetName = options.mrrSheetName || MRR_FORM_SHEET_NAME;
   const helperSheetName = options.helperSheetName || HELPER_SHEET_NAME;
   const mrrNumber = getMrrNumber(invoice, packing);
-  const helperSheetCandidates = Array.from(new Set([
-    helperSheetName,
-    helperSheetName === 'HELPER SHEET' ? 'OTHER ITEMS' : 'HELPER SHEET'
-  ].filter(Boolean)));
+  const helperSheetCandidates = [helperSheetName].filter(Boolean);
   const expectedHelperRowsCount = Number(options.expectedHelperRowsCount || 0);
   if (action === 'save_ge_entry') {
     const geEntry = options.geEntry || {};
@@ -441,11 +644,11 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
         spreadsheetId
       }, scriptUrl);
 
-      if (payload?.count) {
+      if (Number(payload?.count || 0) > 0) {
         return {
           ok: true,
           mrrForm: {
-            updatedRows: payload.count,
+            updatedRows: Number(payload.count || 0),
             insertedRows: 0
           }
         };
@@ -470,16 +673,21 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
       }, scriptUrl).catch(() => null);
       latestMrrCount = Math.max(latestMrrCount, Number(mrrPayload?.count || 0));
 
-      if (matchedHelper || !Array.isArray(packing?.items) || !packing.items.length) {
+      const hasMrrRow = latestMrrCount > 0;
+      const helperRequirementMet = expectedHelperRowsCount > 0
+        ? latestHelperCount > 0
+        : true;
+
+      if (hasMrrRow && helperRequirementMet) {
         return {
           ok: true,
           helperSheet: {
             deletedRows: 0,
-            insertedRows: Number(matchedHelper?.count || 0),
+            insertedRows: latestHelperCount,
             sheet: latestHelperSheet
           },
           mrrForm: {
-            updatedRows: latestMrrCount || 1,
+            updatedRows: latestMrrCount,
             insertedRows: 0
           }
         };
@@ -511,17 +719,75 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
 
   throw new Error(
     `Verification failed for MRR ${mrrNumber}. ` +
-    `MRR FORM rows found: ${latestMrrCount}. ` +
+    `${mrrSheetName} rows found: ${latestMrrCount}. ` +
     `Helper rows found: ${latestHelperCount} in ${helperSheetCandidates.join(' / ')}. ` +
     `Expected helper rows: ${expectedHelperRowsCount}. ` +
     `Check Apps Script deployment, write permissions, and sheet header names.`
   );
 }
 
+async function fetchSaveDiagnostics(spreadsheetId, scriptUrl, options = {}, mrrNumber = '') {
+  try {
+    const payload = await fetchSheetRangeWithParams({
+      action: 'diagnose_save',
+      spreadsheetId,
+      mrrSheet: options.mrrSheetName || MRR_FORM_SHEET_NAME,
+      helperSheet: options.helperSheetName || HELPER_SHEET_NAME,
+      mrr_number: mrrNumber || ''
+    }, scriptUrl);
+    return payload || null;
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.message || String(error)
+    };
+  }
+}
+
+function canAcceptSaveFromDiagnostics(action, diagnostics, expectedHelperRowsCount = 0) {
+  const mrrCount = Number(diagnostics?.countsForMrr?.mrr || 0);
+  const helperCount = Number(diagnostics?.countsForMrr?.helper || 0);
+  if (action === 'save_invoice') {
+    return mrrCount > 0;
+  }
+  if (action === 'save_packing') {
+    if (mrrCount <= 0) return false;
+    if (expectedHelperRowsCount > 0) return helperCount > 0;
+    return true;
+  }
+  return false;
+}
+
 async function postSheetAction(action, invoice, packing, poRows = [], options = {}) {
   if (!SCRIPT_URL) {
     throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
   }
+
+  const requestId = `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const mrrSheetName = options.mrrSheetName || MRR_FORM_SHEET_NAME;
+  const helperSheetName = options.helperSheetName || HELPER_SHEET_NAME;
+  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  const expectedHelperRowsCount = action === 'save_packing'
+    ? buildHelperRows(invoice, packing, poRows).length
+    : 0;
+  const shouldVerify = options.verifyWrite !== false;
+  const shouldValidateMrrHeaders = options.enforceStrictMrrHeaders !== false;
+
+  if (shouldValidateMrrHeaders && action !== 'save_ge_entry') {
+    await validateStrictMrrFormHeaders(options.spreadsheetId, targetScriptUrl, mrrSheetName);
+  }
+
+  console.log('[SheetSync] Save request start', {
+    requestId,
+    action,
+    mrrNumber: getMrrNumber(invoice, packing),
+    geNo: firstFilled(invoice?.ge_no, packing?.ge_no, options?.geEntry?.ge_no),
+    spreadsheetId: options.spreadsheetId || '',
+    mrrSheetName,
+    helperSheetName,
+    expectedHelperRowsCount,
+    scriptUrl: targetScriptUrl
+  });
 
   const submitResult = await submitPayload({
     action,
@@ -532,18 +798,99 @@ async function postSheetAction(action, invoice, packing, poRows = [], options = 
     packing,
     poRows,
     geEntry: options.geEntry,
+    requestId,
     options: {
       poSheetName: options.poSheetName || PO_SHEET_NAME,
-      mrrSheetName: options.mrrSheetName || MRR_FORM_SHEET_NAME,
-      helperSheetName: options.helperSheetName || HELPER_SHEET_NAME
+      mrrSheetName,
+      helperSheetName,
+      mode: options.mode || ''
     }
   });
 
-  // Write-only flow: no post-save verification.
+  console.log('[SheetSync] Save submit ack', {
+    requestId,
+    action,
+    transport: submitResult?.transport || 'fetch',
+    backendRequestId: submitResult?.requestId || ''
+  });
+
+  if (!shouldVerify) {
+    return {
+      ...(submitResult || {}),
+      ok: true,
+      requestId,
+      verificationSkipped: true
+    };
+  }
+
+  let verificationResult;
+  try {
+    verificationResult = await verifyWrite(
+      action,
+      invoice,
+      packing,
+      options.spreadsheetId,
+      targetScriptUrl,
+      {
+        mrrSheetName,
+        helperSheetName,
+        geEntry: options.geEntry,
+        expectedHelperRowsCount
+      }
+    );
+  } catch (verifyError) {
+    const diagnostics = await fetchSaveDiagnostics(
+      options.spreadsheetId,
+      targetScriptUrl,
+      { mrrSheetName, helperSheetName },
+      getMrrNumber(invoice, packing)
+    );
+    console.error('[SheetSync] Verification failed diagnostics', {
+      requestId,
+      action,
+      error: verifyError?.message || String(verifyError),
+      diagnostics
+    });
+    if (canAcceptSaveFromDiagnostics(action, diagnostics, expectedHelperRowsCount)) {
+      const warning = `Save completed, but verification timed out. (Detected mrrCount=${Number(diagnostics?.countsForMrr?.mrr || 0)}, helperCount=${Number(diagnostics?.countsForMrr?.helper || 0)})`;
+      return {
+        ...(submitResult || {}),
+        ok: true,
+        requestId,
+        verificationSkipped: false,
+        verificationRecovered: true,
+        warning,
+        mrrForm: {
+          updatedRows: Number(diagnostics?.countsForMrr?.mrr || 0),
+          insertedRows: 0
+        },
+        helperSheet: {
+          insertedRows: Number(diagnostics?.countsForMrr?.helper || 0),
+          deletedRows: 0,
+          sheet: helperSheetName
+        }
+      };
+    }
+    const compactDiag = diagnostics
+      ? ` | Diagnose -> mrrExists:${!!diagnostics?.mrrSheet?.exists}, helperExists:${!!diagnostics?.helperSheet?.exists}, mrrKey:${!!diagnostics?.mrrSheet?.keyColumnFound}, helperKey:${!!diagnostics?.helperSheet?.keyColumnFound}, mrrCount:${Number(diagnostics?.countsForMrr?.mrr || 0)}, helperCount:${Number(diagnostics?.countsForMrr?.helper || 0)}, missingMRR:[${(diagnostics?.missing?.mrrRequired || []).join(', ')}], missingHELPER:[${(diagnostics?.missing?.helperRequired || []).join(', ')}]`
+      : '';
+    throw new Error(`${verifyError?.message || 'Verification failed.'}${compactDiag}`);
+  }
+
+  console.log('[SheetSync] Save verification complete', {
+    requestId,
+    action,
+    mrrVerifiedRows: Number(verificationResult?.mrrForm?.updatedRows || 0),
+    helperVerifiedRows: Number(verificationResult?.helperSheet?.insertedRows || 0),
+    verificationPending: !!verificationResult?.pendingVerification
+  });
+
   return {
     ...(submitResult || {}),
+    ...(verificationResult || {}),
     ok: true,
-    verificationSkipped: true
+    requestId,
+    verificationSkipped: false
   };
 }
 
