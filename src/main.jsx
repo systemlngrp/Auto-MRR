@@ -2706,6 +2706,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const [allApprovalsStage, setAllApprovalsStage] = useState('pending_plant_head_approval');
   const [allApprovalsFirmFilter, setAllApprovalsFirmFilter] = useState('all');
   const [selectedGroupedApprovalKeys, setSelectedGroupedApprovalKeys] = useState({});
+  const [groupedAccountsApprovalDrafts, setGroupedAccountsApprovalDrafts] = useState({});
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -2779,6 +2780,46 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     String(row?.mrr_number || row?.mrr_no || '').trim(),
     String(row?.ge_no || row?.ge_entry || '').trim()
   ].join('|');
+  const getGroupedApprovalInvoiceWeight = (row) => firstFilled(
+    row?.actual_weight,
+    row?.invoice_ttl_weight_kgs,
+    row?.invoice_weight,
+    row?.inv_weight,
+    ''
+  );
+  const getGroupedApprovalActualWeight = (row) => firstFilled(
+    row?.actual_mrr_weight,
+    row?.actual_mrr_ttl_weight_kgs,
+    row?.packing_weight,
+    row?.actual_total,
+    ''
+  );
+  const getGroupedApprovalWeightDifference = (row) => Math.abs(n(getGroupedApprovalInvoiceWeight(row)) - n(getGroupedApprovalActualWeight(row)));
+  const isGroupedApprovalDebitNoteRequired = (row) => String(row?.pending_stage || '').trim() === 'pending_accounts_approval' && getGroupedApprovalWeightDifference(row) > 40;
+  const getGroupedApprovalDraft = (row) => {
+    const rowKey = getGroupedApprovalRowKey(row);
+    const existing = groupedAccountsApprovalDrafts[rowKey] || {};
+    return {
+      debit_note: existing.debit_note ?? String(row?.debit_note || '').trim(),
+      debit_note_date: existing.debit_note_date ?? String(row?.debit_note_date || '').trim(),
+      debit_note_amount: existing.debit_note_amount ?? String(row?.debit_note_amount || '').trim()
+    };
+  };
+  const setGroupedApprovalDraftField = (row, field, value) => {
+    const rowKey = getGroupedApprovalRowKey(row);
+    setGroupedAccountsApprovalDrafts((prev) => {
+      const current = prev[rowKey] || {};
+      return {
+        ...prev,
+        [rowKey]: {
+          debit_note: current.debit_note ?? String(row?.debit_note || '').trim(),
+          debit_note_date: current.debit_note_date ?? String(row?.debit_note_date || '').trim(),
+          debit_note_amount: current.debit_note_amount ?? String(row?.debit_note_amount || '').trim(),
+          [field]: value
+        }
+      };
+    });
+  };
 
   const getGroupedApprovalTotalQty = (row) => firstFilled(
     row?.required_reel,
@@ -3704,11 +3745,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                     const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
                                     const targetType = ge.mrr_type || tempType;
                                     if (!targetFirm) throw new Error('Firm context missing for approval.');
+                                    const approvalDraft = getGroupedApprovalDraft(ge);
+                                    if (isGroupedApprovalDebitNoteRequired(ge)) {
+                                      if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
+                                        throw new Error(`Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      }
+                                    }
                                     setIsApprovingPending(true);
                                     await approvePendingStage({
                                       stage: ge.pending_stage || activeStage.key,
                                       mrrNumber: ge.mrr_number || ge.mrr_no || '',
                                       userEmail: currentUser?.email || '',
+                                      debitNote: String(approvalDraft.debit_note || '').trim(),
+                                      debitNoteDate: String(approvalDraft.debit_note_date || '').trim(),
+                                      debitNoteAmount: String(approvalDraft.debit_note_amount || '').trim(),
                                       mrrSheetName: getSheetName(targetFirm.mrr, targetType),
                                       helperSheetName: getSheetName(targetFirm.helper, targetType),
                                       spreadsheetId: targetFirm?.spreadsheetId,
@@ -3726,6 +3776,33 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                 {isApprovingPending ? 'APPROVING...' : 'APPROVE'}
                               </button>
                             </div>
+                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' ? (
+                              <div style={{ marginTop: '8px', display: 'grid', gap: '6px', minWidth: '240px', textAlign: 'left' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 800, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151' }}>
+                                  Diff: {formatDecimal2(getGroupedApprovalWeightDifference(ge)) || '0.00'} KG
+                                </div>
+                                <input
+                                  value={getGroupedApprovalDraft(ge).debit_note}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note', e.target.value)}
+                                  placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note *' : 'Debit Note'}
+                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                />
+                                <input
+                                  type="date"
+                                  value={getGroupedApprovalDraft(ge).debit_note_date}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_date', e.target.value)}
+                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={getGroupedApprovalDraft(ge).debit_note_amount}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_amount', e.target.value)}
+                                  placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note Amount *' : 'Debit Note Amount'}
+                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                />
+                              </div>
+                            ) : null}
                           </td>
                         </tr>
                       ))}
@@ -3776,10 +3853,19 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                             const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
                             const targetType = ge.mrr_type || tempType;
                             if (!targetFirm) continue;
+                            const approvalDraft = getGroupedApprovalDraft(ge);
+                            if (isGroupedApprovalDebitNoteRequired(ge)) {
+                              if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
+                                throw new Error(`Fill Debit Note, Debit Note Date, and Debit Note Amount for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                              }
+                            }
                             await approvePendingStage({
                               stage: ge.pending_stage || activeStage.key,
                               mrrNumber: ge.mrr_number || ge.mrr_no || '',
                               userEmail: currentUser?.email || '',
+                              debitNote: String(approvalDraft.debit_note || '').trim(),
+                              debitNoteDate: String(approvalDraft.debit_note_date || '').trim(),
+                              debitNoteAmount: String(approvalDraft.debit_note_amount || '').trim(),
                               mrrSheetName: getSheetName(targetFirm.mrr, targetType),
                               helperSheetName: getSheetName(targetFirm.helper, targetType),
                               spreadsheetId: targetFirm?.spreadsheetId,
@@ -4006,6 +4092,20 @@ function App() {
     ge_no: 'ge_no',
     mrr_no: 'mrr_no'
   };
+  const accountsInvoiceWeight = firstFilled(
+    geData?.actual_weight,
+    geData?.invoice_ttl_weight_kgs,
+    invoice?.totals?.weight,
+    invoice?.goods?.reduce((sum, row) => sum + n(row?.weight), 0),
+    ''
+  );
+  const accountsActualWeight = firstFilled(
+    geData?.actual_mrr_weight,
+    geData?.actual_mrr_ttl_weight_kgs,
+    packing?.actual_total,
+    ''
+  );
+  const accountsWeightDifference = Math.abs(n(accountsInvoiceWeight) - n(accountsActualWeight));
 
   const setInv = (field, value) => {
     if (isDataEntryLocked) return;
@@ -4151,6 +4251,7 @@ function App() {
   const packingReels = packing.items.filter(isMeaningful).length;
   const approvalStage = String(geData?.pending_stage || '').trim();
   const isApprovalMode = ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'].includes(approvalStage);
+  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && accountsWeightDifference > 40;
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const isGateEntryLocked = false;
   const approvalStageTitle = approvalStage === 'pending_plant_head_approval'
@@ -4729,6 +4830,12 @@ function App() {
     if (!mrrNumber) {
       showPopup('MRR No. missing for approval.', 'error');
       return;
+    }
+    if (shouldRequireAccountsDebitNote) {
+      if (!String(accountsDebitNote || '').trim() || !String(accountsDebitNoteDate || '').trim() || !String(accountsDebitNoteAmount || '').trim()) {
+        showPopup('Debit Note, Debit Note Date, and Debit Note Amount are required when weight difference is more than 40 kg.', 'error');
+        return;
+      }
     }
     try {
       setIsApprovingFromForm(true);
@@ -5558,36 +5665,43 @@ function App() {
               ))}
             </div>
             {approvalStage === 'pending_accounts_approval' ? (
-              <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '8px' }}>
-                <div>
-                  <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note</div>
-                  <input
-                    value={accountsDebitNote}
-                    onChange={(e) => setAccountsDebitNote(e.target.value)}
-                    placeholder="Enter Debit Note"
-                    style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
-                  />
+              <div style={{ marginTop: '10px', display: 'grid', gap: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: shouldRequireAccountsDebitNote ? '#b45309' : '#374151' }}>
+                  Invoice Weight: {formatDecimal2(accountsInvoiceWeight) || '0.00'} KG | Actual Weight: {formatDecimal2(accountsActualWeight) || '0.00'} KG | Difference: {formatDecimal2(accountsWeightDifference) || '0.00'} KG
                 </div>
-                <div>
-                  <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Date</div>
-                  <input
-                    type="date"
-                    value={accountsDebitNoteDate}
-                    onChange={(e) => setAccountsDebitNoteDate(e.target.value)}
-                    style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Amount</div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={accountsDebitNoteAmount}
-                    onChange={(e) => setAccountsDebitNoteAmount(e.target.value)}
-                    placeholder="Enter Debit Note Amount"
-                    style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
-                  />
-                </div>
+                {shouldRequireAccountsDebitNote ? (
+                  <div style={{ marginTop: '2px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note *</div>
+                      <input
+                        value={accountsDebitNote}
+                        onChange={(e) => setAccountsDebitNote(e.target.value)}
+                        placeholder="Enter Debit Note"
+                        style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Date *</div>
+                      <input
+                        type="date"
+                        value={accountsDebitNoteDate}
+                        onChange={(e) => setAccountsDebitNoteDate(e.target.value)}
+                        style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Amount *</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={accountsDebitNoteAmount}
+                        onChange={(e) => setAccountsDebitNoteAmount(e.target.value)}
+                        placeholder="Enter Debit Note Amount"
+                        style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
