@@ -2759,19 +2759,27 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     });
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [allApprovalRows]);
-  const pendingTableStyle = { width: '100%', tableLayout: 'auto' };
-  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '8px 10px' };
-  const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 10px' };
+  const pendingTableStyle = { width: '100%', tableLayout: 'fixed' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
+  const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '10px 10px', verticalAlign: 'top' };
+  const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3.2%', minWidth: '38px' };
+  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3.2%', textAlign: 'center', verticalAlign: 'middle' };
+  const groupedIdHeaderStyle = { ...pendingHeaderCellStyle, width: '6.5%', minWidth: '78px' };
+  const groupedIdCellStyle = { ...pendingBodyCellStyle, width: '6.5%', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.35 };
   const groupedSupplierCellStyle = { ...pendingBodyCellStyle, width: '18%', maxWidth: '240px', wordBreak: 'break-word' };
   const groupedSupplierHeaderStyle = { ...pendingHeaderCellStyle, width: '18%' };
-  const groupedItemsCellStyle = { ...pendingBodyCellStyle, width: '31%', minWidth: '320px', whiteSpace: 'pre-line', verticalAlign: 'top' };
+  const groupedQtyHeaderStyle = { ...pendingHeaderCellStyle, width: '4.8%', minWidth: '58px' };
+  const groupedQtyCellStyle = { ...pendingBodyCellStyle, width: '4.8%', textAlign: 'center' };
+  const groupedItemsCellStyle = { ...pendingBodyCellStyle, width: '31%', minWidth: '320px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedItemsHeaderStyle = { ...pendingHeaderCellStyle, width: '31%' };
-  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top' };
+  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedPoRateHeaderStyle = { ...pendingHeaderCellStyle, width: '10%', minWidth: '90px' };
-  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '9%', minWidth: '80px', whiteSpace: 'pre-line', verticalAlign: 'top' };
+  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '9%', minWidth: '80px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedInvoiceRateHeaderStyle = { ...pendingHeaderCellStyle, width: '9%', minWidth: '80px' };
-  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top' };
+  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedBasicValueHeaderStyle = { ...pendingHeaderCellStyle, width: '10%', minWidth: '90px' };
+  const groupedActionHeaderStyle = { ...pendingHeaderCellStyle, width: '20%', minWidth: '250px' };
+  const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '20%', minWidth: '250px' };
 
   const getGroupedApprovalRowKey = (row) => [
     String(row?.firm_id || '').trim(),
@@ -3653,7 +3661,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                   <table className="table" style={pendingTableStyle}>
                     <thead>
                       <tr>
-                        <th style={pendingHeaderCellStyle}>
+                        <th style={groupedCheckboxHeaderStyle}>
                           <input
                             type="checkbox"
                             checked={allActiveSelected}
@@ -3670,21 +3678,21 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                             }}
                           />
                         </th>
-                        <th style={pendingHeaderCellStyle}>GE No</th>
-                        <th style={pendingHeaderCellStyle}>MRR No</th>
+                        <th style={groupedIdHeaderStyle}>GE No</th>
+                        <th style={groupedIdHeaderStyle}>MRR No</th>
                         <th style={groupedSupplierHeaderStyle}>Supplier</th>
-                        <th style={pendingHeaderCellStyle}>Total Qty</th>
+                        <th style={groupedQtyHeaderStyle}>Total Qty</th>
                         <th style={groupedItemsHeaderStyle}>Items</th>
                         <th style={groupedPoRateHeaderStyle}>PO Rate</th>
                         <th style={groupedInvoiceRateHeaderStyle}>Invoice Rate</th>
                         <th style={groupedBasicValueHeaderStyle}>Basic Value</th>
-                        <th style={pendingHeaderCellStyle}>Action</th>
+                        <th style={groupedActionHeaderStyle}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {activeRows.map((ge, idx) => (
                         <tr key={`${activeStage.key}-${idx}`}>
-                          <td className="c" style={pendingBodyCellStyle}>
+                          <td className="c" style={groupedCheckboxCellStyle}>
                             <input
                               type="checkbox"
                               checked={!!selectedGroupedApprovalKeys[getGroupedApprovalRowKey(ge)]}
@@ -3700,19 +3708,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               }}
                             />
                           </td>
-                          <td className="c" style={pendingBodyCellStyle}>{ge.ge_no || ge.ge_entry}</td>
-                          <td className="c" style={pendingBodyCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
+                          <td className="c" style={groupedIdCellStyle}>{ge.ge_no || ge.ge_entry}</td>
+                          <td className="c" style={groupedIdCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
                           <td style={groupedSupplierCellStyle}>{ge.supplier || ge.supplier_name}</td>
-                          <td className="c" style={pendingBodyCellStyle}>{getGroupedApprovalTotalQty(ge) || '-'}</td>
+                          <td className="c" style={groupedQtyCellStyle}>{getGroupedApprovalTotalQty(ge) || '-'}</td>
                           <td style={groupedItemsCellStyle}>{getGroupedApprovalItems(ge) || '-'}</td>
                           <td className="r" style={groupedPoRateCellStyle}>{getGroupedApprovalPoRate(ge) || '-'}</td>
                           <td className="r" style={groupedInvoiceRateCellStyle}>{getGroupedApprovalInvoiceRate(ge) || '-'}</td>
                           <td className="r" style={groupedBasicValueCellStyle}>{getGroupedApprovalBasicValue(ge) || '-'}</td>
-                          <td className="c" style={{ ...pendingBodyCellStyle }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                          <td className="c" style={groupedActionCellStyle}>
+                            <div style={{ display: 'grid', gap: '8px', justifyItems: 'stretch' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
                               <button
                                 className="btn small"
-                                style={{ fontSize: '12px', padding: '8px 10px' }}
+                                style={{ flex: 1, minWidth: '84px', fontSize: '12px', padding: '9px 10px' }}
                                 disabled={isApprovingPending}
                                 onClick={() => {
                                   const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
@@ -3736,7 +3745,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               </button>
                               <button
                                 className="btn main small"
-                                style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                                style={{ flex: 1, minWidth: '96px', fontSize: '13px', padding: '9px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
                                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
                                 disabled={isApprovingPending}
@@ -3775,23 +3784,31 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               >
                                 {isApprovingPending ? 'APPROVING...' : 'APPROVE'}
                               </button>
-                            </div>
+                              </div>
                             {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' ? (
-                              <div style={{ marginTop: '8px', display: 'grid', gap: '6px', minWidth: '240px', textAlign: 'left' }}>
-                                <div style={{ fontSize: '10px', fontWeight: 800, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151' }}>
-                                  Diff: {formatDecimal2(getGroupedApprovalWeightDifference(ge)) || '0.00'} KG
+                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: isGroupedApprovalDebitNoteRequired(ge) ? '#fff7e6' : '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
+                                <div style={{ display: 'grid', gap: '2px' }}>
+                                  <div style={{ fontSize: '10px', fontWeight: 900, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Accounts Note
+                                  </div>
+                                  <div style={{ fontSize: '11px', fontWeight: 800, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151' }}>
+                                    Diff: {formatDecimal2(getGroupedApprovalWeightDifference(ge)) || '0.00'} KG
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                                    {isGroupedApprovalDebitNoteRequired(ge) ? 'Debit note fields are required for this row.' : 'Debit note fields are optional for this row.'}
+                                  </div>
                                 </div>
                                 <input
                                   value={getGroupedApprovalDraft(ge).debit_note}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note', e.target.value)}
                                   placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note *' : 'Debit Note'}
-                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                                 <input
                                   type="date"
                                   value={getGroupedApprovalDraft(ge).debit_note_date}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_date', e.target.value)}
-                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                                 <input
                                   type="number"
@@ -3799,10 +3816,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                   value={getGroupedApprovalDraft(ge).debit_note_amount}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_amount', e.target.value)}
                                   placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note Amount *' : 'Debit Note Amount'}
-                                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '5px 6px', fontSize: '11px', background: '#fff' }}
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                               </div>
                             ) : null}
+                            </div>
                           </td>
                         </tr>
                       ))}
