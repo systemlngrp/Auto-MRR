@@ -308,12 +308,18 @@ function doGet(e) {
       const stage = String(e.parameter.stage || '').trim().toLowerCase();
       const mrrNumber = String(e.parameter.mrr_number || '').trim();
       const userEmail = String(e.parameter.user_email || '').trim();
+      const debitNote = String(e.parameter.debit_note || '').trim();
+      const debitNoteDate = String(e.parameter.debit_note_date || '').trim();
+      const debitNoteAmount = String(e.parameter.debit_note_amount || '').trim();
       const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
       const helperSheetName = String(e.parameter.helperSheet || DEFAULT_SHEETS.helper).trim();
       const result = approvePendingStage_(ss, {
         stage: stage,
         mrrNumber: mrrNumber,
         userEmail: userEmail,
+        debitNote: debitNote,
+        debitNoteDate: debitNoteDate,
+        debitNoteAmount: debitNoteAmount,
         mrrSheetName: mrrSheetName,
         helperSheetName: helperSheetName
       });
