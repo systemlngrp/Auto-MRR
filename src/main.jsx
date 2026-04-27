@@ -91,7 +91,7 @@ const labelStyles = `
 `;
 
 const styles = `
-:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite;flex:0 0 auto}@keyframes spin{to{transform:rotate(360deg)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center;width:100%;height:100%}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line;background:#585858;color:#fff}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.supplier-search-wrap{position:relative;width:100%}.supplier-search{padding-right:28px !important}.supplier-search::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0}.supplier-search-wrap::after{content:"▼";position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#444;font-size:12px;line-height:1}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast,.toolbar,.no-print{display:none!important}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}.table th:last-child,.table td:last-child{display:none!important}input,select,textarea{border:0!important;background:transparent!important;padding:0!important;outline:0!important;box-shadow:none!important;appearance:none!important;-webkit-appearance:none!important}.btn,button{display:none!important}@page{size:A4 landscape;margin:10px}}
+:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .45s linear infinite;flex:0 0 auto;will-change:transform}@keyframes spin{to{transform:rotate(360deg)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center;width:100%;height:100%}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line;background:#585858;color:#fff}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.supplier-search-wrap{position:relative;width:100%}.supplier-search{padding-right:28px !important}.supplier-search::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0}.supplier-search-wrap::after{content:"▼";position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#444;font-size:12px;line-height:1}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast,.toolbar,.no-print{display:none!important}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}.table th:last-child,.table td:last-child{display:none!important}input,select,textarea{border:0!important;background:transparent!important;padding:0!important;outline:0!important;box-shadow:none!important;appearance:none!important;-webkit-appearance:none!important}.btn,button{display:none!important}@page{size:A4 landscape;margin:10px}}
 
 `;
 
@@ -222,8 +222,8 @@ const FIRMS = [
   { 
     id: 'unit_2', 
     name: 'UNIT-2', 
-    scriptUrl: APPS_SCRIPT_WEBAPP_URL, 
-    spreadsheetId: import.meta.env.VITE_UNIT_2_SPREADSHEET_ID || '',
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbx5iuQm8cx7fSMFyCPXEcT4AhNBW5894XpOGDeZZGSxcZ18A0OkQLHy511c53RbY2Ew/exec', 
+    spreadsheetId: '1t546U74lRikGjQhAc42TLeullDCzeKmmOZe7QA9OBt8',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -1445,7 +1445,10 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
         if (timeoutId) window.clearTimeout(timeoutId);
         const err = networkErr instanceof Error ? networkErr : new Error('Gemini network request failed.');
         if (err.name === 'AbortError') {
-          err.message = 'Gemini request timed out while reading the image. Please retry with a clearer or smaller image.';
+          const timeoutErr = new Error('Gemini request timed out while reading the image. Please retry with a clearer or smaller image.');
+          timeoutErr.status = 408;
+          timeoutErr.retryable = true;
+          throw timeoutErr;
         }
         if (err.status) throw err;
         err.retryable = true;
@@ -1597,7 +1600,7 @@ async function fetchGeminiJson(file, kind) {
     throw new Error('Processed image is still too large for Gemini. Please use a clearer crop or a smaller photo.');
   }
   const base64 = getDataUrlBase64(dataUrl);
-  const prompt = `Read this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
+  const prompt = `Read this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. For each table row, strictly extract description, gsm, size, reels/quantity, weight, rate, and amount. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
   let data = await fetchGeminiStructured(base64, mimeType, prompt, shape);
 
   if (kind === 'invoice') {
@@ -1605,7 +1608,7 @@ async function fetchGeminiJson(file, kind) {
       const focused = await fetchGeminiStructured(
         base64,
         mimeType,
-        'Extract MRR entry metadata and goods table: GE No, Date, MRR No, Dt. of Receipt, Sup Doc No, Truck Number, Invoice Total Weight (Kgs), Actual MRR Total Weight (Kgs), E-Way Bill No, E-Way Date, L.R No, Supplier/Bill To name and state, Gross Amount, Invoice Basic Value, MRR Basic Value, Insurance, Taxable GST, CGST %, SGST %, Round Off. Also extract the goods table: Description, HSN, Sort, Party Order, GSM, Size, Unit, Reels, Weight, Unit, Rate, Amount. Read row-by-row in order. Return only rows that contain at least one real item value (for example description, party order, gsm, size, reels, weight, rate, amount). Skip blank separator/total/empty lines. Do not invent values; leave unreadable cells empty.',
+        'Extract MRR entry metadata and goods table: GE No, Date, MRR No, Dt. of Receipt, Sup Doc No, Truck Number, Invoice Total Weight (Kgs), Actual MRR Total Weight (Kgs), E-Way Bill No, E-Way Date, L.R No, Supplier/Bill To name and state, Gross Amount, Invoice Basic Value, MRR Basic Value, Insurance, Taxable GST, CGST %, SGST %, Round Off. Also extract the goods table: Description, HSN, Sort, Party Order, GSM, Size, Unit, Reels, Weight, Unit, Rate, Amount. Ensure every row includes the Rate and Amount if visible. Read row-by-row in order. Return only rows that contain at least one real item value (for example description, party order, gsm, size, reels, weight, rate, amount). Skip blank separator/total/empty lines. Do not invent values; leave unreadable cells empty.',
         { 
           invoice_no: '', date: '', eway_no: '', eway_date: '', lr_no: '', vehicle_no: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', 
           bill_to: { name_address: '', state: '', gstin: '', state_code: '' },
@@ -2027,6 +2030,96 @@ function normalizeGateEntryInitialData(initialData, geNo, defaultDate) {
     mrr_no: getMrrNo(source) || '',
     date: source.date || defaultDate
   };
+}
+
+function combineUniqueRows(rows = [], makeBlankRow) {
+  const seen = new Set();
+  return ensureRows(rows)
+    .map((row) => merge(typeof makeBlankRow === 'function' ? makeBlankRow() : {}, row || {}))
+    .filter((row) => Object.values(row || {}).some((value) => isMeaningful(value)))
+    .filter((row) => {
+      // Create a more robust key using only meaningful, identifying fields
+      // to allow merging rows that are slightly different but represent the same physical item
+      const identifyingValues = [
+        String(row.description || row.item_name || '').trim().toLowerCase(),
+        String(row.reel_no || row.supplier_reel_no || '').trim().toLowerCase(),
+        String(row.sort_no || '').trim().toLowerCase(),
+        String(row.party_order || '').trim().toLowerCase(),
+        String(row.gsm || '').trim().toLowerCase(),
+        String(row.size || '').trim().toLowerCase(),
+        String(row.weight || row.net_wt || '').trim().toLowerCase()
+      ];
+      const key = identifyingValues.join('|');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function combineInvoiceScanResults(results = []) {
+  const normalized = results.map((entry) => normalizeInvoice(entry || {})).filter(Boolean);
+  if (!normalized.length) return normalizeInvoice({});
+  const base = normalized.reduce((acc, item) => ({
+    ...acc,
+    ...item,
+    invoice_no: acc.invoice_no || item.invoice_no || '',
+    date: acc.date || item.date || '',
+    eway_no: acc.eway_no || item.eway_no || '',
+    eway_date: acc.eway_date || item.eway_date || '',
+    lr_no: acc.lr_no || item.lr_no || '',
+    vehicle_no: acc.vehicle_no || item.vehicle_no || '',
+    ge_no: acc.ge_no || item.ge_no || '',
+    mrr_no: acc.mrr_no || item.mrr_no || '',
+    receipt_date: acc.receipt_date || item.receipt_date || '',
+    actual_weight: acc.actual_weight || item.actual_weight || '',
+    actual_mrr_weight: acc.actual_mrr_weight || item.actual_mrr_weight || '',
+    supplier_name: acc.supplier_name || item.supplier_name || '',
+    supplier_state: acc.supplier_state || item.supplier_state || '',
+    supplier_state_code: acc.supplier_state_code || item.supplier_state_code || '',
+    supplier_gstin: acc.supplier_gstin || item.supplier_gstin || '',
+    bill_to: merge(acc.bill_to || {}, item.bill_to || {}),
+    totals: {
+      ...(acc.totals || {}),
+      ...(item.totals || {}),
+      gross_amount: acc.totals?.gross_amount || item.totals?.gross_amount || '',
+      insurance: acc.totals?.insurance || item.totals?.insurance || 0,
+      taxable_gst: acc.totals?.taxable_gst || item.totals?.taxable_gst || '',
+      cgst_pct: acc.totals?.cgst_pct || item.totals?.cgst_pct || 9,
+      sgst_pct: acc.totals?.sgst_pct || item.totals?.sgst_pct || 9,
+      round_off: acc.totals?.round_off || item.totals?.round_off || 0
+    }
+  }), normalizeInvoice({}));
+  return normalizeInvoice({
+    ...base,
+    goods: combineUniqueRows(normalized.flatMap((item) => item.goods || []), blankInvoiceRow)
+  });
+}
+
+function combinePackingScanResults(results = []) {
+  const normalized = results.map((entry) => normalizePacking(entry || {})).filter(Boolean);
+  if (!normalized.length) return normalizePacking({});
+  const base = normalized.reduce((acc, item) => ({
+    ...acc,
+    ...item,
+    intro_line: acc.intro_line || item.intro_line || '',
+    ge_no: acc.ge_no || item.ge_no || '',
+    mrr_no: acc.mrr_no || item.mrr_no || '',
+    receipt_date: acc.receipt_date || item.receipt_date || '',
+    truck_no: acc.truck_no || item.truck_no || '',
+    actual_total: acc.actual_total || item.actual_total || '',
+    total_reels: acc.total_reels || item.total_reels || '',
+    total_weight: acc.total_weight || item.total_weight || '',
+    receiver_label: acc.receiver_label || item.receiver_label || '',
+    signer_name: acc.signer_name || item.signer_name || '',
+    approval_text: acc.approval_text || item.approval_text || '',
+    signatory_label: acc.signatory_label || item.signatory_label || '',
+    buyer: merge(acc.buyer || {}, item.buyer || {}),
+    totals: merge(acc.totals || {}, item.totals || {})
+  }), normalizePacking({}));
+  return normalizePacking({
+    ...base,
+    items: combineUniqueRows(normalized.flatMap((item) => item.items || []), blankPackingRow)
+  });
 }
 
 function formatDecimal2(value) {
@@ -2524,7 +2617,7 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '12px', marginBottom: '10px' }}>Upload Photos (Up to 8)</h3>
+          <h3 style={{ fontSize: '12px', marginBottom: '10px' }}>Click Photos (Up to 8)</h3>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '10px' }}>
             {pics.map((pic, i) => (
               <div key={i} style={{ border: '1px dashed #ccc', height: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#f9f9f9' }}>
@@ -2534,7 +2627,7 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
                   <span style={{ fontSize: '10px', color: '#888' }}>Pic {i + 1}</span>
                 )}
                 <span style={{ position: 'absolute', bottom: '4px', left: 0, right: 0, textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#333', background: 'rgba(255,255,255,0.75)' }}>
-                  Click to {pic ? 'Rename/Replace' : 'Upload'}
+                  Click to {pic ? 'Rename/Replace' : 'Click'}
                 </span>
                 <input
                   type="file"
@@ -2700,7 +2793,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const [editMrrRows, setEditMrrRows] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [isLoadingEditMrr, setIsLoadingEditMrr] = useState(false);
-  const [isApprovingPending, setIsApprovingPending] = useState(false);
+  const [approvingPendingKey, setApprovingPendingKey] = useState('');
+  const [isBulkApprovingPending, setIsBulkApprovingPending] = useState(false);
   const [editData, setEditData] = useState(null);
   const [pendingFilter, setPendingFilter] = useState('pending_mrr');
   const [allApprovalsStage, setAllApprovalsStage] = useState('pending_plant_head_approval');
@@ -2719,6 +2813,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const [isLoadingAllApprovals, setIsLoadingAllApprovals] = useState(false);
   const [, setApprovalPrefetchTick] = useState(0);
   const approvalPrefetchCacheRef = useRef(new Map());
+  const approvalPrefetchRunRef = useRef(0);
+  const pendingListCacheRef = useRef(new Map());
+  const editMrrCacheRef = useRef(new Map());
+  const allApprovalsCacheRef = useRef({ key: '', rows: [] });
   const safeEditData = editData && typeof editData === 'object' ? editData : null;
 
   const pendingCounts = useMemo(() => ({
@@ -2762,24 +2860,30 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const pendingTableStyle = { width: '100%', tableLayout: 'fixed' };
   const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '10px 10px', verticalAlign: 'top' };
-  const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3.2%', minWidth: '38px' };
-  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3.2%', textAlign: 'center', verticalAlign: 'middle' };
-  const groupedIdHeaderStyle = { ...pendingHeaderCellStyle, width: '6.5%', minWidth: '78px' };
-  const groupedIdCellStyle = { ...pendingBodyCellStyle, width: '6.5%', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.35 };
-  const groupedSupplierCellStyle = { ...pendingBodyCellStyle, width: '18%', maxWidth: '240px', wordBreak: 'break-word' };
-  const groupedSupplierHeaderStyle = { ...pendingHeaderCellStyle, width: '18%' };
-  const groupedQtyHeaderStyle = { ...pendingHeaderCellStyle, width: '4.8%', minWidth: '58px' };
-  const groupedQtyCellStyle = { ...pendingBodyCellStyle, width: '4.8%', textAlign: 'center' };
-  const groupedItemsCellStyle = { ...pendingBodyCellStyle, width: '31%', minWidth: '320px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
-  const groupedItemsHeaderStyle = { ...pendingHeaderCellStyle, width: '31%' };
-  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
-  const groupedPoRateHeaderStyle = { ...pendingHeaderCellStyle, width: '10%', minWidth: '90px' };
-  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '9%', minWidth: '80px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
-  const groupedInvoiceRateHeaderStyle = { ...pendingHeaderCellStyle, width: '9%', minWidth: '80px' };
-  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '10%', minWidth: '90px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
-  const groupedBasicValueHeaderStyle = { ...pendingHeaderCellStyle, width: '10%', minWidth: '90px' };
-  const groupedActionHeaderStyle = { ...pendingHeaderCellStyle, width: '20%', minWidth: '250px' };
-  const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '20%', minWidth: '250px' };
+  const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3%', minWidth: '36px' };
+  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'middle' };
+  const groupedIdHeaderStyle = { ...pendingHeaderCellStyle, width: '5.5%', minWidth: '72px' };
+  const groupedIdCellStyle = { ...pendingBodyCellStyle, width: '5.5%', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.35 };
+  const groupedFirmCellStyle = { ...pendingBodyCellStyle, width: '7%', maxWidth: '120px', wordBreak: 'break-word' };
+  const groupedFirmHeaderStyle = { ...pendingHeaderCellStyle, width: '7%' };
+  const groupedSupplierCellStyle = { ...pendingBodyCellStyle, width: '10%', maxWidth: '170px', wordBreak: 'break-word' };
+  const groupedSupplierHeaderStyle = { ...pendingHeaderCellStyle, width: '10%' };
+  const groupedQtyHeaderStyle = { ...pendingHeaderCellStyle, width: '4%', minWidth: '52px' };
+  const groupedQtyCellStyle = { ...pendingBodyCellStyle, width: '4%', textAlign: 'center' };
+  const groupedItemsCellStyle = { ...pendingBodyCellStyle, width: '17%', minWidth: '220px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedItemsHeaderStyle = { ...pendingHeaderCellStyle, width: '17%' };
+  const groupedWeightCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'top', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
+  const groupedWeightHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
+  const groupedDiffCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'top', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
+  const groupedDiffHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
+  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedPoRateHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
+  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedInvoiceRateHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
+  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '7%', minWidth: '78px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedBasicValueHeaderStyle = { ...pendingHeaderCellStyle, width: '7%', minWidth: '78px' };
+  const groupedActionHeaderStyle = { ...pendingHeaderCellStyle, width: '11%', minWidth: '180px' };
+  const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '11%', minWidth: '180px' };
 
   const getGroupedApprovalRowKey = (row) => [
     String(row?.firm_id || '').trim(),
@@ -2788,6 +2892,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     String(row?.mrr_number || row?.mrr_no || '').trim(),
     String(row?.ge_no || row?.ge_entry || '').trim()
   ].join('|');
+  const isAnyPendingApproval = isBulkApprovingPending || !!approvingPendingKey;
   const getGroupedApprovalInvoiceWeight = (row) => firstFilled(
     row?.actual_weight,
     row?.invoice_ttl_weight_kgs,
@@ -2803,7 +2908,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     ''
   );
   const getGroupedApprovalWeightDifference = (row) => Math.abs(n(getGroupedApprovalInvoiceWeight(row)) - n(getGroupedApprovalActualWeight(row)));
-  const isGroupedApprovalDebitNoteRequired = (row) => String(row?.pending_stage || '').trim() === 'pending_accounts_approval' && getGroupedApprovalWeightDifference(row) > 40;
+  const formatGroupedApprovalWeight = (value) => {
+    const normalized = String(value ?? '').trim();
+    if (!normalized) return '-';
+    return formatDecimal2(normalized) || normalized;
+  };
+  const isReelMrrType = (value) => String(value || '').trim().toLowerCase() === 'reel';
+  const isGroupedApprovalDebitNoteRequired = (row) => (
+    String(row?.pending_stage || '').trim() === 'pending_accounts_approval' &&
+    isReelMrrType(row?.mrr_type) &&
+    getGroupedApprovalWeightDifference(row) > 40
+  );
   const getGroupedApprovalDraft = (row) => {
     const rowKey = getGroupedApprovalRowKey(row);
     const existing = groupedAccountsApprovalDrafts[rowKey] || {};
@@ -3083,23 +3198,64 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     return task;
   };
 
-  const loadPendingList = async () => {
+  const prefetchApprovalDataForRows = async (rows = [], limit = 4) => {
+    const queue = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (!queue.length) return;
+    const runId = Date.now();
+    approvalPrefetchRunRef.current = runId;
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < queue.length && approvalPrefetchRunRef.current === runId) {
+        const row = queue[cursor];
+        cursor += 1;
+        try {
+          await prefetchApprovalDataForItem(row);
+        } catch {
+        }
+      }
+    };
+    const workers = Array.from({ length: Math.max(1, Math.min(limit, queue.length)) }, () => worker());
+    await Promise.all(workers);
+  };
+
+  const loadPendingList = async (options = {}) => {
     if (!tempFirm) return;
+    const cacheKey = [String(tempFirm.id || '').trim(), String(tempType || '').trim()].join('|');
+    const useCache = options.force !== true;
+    const cached = pendingListCacheRef.current.get(cacheKey);
+    if (useCache && cached) {
+      setPendingGEs(cached);
+      return cached;
+    }
     setIsLoadingPending(true);
     try {
       const mrrSheet = getSheetName(tempFirm.mrr, tempType);
       const helperSheet = getSheetName(tempFirm.helper, tempType);
       const list = await fetchPendingGeEntries(mrrSheet, tempFirm.spreadsheetId, tempFirm.scriptUrl, helperSheet);
-      setPendingGEs(list || []);
+      const next = list || [];
+      pendingListCacheRef.current.set(cacheKey, next);
+      setPendingGEs(next);
+      return next;
     } catch (err) {
       console.error('Failed to load pending list:', err);
+      return [];
     } finally {
       setIsLoadingPending(false);
     }
   };
 
-  const loadAllApprovalsList = async () => {
+  const loadAllApprovalsList = async (options = {}) => {
     if (!firms?.length) return;
+    const cacheKey = firms
+      .filter((firm) => String(firm?.spreadsheetId || '').trim() && String(firm?.scriptUrl || '').trim())
+      .map((firm) => `${firm.id}:${firm.spreadsheetId}`)
+      .sort()
+      .join('|');
+    const useCache = options.force !== true;
+    if (useCache && allApprovalsCacheRef.current.key === cacheKey && Array.isArray(allApprovalsCacheRef.current.rows) && allApprovalsCacheRef.current.rows.length) {
+      setAllApprovalRows(allApprovalsCacheRef.current.rows);
+      return allApprovalsCacheRef.current.rows;
+    }
     setIsLoadingAllApprovals(true);
     try {
       const stages = new Set(['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval']);
@@ -3136,14 +3292,23 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
         if (firmCmp !== 0) return firmCmp;
         return String(b.date || '').localeCompare(String(a.date || ''));
       });
+      allApprovalsCacheRef.current = { key: cacheKey, rows: merged };
       setAllApprovalRows(merged);
+      return merged;
     } finally {
       setIsLoadingAllApprovals(false);
     }
   };
 
-  const loadEditMrrList = async () => {
+  const loadEditMrrList = async (options = {}) => {
     if (!tempFirm) return;
+    const cacheKey = [String(tempFirm.id || '').trim(), String(tempType || '').trim()].join('|');
+    const useCache = options.force !== true;
+    const cached = editMrrCacheRef.current.get(cacheKey);
+    if (useCache && cached) {
+      setEditMrrRows(cached);
+      return cached;
+    }
     setIsLoadingEditMrr(true);
     try {
       const mrrSheet = getSheetName(tempFirm.mrr, tempType);
@@ -3199,10 +3364,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
       const uniqueRows = [...byMrr.values()].sort((a, b) =>
         String(b.mrr_number || '').localeCompare(String(a.mrr_number || ''), undefined, { numeric: true, sensitivity: 'base' })
       );
+      editMrrCacheRef.current.set(cacheKey, uniqueRows);
       setEditMrrRows(uniqueRows);
+      return uniqueRows;
     } catch (err) {
       console.error('Failed to load edit MRR list:', err);
       setEditMrrRows([]);
+      return [];
     } finally {
       setIsLoadingEditMrr(false);
     }
@@ -3223,13 +3391,39 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
     }
   };
 
+  const refreshApprovalViews = async () => {
+    await Promise.all([
+      loadPendingList({ force: true }),
+      loadAllApprovalsList({ force: true })
+    ]);
+  };
+
   useEffect(() => {
     if (step === 3 && tempFirm) {
       loadPendingList();
       loadEditMrrList();
-      loadAllApprovalsList();
     }
   }, [step, tempFirm, tempType]);
+
+  useEffect(() => {
+    if (step === 3 && firms?.length) {
+      loadAllApprovalsList();
+    }
+  }, [step, firms]);
+
+  useEffect(() => {
+    if (step !== 6) return;
+    if (pendingFilter === 'all_approvals') {
+      if (firms?.length) loadAllApprovalsList({ force: true });
+      return;
+    }
+    if (!tempFirm) return;
+    if (pendingFilter === 'edit_mrr') {
+      loadEditMrrList({ force: true });
+      return;
+    }
+    loadPendingList({ force: true });
+  }, [step, pendingFilter, tempFirm, tempType, firms]);
 
   useEffect(() => {
     setSelectedGroupedApprovalKeys({});
@@ -3237,21 +3431,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
 
   useEffect(() => {
     if (step !== 6 || pendingFilter !== 'all_approvals' || !allApprovalRows.length) return;
-    const stageGroups = [
-      { key: 'pending_plant_head_approval' },
-      { key: 'pending_accounts_approval' },
-      { key: 'pending_md_approval' }
-    ].map((stage) => ({ ...stage, rows: allApprovalRows.filter((row) => String(row.pending_stage || '').trim() === stage.key) }));
-    const resolvedStageKey = (
-      stageGroups.some((stage) => stage.key === allApprovalsStage && stage.rows.length > 0)
-        ? allApprovalsStage
-        : (stageGroups.find((stage) => stage.rows.length > 0)?.key || stageGroups[0]?.key)
-    );
-    const activeStage = stageGroups.find((stage) => stage.key === resolvedStageKey) || stageGroups[0];
-    (activeStage?.rows || []).slice(0, 8).forEach((item) => {
-      prefetchApprovalDataForItem(item).catch(() => null);
-    });
-  }, [step, pendingFilter, allApprovalRows, allApprovalsStage, firms]);
+    prefetchApprovalDataForRows(allApprovalRows, 5).catch(() => null);
+    return () => {
+      approvalPrefetchRunRef.current = 0;
+    };
+  }, [step, pendingFilter, allApprovalRows]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -3680,9 +3864,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                         </th>
                         <th style={groupedIdHeaderStyle}>GE No</th>
                         <th style={groupedIdHeaderStyle}>MRR No</th>
+                        <th style={groupedFirmHeaderStyle}>Firm</th>
                         <th style={groupedSupplierHeaderStyle}>Supplier</th>
                         <th style={groupedQtyHeaderStyle}>Total Qty</th>
                         <th style={groupedItemsHeaderStyle}>Items</th>
+                        <th style={groupedWeightHeaderStyle}>MRR Weight</th>
+                        <th style={groupedWeightHeaderStyle}>Invoice Weight</th>
+                        <th style={groupedDiffHeaderStyle}>Difference</th>
                         <th style={groupedPoRateHeaderStyle}>PO Rate</th>
                         <th style={groupedInvoiceRateHeaderStyle}>Invoice Rate</th>
                         <th style={groupedBasicValueHeaderStyle}>Basic Value</th>
@@ -3690,15 +3878,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                       </tr>
                     </thead>
                     <tbody>
-                      {activeRows.map((ge, idx) => (
+                      {activeRows.map((ge, idx) => {
+                        const rowKey = getGroupedApprovalRowKey(ge);
+                        const isRowApproving = approvingPendingKey === rowKey;
+                        return (
                         <tr key={`${activeStage.key}-${idx}`}>
                           <td className="c" style={groupedCheckboxCellStyle}>
                             <input
                               type="checkbox"
-                              checked={!!selectedGroupedApprovalKeys[getGroupedApprovalRowKey(ge)]}
+                              checked={!!selectedGroupedApprovalKeys[rowKey]}
                               onChange={(e) => {
                                 const checked = !!e.target.checked;
-                                const rowKey = getGroupedApprovalRowKey(ge);
                                 setSelectedGroupedApprovalKeys((prev) => {
                                   const next = { ...prev };
                                   if (checked) next[rowKey] = true;
@@ -3710,19 +3900,23 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                           </td>
                           <td className="c" style={groupedIdCellStyle}>{ge.ge_no || ge.ge_entry}</td>
                           <td className="c" style={groupedIdCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
+                          <td style={groupedFirmCellStyle}>{ge.firm_name || firms.find((firm) => firm.id === ge.firm_id)?.name || '-'}</td>
                           <td style={groupedSupplierCellStyle}>{ge.supplier || ge.supplier_name}</td>
                           <td className="c" style={groupedQtyCellStyle}>{getGroupedApprovalTotalQty(ge) || '-'}</td>
                           <td style={groupedItemsCellStyle}>{getGroupedApprovalItems(ge) || '-'}</td>
+                          <td className="r" style={groupedWeightCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalActualWeight(ge))}</td>
+                          <td className="r" style={groupedWeightCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalInvoiceWeight(ge))}</td>
+                          <td className="r" style={groupedDiffCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalWeightDifference(ge))}</td>
                           <td className="r" style={groupedPoRateCellStyle}>{getGroupedApprovalPoRate(ge) || '-'}</td>
                           <td className="r" style={groupedInvoiceRateCellStyle}>{getGroupedApprovalInvoiceRate(ge) || '-'}</td>
                           <td className="r" style={groupedBasicValueCellStyle}>{getGroupedApprovalBasicValue(ge) || '-'}</td>
                           <td className="c" style={groupedActionCellStyle}>
                             <div style={{ display: 'grid', gap: '8px', justifyItems: 'stretch' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                              <div style={{ display: 'grid', gap: '8px', justifyContent: 'stretch', alignItems: 'stretch' }}>
                               <button
                                 className="btn small"
-                                style={{ flex: 1, minWidth: '84px', fontSize: '12px', padding: '9px 10px' }}
-                                disabled={isApprovingPending}
+                                style={{ width: '100%', fontSize: '12px', padding: '9px 10px' }}
+                                disabled={isAnyPendingApproval}
                                 onClick={() => {
                                   const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
                                   const targetType = ge.mrr_type || tempType;
@@ -3745,10 +3939,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               </button>
                               <button
                                 className="btn main small"
-                                style={{ flex: 1, minWidth: '96px', fontSize: '13px', padding: '9px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                                style={{ width: '100%', fontSize: '13px', padding: '9px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
-                                disabled={isApprovingPending}
+                                disabled={isAnyPendingApproval}
                                 onClick={async () => {
                                   try {
                                     const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
@@ -3760,7 +3954,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                         throw new Error(`Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
                                       }
                                     }
-                                    setIsApprovingPending(true);
+                                    setApprovingPendingKey(rowKey);
                                     await approvePendingStage({
                                       stage: ge.pending_stage || activeStage.key,
                                       mrrNumber: ge.mrr_number || ge.mrr_no || '',
@@ -3773,35 +3967,24 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                       spreadsheetId: targetFirm?.spreadsheetId,
                                       scriptUrl: targetFirm?.scriptUrl
                                     });
-                                    await loadPendingList();
-                                    await loadAllApprovalsList();
+                                    await refreshApprovalViews();
                                   } catch (err) {
                                     alert(err?.message || 'Approval failed.');
                                   } finally {
-                                    setIsApprovingPending(false);
+                                    setApprovingPendingKey('');
                                   }
                                 }}
                               >
-                                {isApprovingPending ? 'APPROVING...' : 'APPROVE'}
+                                {isRowApproving ? <span className="spinner" /> : null}
+                                {isRowApproving ? 'Approving...' : 'APPROVE'}
                               </button>
                               </div>
-                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' ? (
-                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: isGroupedApprovalDebitNoteRequired(ge) ? '#fff7e6' : '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
-                                <div style={{ display: 'grid', gap: '2px' }}>
-                                  <div style={{ fontSize: '10px', fontWeight: 900, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Accounts Note
-                                  </div>
-                                  <div style={{ fontSize: '11px', fontWeight: 800, color: isGroupedApprovalDebitNoteRequired(ge) ? '#b45309' : '#374151' }}>
-                                    Diff: {formatDecimal2(getGroupedApprovalWeightDifference(ge)) || '0.00'} KG
-                                  </div>
-                                  <div style={{ fontSize: '10px', color: '#6b7280' }}>
-                                    {isGroupedApprovalDebitNoteRequired(ge) ? 'Debit note fields are required for this row.' : 'Debit note fields are optional for this row.'}
-                                  </div>
-                                </div>
+                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' && isGroupedApprovalDebitNoteRequired(ge) ? (
+                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
                                 <input
                                   value={getGroupedApprovalDraft(ge).debit_note}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note', e.target.value)}
-                                  placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note *' : 'Debit Note'}
+                                  placeholder="Debit Note *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                                 <input
@@ -3815,7 +3998,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                   step="0.01"
                                   value={getGroupedApprovalDraft(ge).debit_note_amount}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_amount', e.target.value)}
-                                  placeholder={isGroupedApprovalDebitNoteRequired(ge) ? 'Debit Note Amount *' : 'Debit Note Amount'}
+                                  placeholder="Debit Note Amount *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                               </div>
@@ -3823,7 +4006,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                   <div
@@ -3862,10 +4045,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                     </label>
                     <button
                       className="btn main"
-                      disabled={isApprovingPending || selectedActiveCount === 0}
+                      disabled={isAnyPendingApproval || selectedActiveCount === 0}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                       onClick={async () => {
                         try {
-                          setIsApprovingPending(true);
+                          setIsBulkApprovingPending(true);
                           const selectedRows = activeRows.filter((row) => !!selectedGroupedApprovalKeys[getGroupedApprovalRowKey(row)]);
                           for (const ge of selectedRows) {
                             const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
@@ -3891,16 +4075,16 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                             });
                           }
                           setSelectedGroupedApprovalKeys({});
-                          await loadPendingList();
-                          await loadAllApprovalsList();
+                          await refreshApprovalViews();
                         } catch (err) {
                           alert(err?.message || 'Bulk approval failed.');
                         } finally {
-                          setIsApprovingPending(false);
+                          setIsBulkApprovingPending(false);
                         }
                       }}
                     >
-                      {isApprovingPending ? 'APPROVING...' : `Approve Selected (${selectedActiveCount})`}
+                      {isBulkApprovingPending ? <span className="spinner" /> : null}
+                      {isBulkApprovingPending ? 'Approving...' : `Approve Selected (${selectedActiveCount})`}
                     </button>
                   </div>
 
@@ -3923,7 +4107,16 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                 </tr>
               </thead>
               <tbody>
-                {displayedRows.map((ge, idx) => (
+                {displayedRows.map((ge, idx) => {
+                  const rowKey = [
+                    String(tempFirm?.id || ge?.firm_id || '').trim(),
+                    String(tempType || ge?.mrr_type || '').trim(),
+                    String(pendingFilter || ge?.pending_stage || '').trim(),
+                    String(ge?.mrr_number || ge?.mrr_no || '').trim(),
+                    String(ge?.ge_no || ge?.ge_entry || '').trim()
+                  ].join('|');
+                  const isRowApproving = approvingPendingKey === rowKey;
+                  return (
                   <tr key={idx}>
                     <td className="c" style={pendingBodyCellStyle}>{idx + 1}</td>
                     <td style={pendingBodyCellStyle}>{ge.date}</td>
@@ -3938,7 +4131,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                         <button
                           className="btn small"
                           style={{ fontSize: '12px', padding: '8px 10px' }}
-                          disabled={isApprovingPending}
+                          disabled={isAnyPendingApproval}
                           onClick={() => {
                             if (pendingFilter === 'edit_ge_entry') {
                               setEditData(ge);
@@ -3957,13 +4150,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                         {pendingFilter !== 'pending_mrr' && pendingFilter !== 'edit_ge_entry' && pendingFilter !== 'edit_mrr' && (
                           <button
                             className="btn main small"
-                            style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease' }}
+                            style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
-                            disabled={isApprovingPending}
+                            disabled={isAnyPendingApproval}
                             onClick={async () => {
                               try {
-                                setIsApprovingPending(true);
+                                setApprovingPendingKey(rowKey);
                                 const approvalResult = await approvePendingStage({
                                   stage: pendingFilter,
                                   mrrNumber: ge.mrr_number || ge.mrr_no || '',
@@ -3976,21 +4169,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                 if (approvalResult?.next_stage && approvalResult.next_stage !== 'completed') {
                                   setPendingFilter(approvalResult.next_stage);
                                 }
-                                await loadPendingList();
+                                await loadPendingList({ force: true });
                               } catch (err) {
                                 alert(err?.message || 'Approval failed.');
                               } finally {
-                                setIsApprovingPending(false);
+                                setApprovingPendingKey('');
                               }
                             }}
                           >
-                            {isApprovingPending ? 'APPROVING...' : 'APPROVE'}
+                            {isRowApproving ? <span className="spinner" /> : null}
+                            {isRowApproving ? 'Approving...' : 'APPROVE'}
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           )}
@@ -4269,7 +4463,8 @@ function App() {
   const packingReels = packing.items.filter(isMeaningful).length;
   const approvalStage = String(geData?.pending_stage || '').trim();
   const isApprovalMode = ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'].includes(approvalStage);
-  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && accountsWeightDifference > 40;
+  const approvalMrrType = String(geData?.mrr_type || mrrType || '').trim().toLowerCase();
+  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && approvalMrrType === 'reel' && accountsWeightDifference > 40;
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const isGateEntryLocked = false;
   const approvalStageTitle = approvalStage === 'pending_plant_head_approval'
@@ -5542,15 +5737,24 @@ function App() {
     if (popupTimerRef.current) window.clearTimeout(popupTimerRef.current);
   }, []);
 
-  const scan = async (kind, file) => {
+  const scan = async (kind, filesInput) => {
     if (scanLockRef.current || isScanning) {
       return;
     }
+    const files = Array.from(filesInput || []).filter(Boolean);
+    if (!files.length) return;
     scanLockRef.current = true;
     setIsScanning(true);
-    setStatus(`Reading ${kind} with Gemini...`);
+    setStatus(`Reading ${kind} photo${files.length > 1 ? 's' : ''} with Gemini...`);
     try {
-      const data = await fetchGeminiJson(file, kind);
+      const scanResults = [];
+      for (let index = 0; index < files.length; index += 1) {
+        setStatus(`Reading ${kind} photo ${index + 1} of ${files.length} with Gemini...`);
+        scanResults.push(await fetchGeminiJson(files[index], kind));
+      }
+      const data = kind === 'invoice'
+        ? combineInvoiceScanResults(scanResults)
+        : combinePackingScanResults(scanResults);
       const lockedSupplierName = isGateEntryLocked
         ? String(geData?.supplier_name || geData?.supplier || invoice.bill_to?.name_address || packing.buyer?.name_address || '').trim()
         : '';
@@ -5586,7 +5790,7 @@ function App() {
 
         setInvoice(normalizedInvoice);
         setPacking((prev) => ({ ...prev, receipt_date: todayReceiptDate }));
-        setStatus('Invoice scanned with Gemini. Updated invoice section only.');
+        setStatus(`Invoice photo${files.length > 1 ? 's' : ''} scanned with Gemini. Updated invoice section only.`);
       } else {
         let normalizedPacking = normalizePacking(data);
         if (packing.mrr_no) normalizedPacking.mrr_no = packing.mrr_no;
@@ -5608,7 +5812,7 @@ function App() {
           }))
         };
         setPacking(normalizedPacking);
-        setStatus('Packing slip scanned with Gemini. Updated packing section only.');
+        setStatus(`Packing slip photo${files.length > 1 ? 's' : ''} scanned with Gemini. Updated packing section only.`);
       }
     } catch (err) {
       const message = err?.message || 'Gemini scan failed.';
@@ -5774,10 +5978,10 @@ function App() {
           <div className="toolbar no-print" style={{ marginTop: 14 }}>
             {!isOtherMrr && (
               <>
-                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => invoiceRef.current?.click()}>{isScanning ? 'Reading Photo...' : 'Click Invoice Photo'}</button>
-                <input ref={invoiceRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('invoice', file); } catch (err) { setStatus(err?.message || 'Could not read invoice photo with Gemini'); } e.target.value = ''; }} />
-                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => packingRef.current?.click()}>Click Packing Photo</button>
-                <input ref={packingRef} className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) try { await scan('packing', file); } catch (err) { setStatus(err?.message || 'Could not read packing photo with Gemini'); } e.target.value = ''; }} />
+                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => invoiceRef.current?.click()}>{isScanning ? 'Reading Photos...' : 'Click Invoice Photos'}</button>
+                <input ref={invoiceRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('invoice', files); } catch (err) { setStatus(err?.message || 'Could not read invoice photos with Gemini'); } e.target.value = ''; }} />
+                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => packingRef.current?.click()}>Click Packing Photos</button>
+                <input ref={packingRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('packing', files); } catch (err) { setStatus(err?.message || 'Could not read packing photos with Gemini'); } e.target.value = ''; }} />
               </>
             )}
             {isOtherMrr && <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--warn)', border: '1px solid currentColor', padding: '6px 12px', background: '#fff' }}>MANUAL ENTRY</div>}

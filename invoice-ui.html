@@ -10,14 +10,14 @@
 <body>
 <div class="app">
   <div class="actions toolbar">
-    <button class="btn" id="uploadInvoiceImgBtn" type="button">Upload Invoice Photo</button>
+    <button class="btn" id="uploadInvoiceImgBtn" type="button">Click Invoice Photo</button>
     <input class="file" id="uploadInvoiceImg" type="file" accept="image/*">
-    <button class="btn" id="uploadPackingImgBtn" type="button">Upload Packing Photo</button>
+    <button class="btn" id="uploadPackingImgBtn" type="button">Click Packing Photo</button>
     <input class="file" id="uploadPackingImg" type="file" accept="image/*">
     <button class="btn" type="button" onclick="window.print()">Print All</button>
     <span class="ok" id="okAll"></span>
   </div>
-  <div class="help">Upload a clear, straight photo of the invoice or packing slip. The page will send the image to Gemini and try to auto-fill all matching fields.</div>
+  <div class="help">Click a clear, straight photo of the invoice or packing slip. The page will send the image to Gemini and try to auto-fill all matching fields.</div>
 
   <section class="doc on" id="inv">
     <div class="sheet">
@@ -90,7 +90,7 @@ function stripFences(text=''){return String(text).replace(/^```json\s*/i,'').rep
 function extractGeminiText(data){return data?.candidates?.[0]?.content?.parts?.map(part=>part.text||'').join('').trim()||'';}
 async function fileToBase64(file){const buffer=await file.arrayBuffer();let binary='';const bytes=new Uint8Array(buffer);const chunkSize=0x8000;for(let i=0;i<bytes.length;i+=chunkSize){binary+=String.fromCharCode(...bytes.subarray(i,i+chunkSize));}return btoa(binary);}
 async function fetchGeminiDocument(file,kind){const base64=await fileToBase64(file);const schemaHint=kind==='invoice'?invoiceSchemaHint:packingSchemaHint;const instruction=kind==='invoice'
-?`Read this tax invoice image and return only valid JSON for this exact object shape: ${JSON.stringify(schemaHint)}. Use empty strings when a field is missing. Keep dates in YYYY-MM-DD where possible. Read goods rows carefully from the table. Do not include markdown fences.`
+?`Read this tax invoice image and return only valid JSON for this exact object shape: ${JSON.stringify(schemaHint)}. Use empty strings when a field is missing. Keep dates in YYYY-MM-DD where possible. Read goods rows carefully from the table, ensuring you extract the rate and amount for each item. Do not include markdown fences.`
 :`Read this packing slip image and return only valid JSON for this exact object shape: ${JSON.stringify(schemaHint)}. Use empty strings when a field is missing. Keep dates in YYYY-MM-DD where possible. Read item rows carefully from the table. Do not include markdown fences.`;
 const response=await fetch(GEMINI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:instruction},{inline_data:{mime_type:file.type||'image/jpeg',data:base64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0.1}})});
 if(!response.ok)throw new Error(`Gemini request failed: ${response.status}`);
