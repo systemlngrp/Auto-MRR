@@ -89,6 +89,16 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_T
     if (error?.name === 'AbortError') {
       throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please check Apps Script URL/deployment and internet.`);
     }
+    if (error instanceof TypeError) {
+      const target = String(url || '');
+      let host = target;
+      try {
+        host = new URL(target).host || target;
+      } catch {
+        // Keep original text when URL parsing fails.
+      }
+      throw new Error(`Could not reach ${host}. Please check your internet/DNS connection and confirm the Google Apps Script web app URL is valid and deployed.`);
+    }
     throw error;
   } finally {
     clearTimeout(timer);

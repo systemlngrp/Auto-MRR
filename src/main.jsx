@@ -91,13 +91,15 @@ const labelStyles = `
 `;
 
 const styles = `
-:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .45s linear infinite;flex:0 0 auto;will-change:transform}@keyframes spin{to{transform:rotate(360deg)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center;width:100%;height:100%}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line;background:#585858;color:#fff}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.supplier-search-wrap{position:relative;width:100%}.supplier-search{padding-right:28px !important}.supplier-search::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0}.supplier-search-wrap::after{content:"▼";position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#444;font-size:12px;line-height:1}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast,.toolbar,.no-print{display:none!important}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}.table th:last-child,.table td:last-child{display:none!important}input,select,textarea{border:0!important;background:transparent!important;padding:0!important;outline:0!important;box-shadow:none!important;appearance:none!important;-webkit-appearance:none!important}.btn,button{display:none!important}@page{size:A4 landscape;margin:10px}}
+:root{--ink:#111;--paper:#fff;--bg:#d8d1c4;--line:#1e1e1e;--line-soft:#b9b9b9;--primary:#0f4f93;--ok:#166534;--warn:#8a5a10;--bad:#9b1c1c;--muted:#595959;--sheet-width:1140px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}.app{max-width:1180px;margin:0 auto;padding:16px 12px 28px}.pageHeader{max-width:var(--sheet-width);margin:0 auto 14px;background:#f8f5ee;border:1px solid #a79f92;padding:12px 14px}.pageHeader h1{margin:0 0 4px;font-size:20px;font-weight:700}.pageHeader p{margin:0;color:#444;font-size:12px;line-height:1.45}.toolbar,.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:10px}.status{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border:1px solid #bfb7aa;background:#fff;font-size:11px;font-weight:700;color:var(--muted)}.status.success{color:var(--ok)}.status.error{color:var(--bad)}.status.working{color:var(--warn)}.spinner{width:14px;height:14px;border:2px solid #cfc5b7;border-top-color:currentColor;border-radius:50%;animation:spin .45s linear infinite;flex:0 0 auto;will-change:transform}.spinner.tiny{width:8px;height:8px;border-width:1.5px}.approving-bubble{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.18);font-size:11px;line-height:1;font-weight:700}.approving-dots{display:inline-flex;align-items:center;gap:3px}.approving-dots span{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.35;animation:approvingPulse .9s infinite ease-in-out}.approving-dots span:nth-child(2){animation-delay:.15s}.approving-dots span:nth-child(3){animation-delay:.3s}@keyframes spin{to{transform:rotate(360deg)}}@keyframes approvingPulse{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(216,209,196,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:var(--primary);text-align:center;width:100%;height:100%}.loading-overlay .spinner{width:64px;height:64px;border-width:6px;margin-bottom:20px;border-top-color:var(--primary)}.loading-overlay h2{margin:0 0 8px;font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}.loading-overlay p{margin:0;font-size:14px;font-weight:700;color:var(--ink)} .toast{position:fixed;top:16px;right:16px;z-index:1000;max-width:430px;padding:12px 14px;border:1px solid #bfb7aa;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.12);font-size:12px;font-weight:700;line-height:1.45}.toast.success{border-color:#9cc7a6;color:var(--ok)}.toast.error{border-color:#d9a2a2;color:var(--bad)}.help{margin-top:8px;border:1px dashed #938a7a;background:#fffdf7}.stats{width:100%;border-collapse:collapse;table-layout:fixed}.stats th,.stats td{border-right:1px dashed #b6ad9e;padding:8px 10px;font-size:11px}.stats th:last-child,.stats td:last-child{border-right:0}.stats th{background:#f7f1e5;text-align:left;font-weight:700;color:#4a4438}.stats td{background:#fffdf7;font-weight:700}.btn{border:1px solid #4a4a4a;background:#fff;color:#111;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer}.btn:hover{background:#f1f1f1}.btn:disabled{opacity:.65;cursor:wait;background:#f5f5f5}.btn.main{background:#111;color:#fff;border-color:#111}.btn.main:hover{background:#222}.btn.main:disabled{background:#111}.btn.small{padding:2px 5px;font-size:9px}.hidden{display:none}.sectionHead{max-width:var(--sheet-width);margin:16px auto 6px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.sectionHead h2{margin:0;font-size:15px;font-weight:700}.sectionHead p{margin:2px 0 0;color:var(--muted);font-size:11px}.doc{margin-bottom:18px}.sheet{max-width:var(--sheet-width);margin:0 auto;background:var(--paper);border:1px solid var(--line);overflow:hidden;box-shadow:none}.hdr{display:grid;grid-template-columns:128px 1fr 92px;border-bottom:1px solid var(--line)}.logo{background:#585858;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;padding:6px;line-height:1.35;border-right:1px solid var(--line);white-space:pre-line}.co{text-align:center;padding:6px 8px}.co h1{margin:0 0 3px;font-size:13px;letter-spacing:.02em}.co p{margin:1px 0;font-size:9px;line-height:1.2}.note{padding:6px 4px;border-left:1px solid var(--line);font-size:8px;text-align:center;white-space:pre-line;background:#585858;color:#fff}.title{text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 8px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}.card{min-width:0;border-right:1px solid var(--line)}.grid2>.card:last-child,.grid2>.meta:last-child{border-right:0}.cardTitle{font-size:10px;font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line);background:#f5f5f5}.card textarea,.foot textarea{width:100%;min-height:68px;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;font-size:10px;line-height:1.35;resize:vertical}.pairs{display:grid;grid-template-columns:1fr 1fr}.row{display:flex;align-items:center;gap:4px;padding:3px 5px;border-top:1px solid var(--line-soft);font-size:9px}.row span{white-space:nowrap;font-weight:700}.row.full{grid-column:1/-1}.row input,.row select,.meta input,.meta select,.line input,.line select,.table input,.table select{width:100%;border:1px solid #a8a8a8;padding:3px 4px;font:inherit;font-size:10px;background:#fff;min-width:0}.supplier-search-wrap{position:relative;width:100%}.supplier-search{padding-right:28px !important}.supplier-search::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0}.supplier-search-wrap::after{content:"▼";position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#444;font-size:12px;line-height:1}.table input,.table select{padding:2px 3px;font-size:8px}.row input:focus,.row select:focus,.meta input:focus,.meta select:focus,.line input:focus,.line select:focus,.table input:focus,.table select:focus,.card textarea:focus,.foot textarea:focus{outline:none;border-color:#2d6fb3;box-shadow:none}.meta{width:100%;border-collapse:collapse;table-layout:fixed}.meta td{border:1px solid var(--line);padding:4px 5px;font-size:9px}.meta td:first-child{width:43%;font-weight:700;background:#f8f8f8}.line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);font-size:9px}.wrap{overflow-x:auto;border-bottom:1px solid var(--line);background:#fff}.table{width:100%;border-collapse:collapse;table-layout:fixed}.invoiceTable{min-width:1140px}.packingTable{min-width:1800px}.poTable{min-width:2200px}.toolbar input,.actions input{border:1px solid #a8a8a8;padding:7px 10px;font:inherit;font-size:12px;background:#fff;min-width:180px}.table th,.table td{border:1px solid var(--line);padding:2px 3px;font-size:8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}.table th{background:#f5f5f5;text-align:center;font-weight:700}.c{text-align:center}.r{text-align:right}.summary{display:grid;grid-template-columns:minmax(0,1fr) 250px;border-bottom:1px solid var(--line)}.panel{border-right:1px solid var(--line)}.summary>.panel:last-child{border-right:0}.panelBody{padding:6px;font-size:10px;line-height:1.35}.valueLine{padding:7px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}.foot{display:grid;grid-template-columns:minmax(0,1fr) 220px;border-bottom:1px solid var(--line)}.sign{min-height:84px;padding:8px;border-right:1px solid var(--line);position:relative;text-align:center;font-size:10px}.sign:last-child{border-right:0}.sign.left{text-align:left}.sigLine{position:absolute;left:8px;right:8px;bottom:8px;border-top:1px solid var(--line);padding-top:3px;font-size:9px;font-weight:700}.actions{max-width:var(--sheet-width);margin:8px auto 0;justify-content:flex-end;padding-top:0}.muted{font-size:11px;color:var(--muted)}@media(max-width:900px){.app{padding:10px}.pageHeader,.sectionHead,.sheet,.actions{max-width:none}.hdr,.grid2,.summary,.foot{grid-template-columns:1fr}.logo,.note,.card,.panel,.sign{border-right:0;border-bottom:1px solid var(--line)}.pairs{grid-template-columns:1fr}.toolbar,.actions{align-items:stretch}.toolbar .btn,.actions .btn{flex:1 1 180px}.sectionHead{align-items:flex-start;flex-direction:column}.wrap{overflow-x:auto}.invoiceTable,.packingTable{min-width:980px}.toast{left:12px;right:12px;max-width:none}}@media print{body{background:#fff}.app{max-width:100%;padding:0}.pageHeader,.actions,.muted,.toast,.toolbar,.no-print{display:none!important}.sheet{box-shadow:none;border:1px solid #111}.doc{margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}.wrap{overflow:visible}.invoiceTable,.packingTable{min-width:0}.table th:last-child,.table td:last-child{display:none!important}input,select,textarea{border:0!important;background:transparent!important;padding:0!important;outline:0!important;box-shadow:none!important;appearance:none!important;-webkit-appearance:none!important}.btn,button{display:none!important}@page{size:A4 landscape;margin:10px}}
 
 `;
 
 const directLabelPrintStyles = `
 .direct-label-print-sheet { display: none; }
 @media print {
+  body.print-labels-only .loading-overlay > *:not(.direct-label-print-sheet) { display: none !important; }
+  body.print-labels-only .loading-overlay { background: #fff !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   body.print-labels-only .app > * { display: none !important; }
   body.print-labels-only .direct-label-print-sheet { display: block !important; }
 }
@@ -105,6 +107,72 @@ const directLabelPrintStyles = `
 
 const printGridStyles = `
 @media print {
+  .sheet .other-mrr-meta td {
+    font-size: 8px !important;
+    padding: 2px 3px !important;
+  }
+
+  .sheet .other-mrr-meta input {
+    font-size: 8px !important;
+    padding: 1px 2px !important;
+  }
+
+  .sheet .other-mrr-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  .sheet .other-mrr-table th,
+  .sheet .other-mrr-table td {
+    font-size: 6px !important;
+    padding: 1px 2px !important;
+    line-height: 1.15 !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  .sheet .other-mrr-table input,
+  .sheet .other-mrr-table select {
+    font-size: 6px !important;
+    padding: 0 !important;
+    line-height: 1.1 !important;
+  }
+
+  .sheet .other-mrr-table th:nth-child(1),
+  .sheet .other-mrr-table td:nth-child(1) { width: 4% !important; }
+  .sheet .other-mrr-table th:nth-child(2),
+  .sheet .other-mrr-table td:nth-child(2) { width: 8% !important; }
+  .sheet .other-mrr-table th:nth-child(3),
+  .sheet .other-mrr-table td:nth-child(3) { width: 7% !important; }
+  .sheet .other-mrr-table th:nth-child(4),
+  .sheet .other-mrr-table td:nth-child(4) { width: 10% !important; }
+  .sheet .other-mrr-table th:nth-child(5),
+  .sheet .other-mrr-table td:nth-child(5) { width: 12% !important; }
+  .sheet .other-mrr-table th:nth-child(6),
+  .sheet .other-mrr-table td:nth-child(6) { width: 6% !important; }
+  .sheet .other-mrr-table th:nth-child(7),
+  .sheet .other-mrr-table td:nth-child(7) { width: 6% !important; }
+  .sheet .other-mrr-table th:nth-child(8),
+  .sheet .other-mrr-table td:nth-child(8) { width: 5% !important; }
+  .sheet .other-mrr-table th:nth-child(9),
+  .sheet .other-mrr-table td:nth-child(9) { width: 7% !important; }
+  .sheet .other-mrr-table th:nth-child(10),
+  .sheet .other-mrr-table td:nth-child(10) { width: 5% !important; }
+  .sheet .other-mrr-table th:nth-child(11),
+  .sheet .other-mrr-table td:nth-child(11) { width: 8% !important; }
+  .sheet .other-mrr-table th:nth-child(12),
+  .sheet .other-mrr-table td:nth-child(12) { width: 10% !important; }
+  .sheet .other-mrr-table th:nth-child(13),
+  .sheet .other-mrr-table td:nth-child(13) { width: 5% !important; }
+  .sheet .other-mrr-table th:nth-child(14),
+  .sheet .other-mrr-table td:nth-child(14) { width: 5% !important; }
+  .sheet .other-mrr-table th:nth-child(15),
+  .sheet .other-mrr-table td:nth-child(15) { width: 6% !important; }
+  .sheet .other-mrr-table th:nth-child(16),
+  .sheet .other-mrr-table td:nth-child(16) { width: 6% !important; }
+
   .sheet .grid2 {
     display: grid !important;
     grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
@@ -175,7 +243,13 @@ const GEMINI_MODELS = Array.from(new Set([
 ].map(normalizeGeminiModelName).filter(Boolean)));
 const GEMINI_RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const GEMINI_API_BASES = ['https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1'];
-const GEMINI_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS || 45000);
+const GEMINI_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS || 120000);
+const GEMINI_IMAGE_MAX_DIM = Math.max(1400, Number(import.meta.env.VITE_GEMINI_IMAGE_MAX_DIM || 2600));
+const GEMINI_IMAGE_MIN_DIM = Math.max(1000, Math.min(GEMINI_IMAGE_MAX_DIM, Number(import.meta.env.VITE_GEMINI_IMAGE_MIN_DIM || 1600)));
+const GEMINI_IMAGE_START_QUALITY = Math.min(0.98, Math.max(0.5, Number(import.meta.env.VITE_GEMINI_IMAGE_START_QUALITY || 0.88)));
+const GEMINI_IMAGE_MIN_QUALITY = Math.min(GEMINI_IMAGE_START_QUALITY, Math.max(0.35, Number(import.meta.env.VITE_GEMINI_IMAGE_MIN_QUALITY || 0.55)));
+const GEMINI_IMAGE_MAX_BYTES = Math.max(5 * 1024 * 1024, Number(import.meta.env.VITE_GEMINI_IMAGE_MAX_BYTES || (20 * 1024 * 1024)));
+const GEMINI_MAX_OUTPUT_TOKENS = Math.max(2048, Number(import.meta.env.VITE_GEMINI_MAX_OUTPUT_TOKENS || 12288));
 let GEMINI_COOLDOWN_UNTIL = 0;
 
 const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbysFVxjcEORHOSsVV54GBaCny1dIqgiUcPGI4tIlTVJHp-PujausTXXTWRt9AUDToladA/exec';
@@ -398,20 +472,50 @@ function fileToBase64(file) {
     img.onload = () => {
       URL.revokeObjectURL(url);
       const canvas = document.createElement('canvas');
-      const MAX_DIM = 1200;
-      let { width, height } = img;
-      if (width > height && width > MAX_DIM) {
-        height *= MAX_DIM / width;
-        width = MAX_DIM;
-      } else if (height > MAX_DIM) {
-        width *= MAX_DIM / height;
-        height = MAX_DIM;
-      }
-      canvas.width = width;
-      canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.6));
+      if (!ctx) {
+        useFallback();
+        return;
+      }
+
+      const originalWidth = img.naturalWidth || img.width || 1;
+      const originalHeight = img.naturalHeight || img.height || 1;
+      const initialScale = Math.min(1, GEMINI_IMAGE_MAX_DIM / Math.max(originalWidth, originalHeight));
+      let width = Math.max(1, Math.round(originalWidth * initialScale));
+      let height = Math.max(1, Math.round(originalHeight * initialScale));
+
+      const render = (quality) => {
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        return canvas.toDataURL('image/jpeg', quality);
+      };
+
+      let quality = GEMINI_IMAGE_START_QUALITY;
+      let dataUrl = render(quality);
+      let size = getDataUrlBase64Size(dataUrl);
+
+      while (size > GEMINI_IMAGE_MAX_BYTES && quality > GEMINI_IMAGE_MIN_QUALITY) {
+        quality = Math.max(GEMINI_IMAGE_MIN_QUALITY, Number((quality - 0.08).toFixed(2)));
+        dataUrl = render(quality);
+        size = getDataUrlBase64Size(dataUrl);
+      }
+
+      while (size > GEMINI_IMAGE_MAX_BYTES && Math.max(width, height) > GEMINI_IMAGE_MIN_DIM) {
+        const shrinkScale = Math.max(
+          GEMINI_IMAGE_MIN_DIM / Math.max(width, height),
+          Math.sqrt(GEMINI_IMAGE_MAX_BYTES / size) * 0.98
+        );
+        width = Math.max(1, Math.round(width * Math.min(0.92, shrinkScale)));
+        height = Math.max(1, Math.round(height * Math.min(0.92, shrinkScale)));
+        dataUrl = render(quality);
+        size = getDataUrlBase64Size(dataUrl);
+      }
+
+      resolve(dataUrl);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -1463,14 +1567,26 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
   throw lastError || new Error('Gemini request failed.');
 }
 
-async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
+async function fetchGeminiStructured(mediaItems, prompt, shape) {
   const schema = inferJsonSchema(shape);
+  const contents = [
+    {
+      parts: [
+        { text: prompt },
+        ...mediaItems.map((item) => ({
+          inline_data: { mime_type: item.mimeType, data: item.base64 }
+        }))
+      ]
+    }
+  ];
+
   const mainRequest = {
-    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+    contents,
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: schema,
-      temperature: 0.1
+      temperature: 0.1,
+      maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
     }
   };
 
@@ -1493,7 +1609,8 @@ async function fetchGeminiStructured(base64, mimeType, prompt, shape) {
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema: schema,
-            temperature: 0
+            temperature: 0,
+            maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
           }
         };
         const repairedData = await postGeminiGenerateContent(model, repairRequest, 3);
@@ -1571,44 +1688,74 @@ function mergeFocusedInvoiceSupplierData(data, focused = {}) {
 function mergeFocusedPackingData(data, focused = {}) {
   return {
     ...data,
+    header: {
+      ...(data?.header || {}),
+      ...(focused?.header || {})
+    },
+    doc_title: data.doc_title || focused.doc_title || '',
+    challan_no: data.challan_no || focused.challan_no || '',
+    date: data.date || focused.date || '',
+    order_date: data.order_date || focused.order_date || '',
+    lr_no: data.lr_no || focused.lr_no || '',
+    lr_date: data.lr_date || focused.lr_date || '',
     intro_line: data.intro_line || focused.intro_line || '',
     ge_no: data.ge_no || focused.ge_no || '',
     mrr_no: data.mrr_no || focused.mrr_no || '',
     receipt_date: data.receipt_date || focused.receipt_date || '',
     truck_no: data.truck_no || focused.truck_no || '',
     actual_total: data.actual_total || focused.actual_total || '',
+    carrier: data.carrier || focused.carrier || '',
+    distributor: data.distributor || focused.distributor || '',
+    consignee: {
+      ...(data?.consignee || {}),
+      ...(focused?.consignee || {})
+    },
+    buyer: {
+      ...(data?.buyer || {}),
+      ...(focused?.buyer || {})
+    },
     total_reels: data.total_reels || focused.total_reels || '',
     total_weight: data.total_weight || focused.total_weight || '',
     receiver_label: data.receiver_label || focused.receiver_label || '',
     signer_name: data.signer_name || focused.signer_name || '',
     approval_text: data.approval_text || focused.approval_text || '',
     signatory_label: data.signatory_label || focused.signatory_label || '',
+    extra_details: data.extra_details || focused.extra_details || '',
     items: mergeScanRows(data.items, focused.items, blankPackingRow)
   };
 }
 
-async function fetchGeminiJson(file, kind) {
+async function fetchGeminiJson(filesInput, kind) {
   if (!API_KEY) throw new Error('Missing Gemini API key');
   if (!isLikelyGeminiApiKey(API_KEY)) {
     throw new Error('Gemini API key looks too short. Please check your .env key value.');
   }
+
+  const files = Array.isArray(filesInput) ? filesInput : [filesInput];
+  const mediaItems = await Promise.all(
+    files.map(async (file) => {
+      const dataUrl = await fileToBase64(file);
+      const base64 = getDataUrlBase64(dataUrl);
+      const mimeType = getDataUrlMimeType(dataUrl, file.type || 'image/jpeg');
+      const processedSize = getDataUrlBase64Size(dataUrl);
+      if (processedSize > GEMINI_IMAGE_MAX_BYTES) {
+        throw new Error('One of the images is still too large for Gemini after optimization. Please crop or use a clearer photo.');
+      }
+      return { base64, mimeType };
+    })
+  );
+
   const shape = kind === 'invoice' ? blankInvoice : blankPacking;
-  const dataUrl = await fileToBase64(file);
-  const mimeType = getDataUrlMimeType(dataUrl, file.type || 'image/jpeg');
-  const processedSize = getDataUrlBase64Size(dataUrl);
-  if (processedSize > 18 * 1024 * 1024) {
-    throw new Error('Processed image is still too large for Gemini. Please use a clearer crop or a smaller photo.');
-  }
-  const base64 = getDataUrlBase64(dataUrl);
-  const prompt = `Read this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. For each table row, strictly extract description, gsm, size, reels/quantity, weight, rate, and amount. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
-  let data = await fetchGeminiStructured(base64, mimeType, prompt, shape);
+  const pageText = mediaItems.length > 1 ? `these ${mediaItems.length} images as pages of the same document` : `this ${kind === 'invoice' ? 'invoice/mrr document' : 'packing slip'} image`;
+  const prompt = `Read ${pageText} and extract visible dynamic values into JSON. Include company/header block, document title, party details, transport fields, totals, and all table rows. For each table row, strictly extract description, gsm, size, reels/quantity, weight, rate, and amount. Return only schema fields, keep dates in YYYY-MM-DD where possible, preserve row order, and use empty strings or 0 when unreadable.`;
+  
+  let data = await fetchGeminiStructured(mediaItems, prompt, shape);
 
   if (kind === 'invoice') {
     try {
       const focused = await fetchGeminiStructured(
-        base64,
-        mimeType,
-        'Extract MRR entry metadata and goods table: GE No, Date, MRR No, Dt. of Receipt, Sup Doc No, Truck Number, Invoice Total Weight (Kgs), Actual MRR Total Weight (Kgs), E-Way Bill No, E-Way Date, L.R No, Supplier/Bill To name and state, Gross Amount, Invoice Basic Value, MRR Basic Value, Insurance, Taxable GST, CGST %, SGST %, Round Off. Also extract the goods table: Description, HSN, Sort, Party Order, GSM, Size, Unit, Reels, Weight, Unit, Rate, Amount. Ensure every row includes the Rate and Amount if visible. Read row-by-row in order. Return only rows that contain at least one real item value (for example description, party order, gsm, size, reels, weight, rate, amount). Skip blank separator/total/empty lines. Do not invent values; leave unreadable cells empty.',
+        mediaItems,
+        'Extract MRR entry metadata and goods table from all pages: GE No, Date, MRR No, Dt. of Receipt, Sup Doc No, Truck Number, Invoice Total Weight (Kgs), Actual MRR Total Weight (Kgs), E-Way Bill No, E-Way Date, L.R No, Supplier/Bill To name and state, Gross Amount, Invoice Basic Value, MRR Basic Value, Insurance, Taxable GST, CGST %, SGST %, Round Off. Also extract the goods table: Description, HSN, Sort, Party Order, GSM, Size, Unit, Reels, Weight, Unit, Rate, Amount. Ensure every row includes the Rate and Amount if visible. Read row-by-row in order across all pages. Return only rows that contain at least one real item value. Skip blank separator/total/empty lines. Do not invent values; leave unreadable cells empty.',
         { 
           invoice_no: '', date: '', eway_no: '', eway_date: '', lr_no: '', vehicle_no: '', ge_no: '', mrr_no: '', receipt_date: '', actual_weight: '', irn: '', ack_no: '', ack_date: '', 
           bill_to: { name_address: '', state: '', gstin: '', state_code: '' },
@@ -1622,9 +1769,8 @@ async function fetchGeminiJson(file, kind) {
 
     try {
       const focusedSupplier = await fetchGeminiStructured(
-        base64,
-        mimeType,
-        'Extract only seller/supplier party details from this invoice. Supplier means the company issuing the invoice (usually top header company name), not buyer/consignee/delivery party. Return supplier_name, supplier_state, supplier_state_code, supplier_gstin. If unsure, leave empty.',
+        mediaItems,
+        'Extract only seller/supplier party details from this document. Supplier means the company issuing the invoice (usually top header company name), not buyer/consignee/delivery party. Return supplier_name, supplier_state, supplier_state_code, supplier_gstin. If unsure, leave empty.',
         { supplier_name: '', supplier_state: '', supplier_state_code: '', supplier_gstin: '' }
       );
       data = {
@@ -1638,24 +1784,59 @@ async function fetchGeminiJson(file, kind) {
     }
   }
 
-  if (kind === 'packing' && needsPackingRowRetry(data.items)) {
+  if (kind === 'packing') {
     try {
-      const focused = await fetchGeminiStructured(
-        base64,
-        mimeType,
-        'Focus on the packing slip item table and the nearby intro line, GE No, MRR No, date of receipt, truck number, actual total, totals, received by, approval text, and signatory sections. Read each visible row cell by cell in order. Extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for every row. Supplier reel number should come from the photo. Leave erp_code empty unless clearly visible. Return only real item rows; skip blank lines, total/subtotal rows, signature/footer lines, and rows with only MRR/GE values but no item data. Do not invent values. Leave unreadable cells empty.',
-        { intro_line: '', ge_no: '', mrr_no: '', receipt_date: '', truck_no: '', actual_total: '', total_reels: '', total_weight: '', receiver_label: '', signer_name: '', approval_text: '', signatory_label: '', items: [blankPackingRow()] }
+      const focusedMeta = await fetchGeminiStructured(
+        mediaItems,
+        'Focus on the full packing slip context outside the main item table across all pages. Extract header/company block, document title, challan number, challan date, order date, L.R. No, L.R. date, GE No, MRR No, date of receipt, truck/vehicle number, actual total, total reels, total weight, carrier, distributor, consignee block, buyer block, intro line, received-by/footer labels, approval text, signatory label, and any useful extra context text. Read exactly what is visible and do not invent values. Keep dates in YYYY-MM-DD where possible.',
+        {
+          header: { brand_box: '', title: '', works: '', meta: '', contact: '', gstin: '', extra_lines: [], note: '' },
+          doc_title: '',
+          challan_no: '',
+          date: '',
+          order_date: '',
+          lr_no: '',
+          lr_date: '',
+          ge_no: '',
+          mrr_no: '',
+          receipt_date: '',
+          truck_no: '',
+          actual_total: '',
+          carrier: '',
+          distributor: '',
+          consignee: { name_address: '', gstin: '', state: '' },
+          buyer: { name_address: '', gstin: '', state: '' },
+          intro_line: '',
+          total_reels: '',
+          total_weight: '',
+          receiver_label: '',
+          signer_name: '',
+          approval_text: '',
+          signatory_label: '',
+          extra_details: ''
+        }
       );
-      data = mergeFocusedPackingData(data, focused);
+      data = mergeFocusedPackingData(data, focusedMeta);
     } catch {
+    }
+
+    if (needsPackingRowRetry(data.items) || !ensureRows(data.items).length) {
+      try {
+        const focused = await fetchGeminiStructured(
+          mediaItems,
+          'Focus only on the packing slip item table across all pages. Read every visible row cell-by-cell in row order and extract item_name, supplier_reel_no, reel_no, sort_no, party_order, bf, gsm, size, unit, net_wt, mrr_no, ge_no, po_no, po_details, and rate for each row. Supplier reel number must come from the image. Preserve row order. Return only real item rows; skip blank lines, total/subtotal rows, signature/footer lines, and rows that have only repeated MRR/GE values with no item data. Do not invent values. Leave unreadable cells empty.',
+          { items: [blankPackingRow()] }
+        );
+        data = mergeFocusedPackingData(data, focused);
+      } catch {
+      }
     }
   }
 
   if (kind === 'packing') {
     try {
       const focusedInvoiceData = await fetchGeminiStructured(
-        base64,
-        mimeType,
+        mediaItems,
         'If this packing slip has an embedded invoice or MRR reference section with supplier/seller details, extract: supplier name (bill_to.name_address), state name (bill_to.state), GSTIN (bill_to.gstin), gross amount, invoice/MRR basic value, and any tax or total information. If no invoice section is visible on this packing slip, return empty fields.',
         { 
           bill_to: { name_address: '', state: '', gstin: '', state_code: '' },
@@ -2776,19 +2957,22 @@ function ProfileMenu({ currentUser, onLogout, top = '12px', right = '14px', zInd
   );
 }
 
-function getOverlayBootStep(menuBootConfig, isAuthenticated) {
+function getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm = null) {
   if (menuBootConfig?.token && isAuthenticated) {
     if (menuBootConfig.view === 'label') return 5;
     if (menuBootConfig.view === 'all_approvals') return 6;
+    if (menuBootConfig.view === 'pending_list') return 6;
+    if (menuBootConfig.view === 'review_mrr') return 7;
     return 3;
   }
+  if (isAuthenticated && initialFirm) return 3;
   return isAuthenticated ? 2 : 1;
 }
 
-function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, firms, menuBootConfig, isAuthenticated }) {
-  const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated));
-  const [tempFirm, setTempFirm] = useState(null);
-  const [tempType, setTempType] = useState('reel');
+function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSelection, currentUser, firms, menuBootConfig, isAuthenticated, initialFirm = null, initialType = 'reel' }) {
+  const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
+  const [tempFirm, setTempFirm] = useState(initialFirm);
+  const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);
   const [editMrrRows, setEditMrrRows] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
@@ -2797,8 +2981,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const [isBulkApprovingPending, setIsBulkApprovingPending] = useState(false);
   const [editData, setEditData] = useState(null);
   const [pendingFilter, setPendingFilter] = useState('pending_mrr');
-  const [allApprovalsStage, setAllApprovalsStage] = useState('pending_plant_head_approval');
-  const [allApprovalsFirmFilter, setAllApprovalsFirmFilter] = useState('all');
+  const [reportFilter, setReportFilter] = useState('all'); // 'all' or 'pending'
+  const [reportSearch, setReportSearch] = useState('');
+  const [allApprovalsStage, setAllApprovalsStage] = useState('pending_plant_head_approval');  const [allApprovalsFirmFilter, setAllApprovalsFirmFilter] = useState('all');
   const [selectedGroupedApprovalKeys, setSelectedGroupedApprovalKeys] = useState({});
   const [groupedAccountsApprovalDrafts, setGroupedAccountsApprovalDrafts] = useState({});
   const [loginId, setLoginId] = useState('');
@@ -2808,6 +2993,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   const [validatedUsersByFirm, setValidatedUsersByFirm] = useState({});
   const [previewAllRows, setPreviewAllRows] = useState([]);
   const [isLoadingPreviewAll, setIsLoadingPreviewAll] = useState(false);
+  const [isPreparingLabels, setIsPreparingLabels] = useState(false);
+  const [directLabelPrintJob, setDirectLabelPrintJob] = useState(null);
   const [labelInitialMrr, setLabelInitialMrr] = useState('');
   const [allApprovalRows, setAllApprovalRows] = useState([]);
   const [isLoadingAllApprovals, setIsLoadingAllApprovals] = useState(false);
@@ -3377,12 +3564,52 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   };
 
   const loadPreviewAllMrr = async () => {
-    if (!tempFirm) return;
+    if (!firms?.length) return;
     setIsLoadingPreviewAll(true);
     try {
-      const mrrSheet = getSheetName(tempFirm.mrr, tempType);
-      const payload = await fetchSheetRange(mrrSheet, tempFirm.spreadsheetId, tempFirm.scriptUrl);
-      setPreviewAllRows(Array.isArray(payload?.values) ? payload.values : []);
+      const eligibleFirms = firms.filter((firm) => String(firm?.spreadsheetId || '').trim() && String(firm?.scriptUrl || '').trim());
+      const payloads = await Promise.all(eligibleFirms.flatMap((firm) => ['reel', 'other'].map(async (type) => {
+        try {
+          const mrrSheet = getSheetName(firm.mrr, type);
+          const payload = await fetchSheetRange(mrrSheet, firm.spreadsheetId, firm.scriptUrl);
+          const values = Array.isArray(payload?.values) ? payload.values : [];
+          return { firm, type, values };
+        } catch {
+          return { firm, type, values: [] };
+        }
+      })));
+
+      let baseHeaders = [];
+      const mergedRows = [];
+      payloads.forEach(({ firm, type, values }) => {
+        if (!Array.isArray(values) || !values.length) return;
+        const headers = Array.isArray(values[0]) ? values[0].map((value) => String(value || '').trim()) : [];
+        if (!headers.length) return;
+        if (!baseHeaders.length) baseHeaders = headers;
+        values.slice(1).forEach((row) => {
+          mergedRows.push([
+            firm.name,
+            firm.id,
+            type === 'other' ? 'OTHER MRR' : 'REEL MRR',
+            ...(Array.isArray(row) ? row : [])
+          ]);
+        });
+      });
+
+      if (!baseHeaders.length) {
+        setPreviewAllRows([]);
+        return;
+      }
+
+      mergedRows.sort((a, b) => {
+        const dateA = String(a[3] || '');
+        const dateB = String(b[3] || '');
+        const dateCmp = dateB.localeCompare(dateA, undefined, { numeric: true, sensitivity: 'base' });
+        if (dateCmp !== 0) return dateCmp;
+        return String(a[0] || '').localeCompare(String(b[0] || ''), undefined, { sensitivity: 'base' });
+      });
+
+      setPreviewAllRows([['Firm Name', 'Firm Id', 'MRR Type', ...baseHeaders], ...mergedRows]);
     } catch (err) {
       setPreviewAllRows([]);
       alert(err?.message || 'Could not load MRR rows.');
@@ -3454,12 +3681,31 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
       setStep(6);
       return;
     }
+    if (menuBootConfig.view === 'pending_list') {
+      setPendingFilter(menuBootConfig.pendingFilter || 'pending_mrr');
+      setStep(6);
+      return;
+    }
+    if (menuBootConfig.view === 'review_mrr') {
+      setReportFilter(menuBootConfig.reportFilter || 'all');
+      setStep(7);
+      return;
+    }
     setStep(3);
   }, [menuBootConfig?.token, firms, isAuthenticated]);
 
   useEffect(() => {
-    setStep(getOverlayBootStep(menuBootConfig, isAuthenticated));
-  }, [menuBootConfig?.token, menuBootConfig?.view, isAuthenticated]);
+    setStep(getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
+  }, [menuBootConfig?.token, menuBootConfig?.view, isAuthenticated, initialFirm]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (menuBootConfig?.token) return;
+    if (!initialFirm) return;
+    setTempFirm((prev) => prev || initialFirm);
+    setTempType((prev) => prev || initialType || 'reel');
+    setStep(3);
+  }, [isAuthenticated, initialFirm, initialType, menuBootConfig?.token]);
 
   useEffect(() => {
     if (isAuthenticated) return;
@@ -3581,6 +3827,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                   }
                   setTempFirm(firm);
                   setTempType('reel');
+                  onRememberSelection?.(firm, 'reel');
                   onLogin?.({
                     ...user,
                     firmId: firm?.id || ''
@@ -3599,7 +3846,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   }
 
   if (step === 3) {
-    const useGridMenu = String(tempFirm?.id || '').toLowerCase() === 'lnki';
+    const useGridMenu = ['lnki', 'unit_1', 'unit_2'].includes(String(tempFirm?.id || '').toLowerCase());
     const isMenuCountsLoading = isLoadingPending || isLoadingEditMrr || isLoadingAllApprovals;
     const menuCountText = (value) => (isMenuCountsLoading ? '(Loading...)' : `(${value})`);
     const menuContainerStyle = useGridMenu
@@ -3620,7 +3867,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
             <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>MODE:</span>
             <select
               value={tempType}
-              onChange={(e) => setTempType(e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                setTempType(nextType);
+                if (tempFirm) onRememberSelection?.(tempFirm, nextType);
+              }}
               style={{ border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', fontWeight: 700, background: '#fff' }}
             >
               <option value="reel">REEL MRR</option>
@@ -3690,29 +3941,28 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
             </button>
             <button
               className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#1e4f74', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setLabelInitialMrr(''); setStep(5); }}
+            >
+              6. DOWNLOAD LABEL
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={async () => {
+                setReportFilter('pending');
                 await loadPreviewAllMrr();
                 setStep(7);
               }}
             >
-              6. PREVIEW ALL MRR
-            </button>
-            <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setLabelInitialMrr(''); setStep(5); }}
-            >
-              7. DOWNLOAD LABEL
-            </button>
-            <button 
-              className="btn" 
+              7. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
+            </button>            <button
+              className="btn"
               style={backButtonStyle}
               onClick={() => { setStep(2); }}
             >
               ← Back to Firms
-            </button>
-            </div>
+            </button>            </div>
           </div>
         </div>
       </div>
@@ -3975,8 +4225,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                                   }
                                 }}
                               >
-                                {isRowApproving ? <span className="spinner" /> : null}
-                                {isRowApproving ? 'Approving...' : 'APPROVE'}
+                                {isRowApproving ? <span className="approving-bubble">Approving<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'APPROVE'}
                               </button>
                               </div>
                             {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' && isGroupedApprovalDebitNoteRequired(ge) ? (
@@ -4138,9 +4387,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               setStep(4);
                               return;
                             }
-                            const selectedPending = pendingFilter === 'edit_mrr'
-                              ? { ...ge, pending_stage: 'completed_mrr', force_load_saved: true }
-                              : ge;
+                            const selectedPending = {
+                              ...ge,
+                              return_menu_firm_id: tempFirm?.id || '',
+                              return_menu_type: tempType || 'reel',
+                              return_menu_view: 'pending_list',
+                              return_menu_pending_filter: pendingFilter || 'pending_mrr'
+                            };
+                            if (pendingFilter === 'edit_mrr') {
+                              selectedPending.pending_stage = 'completed_mrr';
+                              selectedPending.force_load_saved = true;
+                            }
                             onGeSubmit(ge.ge_no || ge.ge_entry, selectedPending);
                             onSelect(tempFirm, tempType);
                           }}
@@ -4177,8 +4434,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
                               }
                             }}
                           >
-                            {isRowApproving ? <span className="spinner" /> : null}
-                            {isRowApproving ? 'Approving...' : 'APPROVE'}
+                            {isRowApproving ? <span className="approving-bubble">Approving<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'APPROVE'}
                           </button>
                         )}
                       </div>
@@ -4196,12 +4452,185 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
   if (step === 7) {
     const headers = previewAllRows[0] || [];
     const bodyRows = previewAllRows.slice(1);
+    const lowerHeaders = headers.map(h => String(h || '').toLowerCase());
+    const readReportCell = (row, ...aliases) => {
+      for (const alias of aliases) {
+        const idx = lowerHeaders.indexOf(String(alias || '').trim().toLowerCase());
+        if (idx >= 0) {
+          const value = String(row?.[idx] ?? '').trim();
+          if (value) return value;
+        }
+      }
+      return '';
+    };
+    const phIdx = lowerHeaders.indexOf('plant head approval timestamp');
+    const accIdx = lowerHeaders.indexOf('accounts approval timestamp');
+    const mdIdx = lowerHeaders.indexOf('md approval timestamp');
+    const rowGroups = bodyRows.reduce((map, row) => {
+      const mrrNo = readReportCell(row, 'mrr number', 'mrr no');
+      const geNo = readReportCell(row, 'ge entry', 'ge no');
+      const key = `${mrrNo || ''}|${geNo || ''}`;
+      if (!key.trim()) return map;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(row);
+      return map;
+    }, new Map());
+    const summaryRows = Array.from(rowGroups.values()).map((rows) => {
+      const firstRow = rows[0] || [];
+      const supplierValue = rows
+        .map((row) => readReportCell(row, 'supplier', 'supplier_name', 'bill_to', 'buyer'))
+        .find((value) => String(value || '').trim()) || '';
+      const qtyValues = rows
+        .map((row) => n(readReportCell(row, 'required reel', 'reels', 'rows added')))
+        .filter((value) => value > 0);
+      const itemLines = rows.filter((row) => {
+        const description = readReportCell(row, 'description', 'po details', 'reel details', 'item_name');
+        return description && !isTotalLikeText(description);
+      });
+      const poRates = [...new Set(rows
+        .map((row) => formatDecimal2(readReportCell(row, 'po rate', 'po_rate')))
+        .filter(Boolean))];
+      const invoiceRates = [...new Set(rows
+        .map((row) => formatDecimal2(readReportCell(row, 'invoice rate', 'rate', 'invoice_rate')))
+        .filter(Boolean))];
+      return {
+        key: `${readReportCell(firstRow, 'mrr number', 'mrr no')}|${readReportCell(firstRow, 'ge entry', 'ge no')}`,
+        row: firstRow,
+        geNo: readReportCell(firstRow, 'ge entry', 'ge no'),
+        mrrNo: readReportCell(firstRow, 'mrr number', 'mrr no'),
+        firm: readReportCell(firstRow, 'firm name') || tempFirm?.name || '',
+        firmId: readReportCell(firstRow, 'firm id') || tempFirm?.id || '',
+        mrrType: String(readReportCell(firstRow, 'mrr type') || tempType || 'reel').toLowerCase().includes('other') ? 'other' : 'reel',
+        mrrTypeLabel: readReportCell(firstRow, 'mrr type') || (String(readReportCell(firstRow, 'mrr type') || '').toLowerCase().includes('other') ? 'OTHER MRR' : 'REEL MRR'),
+        supplier: supplierValue,
+        totalQty: qtyValues.length ? String(qtyValues.reduce((sum, value) => sum + value, 0)) : readReportCell(firstRow, 'required reel', 'rows added'),
+        items: String(itemLines.length || rows.length || 0),
+        mrrWeight: formatDecimal2(readReportCell(firstRow, 'actual mrr ttl weight (kgs)', 'actual_mrr_ttl_weight_kgs', 'mrr weight')),
+        invoiceWeight: formatDecimal2(readReportCell(firstRow, 'invoice ttl weight (kgs)', 'invoice_ttl_weight_kgs', 'invoice weight')),
+        poRate: poRates.join(', '),
+        invoiceRate: invoiceRates.join(', '),
+        basicValue: formatDecimal2(readReportCell(firstRow, 'mrr basic value', 'invoice basic value', 'invoice basic amount', 'amount'))
+      };
+    });
+
+    const downloadRowLabel = async (summary) => {
+      const mrrNumber = String(summary?.mrrNo || '').trim();
+      const targetFirm = firms.find((firm) => String(firm.id || '').trim() === String(summary?.firmId || '').trim()) || tempFirm;
+      if (!targetFirm || !mrrNumber) {
+        alert('MRR No. missing for label print.');
+        return;
+      }
+      try {
+        setIsPreparingLabels(true);
+        const targetType = summary?.mrrType || tempType;
+        const helperSheetName = getSheetName(targetFirm.helper, targetType);
+        const payload = await fetchSheetRangeWithParams({
+          sheet: helperSheetName,
+          mrr_number: mrrNumber,
+          spreadsheetId: targetFirm.spreadsheetId
+        }, targetFirm.scriptUrl);
+        const reels = Array.isArray(payload?.values) ? payload.values : [];
+        if (!reels.length) {
+          throw new Error(`No label rows found for MRR ${mrrNumber}.`);
+        }
+        setDirectLabelPrintJob({ reels, mrrNumber, firm: targetFirm, mode: 'a4' });
+        const previousTitle = document.title;
+        document.body.classList.add('print-labels-only');
+        document.title = `MRR_${mrrNumber}_Labels`;
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => {
+            document.title = previousTitle;
+            document.body.classList.remove('print-labels-only');
+            setDirectLabelPrintJob(null);
+          }, 1000);
+        }, 150);
+      } catch (err) {
+        document.body.classList.remove('print-labels-only');
+        setDirectLabelPrintJob(null);
+        alert(err?.message || 'Could not prepare labels.');
+      } finally {
+        setIsPreparingLabels(false);
+      }
+    };
+
+    const openReviewRow = (summary) => {
+      const mrrNumber = String(summary?.mrrNo || '').trim();
+      if (!mrrNumber) return;
+      const targetFirm = firms.find((firm) => String(firm.id || '').trim() === String(summary?.firmId || '').trim()) || tempFirm;
+      const targetType = summary?.mrrType || tempType;
+      const targetItem = { 
+        mrr_number: mrrNumber, 
+        ge_no: String(summary?.geNo || '').trim(),
+        pending_stage: 'completed_mrr', 
+        force_load_saved: true,
+        return_menu_firm_id: tempFirm?.id || '',
+        return_menu_type: tempType || 'reel',
+        return_menu_view: 'review_mrr',
+        return_menu_report_filter: reportFilter || 'all'
+      };
+      onGeSubmit(targetItem.ge_no, targetItem);
+      if (targetFirm) onSelect(targetFirm, targetType);
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 800);
+    };
+    const printRowPdf = (summary) => {
+      openReviewRow(summary);
+      setTimeout(() => {
+        window.print();
+      }, 1400);
+    };
+
+    const filteredRows = summaryRows.filter((summary) => {
+      const searchable = [
+        summary.geNo,
+        summary.mrrNo,
+        summary.firm,
+        summary.mrrTypeLabel,
+        summary.supplier,
+        summary.poRate,
+        summary.invoiceRate,
+        summary.basicValue
+      ].join(' ').toLowerCase();
+      const matchesSearch = !reportSearch || searchable.includes(reportSearch.toLowerCase());
+      if (!matchesSearch) return false;
+      if (reportFilter === 'pending') {
+        const row = summary.row || [];
+        const isCompleted = (phIdx >= 0 && row[phIdx]) && (accIdx >= 0 && row[accIdx]) && (mdIdx >= 0 && row[mdIdx]);
+        return !isCompleted;
+      }
+      return true;
+    });
+
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {isPreparingLabels && (
+          <div className="loading-overlay" style={{ zIndex: 10005 }}>
+            <div className="spinner" />
+            <p style={{ marginTop: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>Preparing labels...</p>
+          </div>
+        )}
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '12px', marginBottom: '20px', width: '100%' }}>
-            <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>Preview All MRR</h2>
+            <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>Review MRR</h2>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '20px', marginLeft: 'auto', marginRight: '50px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input 
+                  placeholder="Search rows..." 
+                  value={reportSearch} 
+                  onChange={e => setReportSearch(e.target.value)}
+                  style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #ccc', width: '200px' }}
+                />
+                <select 
+                  value={reportFilter} 
+                  onChange={e => setReportFilter(e.target.value)}
+                  style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #ccc' }}
+                >
+                  <option value="all">All Records</option>
+                  <option value="pending">Only Pending Approval</option>
+                </select>
+              </div>
               <button
                 className="btn"
                 style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '11px', fontWeight: 700, height: '26px', lineHeight: 1 }}
@@ -4215,22 +4644,57 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, currentUser, 
           {isLoadingPreviewAll ? <p>Loading...</p> : null}
           {!isLoadingPreviewAll && !previewAllRows.length ? <p>No MRR rows found.</p> : null}
           {!isLoadingPreviewAll && previewAllRows.length > 0 ? (
-            <table className="table" style={{ width: '100%', tableLayout: 'auto' }}>
-              <thead>
-                <tr>
-                  {headers.map((header, idx) => <th key={`h-${idx}`} style={{ fontSize: '12px' }}>{String(header || '')}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {bodyRows.map((row, rIdx) => (
-                  <tr key={`r-${rIdx}`}>
-                    {headers.map((_, cIdx) => <td key={`c-${rIdx}-${cIdx}`} style={{ fontSize: '11px' }}>{String(row?.[cIdx] ?? '')}</td>)}
+            <div className="wrap">
+              <table className="table" style={{ width: '100%', tableLayout: 'auto' }}>
+                <thead>
+                  <tr>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>GE No</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR No</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Firm</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Mode</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Supplier</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Total Qty</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Items</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR Weight</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Weight</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>PO Rate</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Rate</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Basic Value</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredRows.map((summary, rIdx) => (
+                    <tr key={`r-${rIdx}`}>
+                      <td style={{ fontSize: '10px' }}>{summary.geNo || '-'}</td>
+                      <td style={{ fontSize: '10px' }}>{summary.mrrNo || '-'}</td>
+                      <td style={{ fontSize: '10px' }}>{summary.firm || '-'}</td>
+                      <td style={{ fontSize: '10px' }}>{summary.mrrTypeLabel || '-'}</td>
+                      <td style={{ fontSize: '10px' }}>{summary.supplier || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px' }}>{summary.totalQty || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px' }}>{summary.items || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px' }}>{summary.mrrWeight || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px' }}>{summary.invoiceWeight || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px', whiteSpace: 'pre-line' }}>{summary.poRate || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px', whiteSpace: 'pre-line' }}>{summary.invoiceRate || '-'}</td>
+                      <td className="r" style={{ fontSize: '10px' }}>{summary.basicValue || '-'}</td>
+                      <td style={{ whiteSpace: 'nowrap', display: 'flex', gap: '4px' }}>
+                        <button className="btn small" onClick={() => openReviewRow(summary)}>Open to Review</button>
+                        <button className="btn small" onClick={() => printRowPdf(summary)}>Print</button>
+                        <button className="btn small" onClick={() => downloadRowLabel(summary)}>Download Label</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : null}
         </div>
+        {directLabelPrintJob?.reels?.length ? (
+          <section className="direct-label-print-sheet">
+            <ReelLabelPrintArea reels={directLabelPrintJob.reels} selectedFirm={directLabelPrintJob.firm} printMode={directLabelPrintJob.mode} />
+          </section>
+        ) : null}
       </div>
     );
   }
@@ -4250,6 +4714,8 @@ function App() {
   });
   const [invoice, setInvoice] = useState(blankInvoice);
   const [packing, setPacking] = useState(blankPacking);
+  const invoiceStateRef = useRef(blankInvoice);
+  const packingStateRef = useRef(blankPacking);
   const [geData, setGeData] = useState(null);
   const [pendingGEs, setPendingGEs] = useState([]);
   const [showGeModal, setShowGeModal] = useState(false);
@@ -4266,6 +4732,8 @@ function App() {
   const [isApprovingFromForm, setIsApprovingFromForm] = useState(false);
   const [isPreparingLabels, setIsPreparingLabels] = useState(false);
   const [directLabelPrintJob, setDirectLabelPrintJob] = useState(null);
+  const [invoicePhotoScanned, setInvoicePhotoScanned] = useState(false);
+  const [packingPhotoScanned, setPackingPhotoScanned] = useState(false);
   const [mrrSupplierOptions, setMrrSupplierOptions] = useState([]);
   const [accountsDebitNote, setAccountsDebitNote] = useState('');
   const [accountsDebitNoteDate, setAccountsDebitNoteDate] = useState('');
@@ -4277,6 +4745,14 @@ function App() {
   const [triggerPendingModal, setTriggerPendingModal] = useState(false);
   const [helperSheetReelSeed, setHelperSheetReelSeed] = useState(0);
   const [manualFields, setManualFields] = useState({}); // { [rowIdx]: { fieldName: true } }
+
+  useEffect(() => {
+    invoiceStateRef.current = invoice;
+  }, [invoice]);
+
+  useEffect(() => {
+    packingStateRef.current = packing;
+  }, [packing]);
   const [lastSavedRecord, setLastSavedRecord] = useState(null);
   const [isMrrSavedLocked, setIsMrrSavedLocked] = useState(false);
   const approvalLoadKeyRef = useRef('');
@@ -4969,6 +5445,8 @@ function App() {
     setHelperSheetReelSeed(0);
     setIsMrrSavedLocked(false);
     setLastSavedRecord(null);
+    setInvoicePhotoScanned(false);
+    setPackingPhotoScanned(false);
     setSelectedFirm(firm);
     setMrrType(type);
     setIsFirmSelected(true);
@@ -4979,6 +5457,12 @@ function App() {
     } else {
       setPacking(prev => ({ ...prev, receiver_label: firm.name }));
     }
+  };
+
+  const rememberOverlaySelection = (firm, type = 'reel') => {
+    if (!firm) return;
+    setSelectedFirm(firm);
+    setMrrType(type || 'reel');
   };
 
   const handleUserLogin = (user) => {
@@ -5019,21 +5503,26 @@ function App() {
       token: Date.now(),
       firmId: targetFirmId,
       type: overrides.type || typeOverride || 'reel',
-      view
+      view,
+      pendingFilter: overrides.pendingFilter || '',
+      reportFilter: overrides.reportFilter || ''
     });
     setIsFirmSelected(false);
   };
 
   const goBackFromFormView = () => {
+    const returnView = String(geData?.return_menu_view || '').trim();
+    const returnPendingFilter = String(geData?.return_menu_pending_filter || '').trim();
+    const returnReportFilter = String(geData?.return_menu_report_filter || '').trim();
     openStageMenuView(
       mrrType,
-      isApprovalMode ? 'all_approvals' : 'dashboard',
-      isApprovalMode
-        ? {
-            firmId: geData?.return_menu_firm_id || selectedFirm?.id,
-            type: geData?.return_menu_type || mrrType
-          }
-        : {}
+      returnView || (isApprovalMode ? 'all_approvals' : 'dashboard'),
+      {
+        firmId: geData?.return_menu_firm_id || selectedFirm?.id,
+        type: geData?.return_menu_type || mrrType,
+        pendingFilter: returnPendingFilter,
+        reportFilter: returnReportFilter
+      }
     );
   };
 
@@ -5360,6 +5849,10 @@ function App() {
   };
 
   const downloadLabelFromCurrentScreen = async () => {
+    if (isOtherMrr) {
+      showPopup('Labels are not available for OTHER MRR.', 'error');
+      return;
+    }
     const mrrNumber = String(lastSavedRecord?.mrrNumber || invoice.mrr_no || packing.mrr_no || '').trim();
     if (!selectedFirm || !mrrNumber) {
       showPopup('MRR No. missing for label print.', 'error');
@@ -5377,7 +5870,7 @@ function App() {
       if (!reels.length) {
         throw new Error(`No label rows found for MRR ${mrrNumber}.`);
       }
-      setDirectLabelPrintJob({ reels, mrrNumber, firm: selectedFirm, mode: 'label' });
+      setDirectLabelPrintJob({ reels, mrrNumber, firm: selectedFirm, mode: 'a4' });
       const previousTitle = document.title;
       document.body.classList.add('print-labels-only');
       document.title = `MRR_${mrrNumber}_Labels`;
@@ -5421,6 +5914,8 @@ function App() {
     if (!ge) return;
     setIsMrrSavedLocked(false);
     setLastSavedRecord(null);
+    setInvoicePhotoScanned(false);
+    setPackingPhotoScanned(false);
     const geNo = ge.ge_entry || ge.ge_no || ge.ge_entry_no || '';
     const supplier = ge.supplier_name || ge.supplier || '';
     const truck = ge.truck_no || '';
@@ -5748,72 +6243,97 @@ function App() {
     setStatus(`Reading ${kind} photo${files.length > 1 ? 's' : ''} with Gemini...`);
     try {
       const scanResults = [];
-      for (let index = 0; index < files.length; index += 1) {
-        setStatus(`Reading ${kind} photo ${index + 1} of ${files.length} with Gemini...`);
-        scanResults.push(await fetchGeminiJson(files[index], kind));
-      }
-      const data = kind === 'invoice'
-        ? combineInvoiceScanResults(scanResults)
-        : combinePackingScanResults(scanResults);
-      const lockedSupplierName = isGateEntryLocked
-        ? String(geData?.supplier_name || geData?.supplier || invoice.bill_to?.name_address || packing.buyer?.name_address || '').trim()
-        : '';
-      if (kind === 'invoice') {
-        const normalizedInvoice = normalizeInvoice(data);
-        const todayReceiptDate = getTodayInputDate();
-        const scannedBillTo = normalizeScannedParty(normalizedInvoice.bill_to || {});
-        const scannedHeaderSupplier = extractSupplierName(data?.header?.title || normalizedInvoice?.header?.title || '');
-        const resolvedSupplierName = resolveScannedSupplierName({
-          scannedBillToName: scannedBillTo.name_address,
-          focusedSupplierName: data?.supplier_name,
-          headerSupplierName: scannedHeaderSupplier,
-          selectedFirm
-        });
-        normalizedInvoice.bill_to = {
-          ...scannedBillTo,
-          name_address: resolvedSupplierName || scannedBillTo.name_address || scannedHeaderSupplier || '',
-          state: extractStateName(data?.supplier_state || scannedBillTo.state || ''),
-          state_code: String(data?.supplier_state_code || scannedBillTo.state_code || '').match(/\b\d{2}\b/)?.[0] || '',
-          gstin: cleanSingleLineText(data?.supplier_gstin || scannedBillTo.gstin || '')
-        };
-        if (lockedSupplierName) {
+      const applyScannedData = (data, progressIndex) => {
+        const currentInvoice = normalizeInvoice(invoiceStateRef.current);
+        const currentPacking = normalizePacking(packingStateRef.current);
+        const shouldMergeWithExistingInvoice = ensureRows(currentInvoice.goods).length > 0;
+        const shouldMergeWithExistingPacking = ensureRows(currentPacking.items).length > 0;
+        const lockedSupplierName = isGateEntryLocked
+          ? String(geData?.supplier_name || geData?.supplier || currentInvoice.bill_to?.name_address || currentPacking.buyer?.name_address || '').trim()
+          : '';
+        if (kind === 'invoice') {
+          const normalizedInvoice = shouldMergeWithExistingInvoice
+            ? combineInvoiceScanResults([currentInvoice, data])
+            : normalizeInvoice(data);
+          const todayReceiptDate = getTodayInputDate();
+          const scannedBillTo = normalizeScannedParty(normalizedInvoice.bill_to || {});
+          const scannedHeaderSupplier = extractSupplierName(data?.header?.title || normalizedInvoice?.header?.title || '');
+          const resolvedSupplierName = resolveScannedSupplierName({
+            scannedBillToName: scannedBillTo.name_address,
+            focusedSupplierName: data?.supplier_name,
+            headerSupplierName: scannedHeaderSupplier,
+            selectedFirm
+          });
           normalizedInvoice.bill_to = {
-            ...normalizedInvoice.bill_to,
-            name_address: lockedSupplierName
+            ...scannedBillTo,
+            name_address: resolvedSupplierName || scannedBillTo.name_address || scannedHeaderSupplier || '',
+            state: extractStateName(data?.supplier_state || scannedBillTo.state || ''),
+            state_code: String(data?.supplier_state_code || scannedBillTo.state_code || '').match(/\b\d{2}\b/)?.[0] || '',
+            gstin: cleanSingleLineText(data?.supplier_gstin || scannedBillTo.gstin || '')
           };
+          if (lockedSupplierName) {
+            normalizedInvoice.bill_to = {
+              ...normalizedInvoice.bill_to,
+              name_address: lockedSupplierName
+            };
+          }
+          const nextInvoice = normalizeInvoice({
+            ...blankInvoice,
+            ...normalizedInvoice,
+            header: selectedFirm?.header ? { ...selectedFirm.header, note: '' } : blankInvoice.header,
+            mrr_no: currentInvoice.mrr_no || normalizedInvoice.mrr_no || '',
+            ge_no: currentInvoice.ge_no || normalizedInvoice.ge_no || '',
+            receipt_date: todayReceiptDate,
+            goods: normalizedInvoice.goods || []
+          });
+          invoiceStateRef.current = nextInvoice;
+          setInvoice(nextInvoice);
+          const nextPackingState = { ...currentPacking, receipt_date: todayReceiptDate };
+          packingStateRef.current = nextPackingState;
+          setPacking(nextPackingState);
+          setInvoicePhotoScanned(true);
+          setStatus(`Processed ${kind} photo ${progressIndex} of ${files.length}. Invoice section updated progressively.`);
+          return;
         }
-        normalizedInvoice.header = invoice.header; 
 
-        if (invoice.mrr_no) normalizedInvoice.mrr_no = invoice.mrr_no;
-        if (invoice.ge_no) normalizedInvoice.ge_no = invoice.ge_no;
-        normalizedInvoice.receipt_date = todayReceiptDate;
-
-        setInvoice(normalizedInvoice);
-        setPacking((prev) => ({ ...prev, receipt_date: todayReceiptDate }));
-        setStatus(`Invoice photo${files.length > 1 ? 's' : ''} scanned with Gemini. Updated invoice section only.`);
-      } else {
-        let normalizedPacking = normalizePacking(data);
-        if (packing.mrr_no) normalizedPacking.mrr_no = packing.mrr_no;
-        if (packing.ge_no) normalizedPacking.ge_no = packing.ge_no;
-        const baseOurReelNo = Math.max(getMaxOurReelNo(packing.items), helperSheetReelSeed);
+        let normalizedPacking = shouldMergeWithExistingPacking
+          ? combinePackingScanResults([currentPacking, data])
+          : normalizePacking(data);
+        normalizedPacking.mrr_no = currentPacking.mrr_no || normalizedPacking.mrr_no || '';
+        normalizedPacking.ge_no = currentPacking.ge_no || normalizedPacking.ge_no || '';
+        const baseOurReelNo = Math.max(getMaxOurReelNo(currentPacking.items), helperSheetReelSeed);
         const scannedRowsWithOurReel = withSequentialOurReelNumbers(normalizedPacking.items, baseOurReelNo);
-        
-        normalizedPacking = {
+
+        normalizedPacking = normalizePacking({
+          ...blankPacking,
           ...normalizedPacking,
-          header: selectedFirm?.header ? { ...selectedFirm.header, note: '' } : packing.header,
+          header: selectedFirm?.header ? { ...selectedFirm.header, note: '' } : currentPacking.header,
           distributor: lockedSupplierName || normalizedPacking.distributor,
           buyer: lockedSupplierName
             ? { ...normalizedPacking.buyer, name_address: lockedSupplierName }
             : normalizedPacking.buyer,
-          items: scannedRowsWithOurReel.map(row => ({
+          receipt_date: currentPacking.receipt_date || normalizedPacking.receipt_date || '',
+          items: scannedRowsWithOurReel.map((row) => ({
             ...row,
             mrr_no: normalizedPacking.mrr_no,
             ge_no: normalizedPacking.ge_no
           }))
-        };
+        });
+        packingStateRef.current = normalizedPacking;
         setPacking(normalizedPacking);
-        setStatus(`Packing slip photo${files.length > 1 ? 's' : ''} scanned with Gemini. Updated packing section only.`);
+        setPackingPhotoScanned(true);
+        setStatus(`Processed ${kind} photo ${progressIndex} of ${files.length}. Packing section updated progressively.`);
+      };
+
+      for (let index = 0; index < files.length; index += 1) {
+        setStatus(`Reading ${kind} photo ${index + 1} of ${files.length} with Gemini...`);
+        scanResults.push(await fetchGeminiJson(files[index], kind));
+        const progressiveData = kind === 'invoice'
+          ? combineInvoiceScanResults(scanResults)
+          : combinePackingScanResults(scanResults);
+        applyScannedData(progressiveData, index + 1);
       }
+      setStatus(`${kind === 'invoice' ? 'Invoice' : 'Packing'} photo${files.length > 1 ? 's' : ''} scanned with Gemini. Processed one by one and merged into a larger context.`);
     } catch (err) {
       const message = err?.message || 'Gemini scan failed.';
       setStatus(message);
@@ -5830,7 +6350,7 @@ function App() {
       <style>{labelStyles}</style>
       <style>{directLabelPrintStyles}</style>
       <style>{printGridStyles}</style>
-      <StartupOverlay firms={FIRMS} isAuthenticated={!!currentUser} menuBootConfig={menuBootConfig} onSelect={handleFirmSelection} onGeSubmit={(geNo, data) => { 
+      <StartupOverlay firms={FIRMS} isAuthenticated={!!currentUser} menuBootConfig={menuBootConfig} initialFirm={selectedFirm} initialType={mrrType} onSelect={handleFirmSelection} onRememberSelection={rememberOverlaySelection} onGeSubmit={(geNo, data) => { 
         applyPendingItem({ ...data, ge_no: geNo });
       }} onLogin={handleUserLogin} onLogout={handleUserLogout} currentUser={currentUser} />
     </>
@@ -5848,7 +6368,7 @@ function App() {
         <div className="loading-overlay">
           <div className="spinner" />
           <p style={{ marginTop: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
-            {isScanning ? 'Loading data...' : isApprovingFromForm ? 'Applying approval...' : isPreparingLabels ? 'Preparing labels...' : 'Saving data...'}
+            {isScanning ? 'Scanning photo...' : isApprovingFromForm ? 'Applying approval...' : isPreparingLabels ? 'Preparing labels...' : 'Saving data...'}
           </p>
         </div>
       )}
@@ -5978,9 +6498,9 @@ function App() {
           <div className="toolbar no-print" style={{ marginTop: 14 }}>
             {!isOtherMrr && (
               <>
-                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => invoiceRef.current?.click()}>{isScanning ? 'Reading Photos...' : 'Click Invoice Photos'}</button>
+                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked || invoicePhotoScanned} onClick={() => invoiceRef.current?.click()}>{invoicePhotoScanned ? 'Invoice Photo Scanned' : isScanning ? 'Reading Photos...' : 'Click Invoice Photos'}</button>
                 <input ref={invoiceRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('invoice', files); } catch (err) { setStatus(err?.message || 'Could not read invoice photos with Gemini'); } e.target.value = ''; }} />
-                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked} onClick={() => packingRef.current?.click()}>Click Packing Photos</button>
+                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked || packingPhotoScanned} onClick={() => packingRef.current?.click()}>{packingPhotoScanned ? 'Packing Slip Scanned' : 'Click Packing Photos'}</button>
                 <input ref={packingRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('packing', files); } catch (err) { setStatus(err?.message || 'Could not read packing photos with Gemini'); } e.target.value = ''; }} />
               </>
             )}
@@ -6019,7 +6539,7 @@ function App() {
               <div className="title">{invoice.doc_title}</div>
               
               {isOtherMrr ? (
-                <table className="meta" style={{ borderBottom: '1px solid var(--line)' }}>
+                <table className="meta other-mrr-meta" style={{ borderBottom: '1px solid var(--line)' }}>
                   <tbody>
                     {Array.from({ length: Math.max(otherMrrLeftMetaRows.length, otherMrrRightMetaRows.length) }).map((_, idx) => {
                       const [lLabel, lValue, lOnChange, lType, lReadOnly] = otherMrrLeftMetaRows[idx] || ['', '', undefined, 'text', true];
@@ -6082,7 +6602,7 @@ function App() {
 
               {isOtherMrr ? (
                 <div className="wrap">
-                  <table className="table invoiceTable" style={{ minWidth: "3600px" }}>
+                  <table className="table invoiceTable other-mrr-table" style={{ minWidth: "2200px" }}>
                     <thead>
                       <tr>
                         <th style={{ width: "70px" }}>S.No</th>
@@ -6092,9 +6612,12 @@ function App() {
                         <th style={{ width: "260px" }}>PO DETAILS<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>PO RATE<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "130px" }}>PO QUANTITY<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th style={{ width: "120px" }}>Sort No</th>
+                        <th style={{ width: "150px" }}>Party Order</th>
+                        <th style={{ width: "100px" }}>GSM</th>
+                        <th style={{ width: "150px" }}>Size/Unit</th>
                         <th style={{ width: "220px" }}>Description</th>
                         <th style={{ width: "100px" }}>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th style={{ width: "90px" }}>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "110px" }}>Qunatity<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "140px" }}>Invoice Basic Amount<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
@@ -6104,7 +6627,7 @@ function App() {
                     <tbody>
                       {!invoice.goods.length ? (
                         <tr>
-                          <td colSpan={14} className="c" style={{ padding: '14px 8px', color: 'var(--muted)', fontWeight: 700 }}>
+                          <td colSpan={17} className="c" style={{ padding: '14px 8px', color: 'var(--muted)', fontWeight: 700 }}>
                             No rows yet. Click "+ Add Row" to start.
                           </td>
                         </tr>
@@ -6193,22 +6716,29 @@ function App() {
                               {getPoQtyOptions(row).map((option) => <option key={option} value={option} />)}
                             </datalist>
                           </td>
+                          <td><input value={row.sort_no || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'sort_no', e.target.value)} /></td>
+                          <td><input value={row.party_order || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'party_order', e.target.value)} /></td>
+                          <td><input value={row.gsm || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'gsm', e.target.value)} /></td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '2px' }}>
+                              <input style={{ flex: 1 }} value={row.size || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'size', e.target.value)} placeholder="Size" />
+                              <select
+                                style={{ width: '65px' }}
+                                disabled={isDataEntryLocked}
+                                value={row.size_unit || row.unit || 'Kgs'}
+                                onChange={(e) => setInvRow(i, 'size_unit', e.target.value)}
+                              >
+                                {Array.from(new Set([row.size_unit || row.unit || 'Kgs', ...OTHER_MRR_UNIT_OPTIONS])).filter(Boolean).map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </td>
                           <td><input value={row.description || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td>
                           <td><input value={row.hsn || '48043100'} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td>
-                          <td>
-                            <select
-                              disabled={isDataEntryLocked}
-                              value={row.size_unit || row.unit || 'Kgs'}
-                              onChange={(e) => setInvRow(i, 'size_unit', e.target.value)}
-                            >
-                              {Array.from(new Set([row.size_unit || row.unit || 'Kgs', ...OTHER_MRR_UNIT_OPTIONS])).filter(Boolean).map((option) => (
-                                <option key={option} value={option}>{option}</option>
-                              ))}
-                            </select>
-                          </td>
                           <td><input value={row.quantity || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'quantity', e.target.value)} /></td>
                           <td><input value={row.rate || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td>
-                          <td><input value={money(n(row.quantity) * n(row.rate))} readOnly /></td>
+                          <td><input value={money(n(row.quantity) * n(row.rate))} readOnly style={{ background: '#f5f5f5', fontWeight: 700 }} /></td>
                           <td className="c no-print"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removeInvoiceRow(i)}>Del</button></td>
                         </tr>
                         );
@@ -6395,7 +6925,7 @@ function App() {
                           <td><input value={row.gsm} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td>
                           <td><input value={row.size} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td>
                           <td><input value={row.unit} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td>
-                          <td><input value={getParentRateForPackingRow(row) || row.rate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
+                          <td><input value={row.rate || getParentRateForPackingRow(row) || ''} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td>
                           <td><input value={row.po_rate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
                           <td><input value={row.net_wt} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td>
                           <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
@@ -6454,12 +6984,14 @@ function App() {
                   >
                     Print
                   </button>
-                  <button
-                    className="btn"
-                    onClick={downloadLabelFromCurrentScreen}
-                  >
-                    Download Label
-                  </button>
+                  {!isOtherMrr && (
+                    <button
+                      className="btn"
+                      onClick={downloadLabelFromCurrentScreen}
+                    >
+                      Download Label
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
