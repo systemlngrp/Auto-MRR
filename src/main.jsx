@@ -4885,7 +4885,8 @@ function App() {
         if (field === 'mrr_no' || field === 'ge_no') return row;
         if (field === 'po_rate') return row;
         if (field === 'rate') {
-          return { ...row, rate: getParentRateForPackingRow(row) || row.rate || '' };
+          const sanitizedRate = sanitizeSheetErrorText(sanitizeNumericInput(value));
+          return { ...row, rate: sanitizedRate };
         }
         const rawValue = packingNumericFields.has(field) ? sanitizeNumericInput(value) : value;
         const nextValue = ['rate', 'po_rate', 'net_wt'].includes(field) ? sanitizeSheetErrorText(rawValue) : rawValue;
@@ -5238,7 +5239,7 @@ function App() {
   };
   const updatePackRowFromSource = (index, updater) => setPacking((p) => ({ ...p, items: p.items.map((row, idx) => idx === index ? updater(row) : row) }));
   const handlePoNoSelect = (index, poNo) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(getParentRateForPackingRow(row) || row.rate || '').trim();
+    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(poNo);
     if (matches.length === 1) return fillPackRowFromPoRecord(row, matches[0], { po_no: poNo, rate: lockedRate });
     const keepDescription = matches.some((po) => po.reel_details === (row.item_name || row.reel_details)) ? (row.item_name || row.reel_details) : '';
@@ -5255,13 +5256,13 @@ function App() {
     };
   });
   const handlePoDetailsSelect = (index, poDetails) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(getParentRateForPackingRow(row) || row.rate || '').trim();
+    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.po_details === poDetails);
     const match = matches.find((po) => (!row.item_name || po.reel_details === (row.item_name || row.reel_details)) && (!row.erp_code || po.erp_code === row.erp_code)) || matches[0];
     return fillPackRowFromPoRecord(row, match, { po_details: poDetails, po_no: match?.po_no || row.po_no, rate: lockedRate });
   });
   const handleDescriptionSelect = (index, description) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(getParentRateForPackingRow(row) || row.rate || '').trim();
+    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.reel_details === description);
     const match = matches.find((po) => po.erp_code === row.erp_code) || matches[0];
     return fillPackRowFromPoRecord(row, match, { item_name: description, reel_details: description, po_no: match?.po_no || row.po_no, rate: lockedRate });
@@ -5635,8 +5636,18 @@ function App() {
       showPopup(invoiceMandatoryError, 'error');
       return false;
     }
+    const resolvedPackingForSave = !isOtherMrr
+      ? {
+          ...packing,
+          items: (packing.items || []).map((row) => ({
+            ...row,
+            rate: String(row.rate || getParentRateForPackingRow(row) || '').trim()
+          }))
+        }
+      : packing;
+
     if (!isOtherMrr) {
-      const packingMandatoryError = getPackingMandatoryError(packing);
+      const packingMandatoryError = getPackingMandatoryError(resolvedPackingForSave);
       if (packingMandatoryError) {
         setStatus(packingMandatoryError);
         showPopup(packingMandatoryError, 'error');
@@ -5674,11 +5685,7 @@ function App() {
       }
     };
     const syncedPackingForSave = {
-      ...packing,
-      items: (packing.items || []).map((row) => ({
-        ...row,
-        rate: String(getParentRateForPackingRow(row) || row.rate || '').trim()
-      })),
+      ...resolvedPackingForSave,
       total_reels: String(packingReels),
       total_weight: String(Number(packingWeight.toFixed(2))),
       actual_total: String(Number(packingWeight.toFixed(2)))
