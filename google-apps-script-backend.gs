@@ -954,25 +954,6 @@ function validateStrictMrrFormHeaders_(sheet, sheetName) {
     );
   }
 
-  var cursor = 0;
-  for (i = 0; i < requiredNorm.length; i++) {
-    var keyNeed = requiredNorm[i];
-    var foundAt = -1;
-    for (var j = cursor; j < actualNorm.length; j++) {
-      if (actualNorm[j] === keyNeed) {
-        foundAt = j;
-        break;
-      }
-    }
-    if (foundAt === -1) {
-      throw new Error(
-        'MRR FORM header order mismatch. Expected sequence starts with: ' + formatHeaderList_(STRICT_MRR_FORM_HEADERS, 12) + '. ' +
-        'Current headers start with: ' + formatHeaderList_(headers, 12) + '. ' +
-        'Please align column order and retry save.'
-      );
-    }
-    cursor = foundAt + 1;
-  }
 }
 
 /**

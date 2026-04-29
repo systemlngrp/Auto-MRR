@@ -148,29 +148,6 @@ async function validateStrictMrrFormHeaders(spreadsheetId, scriptUrl, mrrSheetNa
     );
   }
 
-  let cursor = 0;
-  let orderOk = true;
-  for (const key of requiredNorm) {
-    let foundAt = -1;
-    for (let i = cursor; i < actualNorm.length; i += 1) {
-      if (actualNorm[i] === key) {
-        foundAt = i;
-        break;
-      }
-    }
-    if (foundAt === -1) {
-      orderOk = false;
-      break;
-    }
-    cursor = foundAt + 1;
-  }
-  if (!orderOk) {
-    throw new Error(
-      `MRR FORM header order mismatch. Expected sequence starts with: ${formatHeaderList(STRICT_MRR_FORM_HEADERS)}. ` +
-      `Current headers start with: ${formatHeaderList(headers)}. ` +
-      `Please align column order and retry save.`
-    );
-  }
 }
 
 function findMatchingPoRow(row = {}, poRows = []) {
