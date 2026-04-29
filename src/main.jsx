@@ -3597,13 +3597,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         if (!Array.isArray(values) || !values.length) return;
         const headers = Array.isArray(values[0]) ? values[0].map((value) => String(value || '').trim()) : [];
         if (!headers.length) return;
-        if (!baseHeaders.length) baseHeaders = headers;
+        if (!baseHeaders.length) {
+          baseHeaders = [...headers];
+        } else {
+          headers.forEach((header) => {
+            if (!baseHeaders.includes(header)) baseHeaders.push(header);
+          });
+        }
         values.slice(1).forEach((row) => {
+          const rowMap = new Map(headers.map((header, index) => [header, Array.isArray(row) ? (row[index] ?? '') : '']));
           mergedRows.push([
             firm.name,
             firm.id,
             type === 'other' ? 'OTHER MRR' : 'REEL MRR',
-            ...(Array.isArray(row) ? row : [])
+            ...baseHeaders.map((header) => rowMap.get(header) ?? '')
           ]);
         });
       });
@@ -3613,9 +3620,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         return;
       }
 
+      const dateHeaderIndex = baseHeaders.findIndex((header) => {
+        const normalized = String(header || '').trim().toLowerCase();
+        return normalized === 'date' || normalized === 'po date' || normalized === 'po_date';
+      });
       mergedRows.sort((a, b) => {
-        const dateA = String(a[3] || '');
-        const dateB = String(b[3] || '');
+        const dateA = String(a[(dateHeaderIndex >= 0 ? dateHeaderIndex : 0) + 3] || '');
+        const dateB = String(b[(dateHeaderIndex >= 0 ? dateHeaderIndex : 0) + 3] || '');
         const dateCmp = dateB.localeCompare(dateA, undefined, { numeric: true, sensitivity: 'base' });
         if (dateCmp !== 0) return dateCmp;
         return String(a[0] || '').localeCompare(String(b[0] || ''), undefined, { sensitivity: 'base' });
