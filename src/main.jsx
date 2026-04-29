@@ -3978,11 +3978,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           mrrType={tempType} 
           initialData={safeEditData}
           geNo={getGateEntryNo(safeEditData)}
-          onBack={() => { setEditData(null); setStep(3); }} 
+          onBack={() => { setEditData(null); setStep(2); }} 
           onSave={(geNo, geData) => {
             setEditData(null);
             onGeSubmit(geNo, geData);
-            setStep(3);
+            setStep(2);
           }} 
         />
       </>
