@@ -6619,7 +6619,7 @@ function App() {
                         <th style={{ width: "120px" }}>Sort No</th>
                         <th style={{ width: "150px" }}>Party Order</th>
                         <th style={{ width: "100px" }}>GSM</th>
-                        <th style={{ width: "150px" }}>Size/Unit</th>
+                        <th style={{ width: "150px" }}>Size (Optional) / Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "220px" }}>Description</th>
                         <th style={{ width: "100px" }}>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "110px" }}>Qunatity<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
