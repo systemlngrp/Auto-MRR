@@ -14,6 +14,13 @@ const n = (value) => {
 };
 const round2 = (value) => Number(n(value).toFixed(2));
 const firstFilled = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') ?? '';
+const normalizeOtherMrrEntryType = (value) => {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return '';
+  if (text === 'rejection') return 'Rejection';
+  if (text === 'purchase' || text === 'purchases') return 'Purchases';
+  return String(value || '').trim();
+};
 const rowHasData = (row = {}) => {
   const skipValues = ['CM', 'KGS', '0', '0.00'];
   const keyFields = ['helper_id', 'other_child_id', 's_no', 'sort_no', 'reel_no', 'supplier_reel_no', 'po_no', 'party_order', 'po_details', 'erp_code', 'reel_details', 'item_name', 'description'];
@@ -282,6 +289,7 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
     ge_no: firstFilled(invoice.ge_no, packing.ge_no),
     date: firstFilled(invoice.date, packing.date),
     mrr_number: firstFilled(invoice.mrr_no, packing.mrr_no),
+    mrr_entry_type: normalizeOtherMrrEntryType(firstFilled(invoice.mrr_entry_type)),
     dt_of_receipt: firstFilled(invoice.receipt_date, packing.receipt_date),
     sup_doc_no: firstFilled(invoice.invoice_no, packing.challan_no),
     truck_number: firstFilled(invoice.vehicle_no, packing.truck_no),

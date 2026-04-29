@@ -24,6 +24,7 @@ const MRR_FORM_ALIASES = {
   required_reel: ['Required Reel', 'Required Reels', 'required_reel', 'required_reels'],
   rows_added: ['Rows Added', 'rows_added'],
   supplier: ['SUPPLIER', 'supplier'],
+  mrr_entry_type: ['MRR TYPE', 'mrr_type', 'mrr_entry_type'],
   invoice_basic_value: ['INVOICE BASIC VALUE', 'Invoice Basic Value', 'invoice_basic_value'],
   mrr_basic_value: ['MRR BASIC VALUE', 'MRR Basic Value', 'mrr_basic_value'],
   e_way_bill_no: ['E-Way Bill No', 'E-Way Bill No.', 'Eway Bill No.', 'eway_bill_no', 'e_way_bill_no', 'eway_no'],
@@ -138,6 +139,7 @@ const MRR_FORM_CANONICAL_HEADERS = {
   required_reel: 'Required Reels',
   rows_added: 'Rows Added',
   supplier: 'SUPPLIER',
+  mrr_entry_type: 'MRR TYPE',
   invoice_basic_value: 'INVOICE BASIC VALUE',
   mrr_basic_value: 'MRR BASIC VALUE',
   e_way_bill_no: 'E-Way Bill No',
@@ -589,6 +591,7 @@ function doGet(e) {
           const geIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.ge_no);
           const dateIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.date);
           const supplierIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.supplier);
+          const entryTypeIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_entry_type);
           const docIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.sup_doc_no);
           const truckIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.truck_number);
           const plantHeadApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.plant_head_approval_timestamp);
@@ -637,6 +640,7 @@ function doGet(e) {
               date: dateIndex === -1 ? '' : row[dateIndex],
               mrr_number: mrrNumber,
               supplier: supplierIndex === -1 ? '' : row[supplierIndex],
+              mrr_entry_type: entryTypeIndex === -1 ? '' : row[entryTypeIndex],
               invoice_no: docIndex === -1 ? '' : row[docIndex],
               truck_no: truckIndex === -1 ? '' : row[truckIndex],
               plant_head_approval_timestamp: plantHeadApproval,
@@ -916,6 +920,14 @@ function normalizeStrictHeader_(value) {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+function normalizeOtherMrrEntryType_(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return '';
+  if (text === 'rejection') return 'Rejection';
+  if (text === 'purchase' || text === 'purchases') return 'Purchases';
+  return String(value || '').trim();
+}
+
 function formatHeaderList_(values, limit) {
   var max = Number(limit || 12);
   return (values || []).slice(0, max).map(function(v) { return '"' + String(v || '').trim() + '"'; }).join(', ');
@@ -991,6 +1003,7 @@ function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
   assignIfPresent_(record, 'required_reel', firstFilled_(packing.total_reels, String(rows.length), invoiceReels ? String(invoiceReels) : ''));
   assignIfPresent_(record, 'rows_added', rows.length, true);
   assignIfPresent_(record, 'supplier', firstFilled_(invoice.bill_to && invoice.bill_to.name_address, packing.buyer && packing.buyer.name_address, packing.distributor));
+  assignIfPresent_(record, 'mrr_entry_type', normalizeOtherMrrEntryType_(firstFilled_(invoice.mrr_entry_type)));
   // INVOICE BASIC VALUE = sum of amount of MRR reels (invoice goods amount)
   assignIfPresent_(record, 'invoice_basic_value', grossAmount, true);
   // MRR BASIC VALUE = sum of rate * net weight from packing slip rows

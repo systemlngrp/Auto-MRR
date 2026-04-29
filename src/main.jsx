@@ -361,6 +361,7 @@ const blankPoRow = () => ({ sno: '', po_no: '', date: '', supplier: '', po_detai
 const blankInvoice = {
   header: { ...defaultHeader(), note: '' },
   doc_title: 'MRR',
+  mrr_entry_type: '',
   invoice_no: '',
   date: '',
   eway_no: '',
@@ -967,6 +968,15 @@ const OTHER_MRR_INVOICE_MANDATORY_COLUMNS = [
 ];
 
 const OTHER_MRR_UNIT_OPTIONS = ['Kgs', 'GM', 'Pcs', 'Ltr'];
+const OTHER_MRR_ENTRY_TYPE_OPTIONS = ['Purchases', 'Rejection'];
+
+function normalizeOtherMrrEntryType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return '';
+  if (text === 'rejection') return 'Rejection';
+  if (text === 'purchase' || text === 'purchases') return 'Purchases';
+  return String(value || '').trim();
+}
 
 function getInvoiceMandatoryError(invoiceDoc = {}, mrrType = 'reel') {
   const rows = ensureRows(invoiceDoc.goods || []).filter(isMeaningfulInvoiceRowForSync);
@@ -1335,7 +1345,7 @@ function normalizePoRow(data = {}) {
   return {
     ...blankPoRow(),
     sno: String(pickPoValue(data, 'sno', 's_no', 'S NO.', 'S NO')).trim(),
-    po_no: String(pickPoValue(data, 'po_no', 'poNo', 'PO NO.', 'PO NO')).trim(),
+    po_no: String(pickPoValue(data, 'po_no', 'poNo', 'PO NO.', 'PO NO', 'PO Number', 'po_number', 'party_order_no', 'Party Order No.', 'Party Order No', 'party_order', 'Party Order')).trim(),
     date: normalizeSheetDate(pickPoValue(data, 'date', 'DATE')),
     supplier: String(pickPoValue(data, 'supplier', 'SUPPLIER')).trim(),
     po_details: String(pickPoValue(data, 'po_details', 'poDetails', 'PO DETAILS')).trim(),
@@ -1379,7 +1389,7 @@ function sheetValuesToPoRows(values = []) {
 
   const idxMap = {
     sno: findIdx(['S.No.', 'S No', 's_no', 'serial_no', 'sno']),
-    po_no: findIdx(['PO No.', 'PO No', 'po_no', 'party_order_no', 'party_order']),
+    po_no: findIdx(['PO No.', 'PO No', 'PO NO', 'PO NO.', 'po_no', 'PO Number', 'po_number', 'party_order_no', 'Party Order No.', 'Party Order No', 'party_order', 'Party Order']),
     date: findIdx(['Date', 'date', 'po_date', 'order_date']),
     supplier: findIdx(['SUPPLIER', 'supplier', 'party_name', 'vendor']),
     po_details: findIdx(['PO DETAILS', 'po_details', 'item_description']),
@@ -1976,6 +1986,24 @@ function MetaTable({ rows }) {
             <datalist id={listId}>
               {(options || []).map((option) => <option key={option} value={option}>{option}</option>)}
             </datalist>
+          </td>
+        </tr>
+      );
+    }
+    if (type === 'select') {
+      return (
+        <tr key={rowKey}>
+          <td>{label}</td>
+          <td>
+            <select
+              value={getSafeInputValue('text', value)}
+              onChange={(e) => onChange && onChange(e.target.value)}
+              disabled={isLocked}
+              style={isLocked ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined}
+            >
+              <option value="">Select...</option>
+              {(options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
           </td>
         </tr>
       );
@@ -2763,35 +2791,6 @@ function GateEntryForm({ onSave, onBack, firm, mrrType, geNo, initialData }) {
               </datalist>
             </div>
           </div>
-          {String(mrrType || '').trim().toLowerCase() === 'other' && (
-            <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '110px 1fr', alignItems: 'center' }}>
-              <span>Other PO No</span>
-              <div>
-                <input
-                  list="gate-entry-other-po-nos"
-                  value={data.po_no || ''}
-                  onChange={(e) => {
-                    const nextPo = e.target.value;
-                    setData((prev) => ({
-                      ...prev,
-                      po_no: nextPo,
-                      supplier: (() => {
-                        const match = otherPoRows.find((row) => normalizePoNoKey(row.po_no) === normalizePoNoKey(nextPo));
-                        return match?.supplier ? String(match.supplier).trim() : prev.supplier;
-                      })()
-                    }));
-                  }}
-                  placeholder="Select or type Other PO No"
-                  style={{ fontSize: '12px' }}
-                />
-                <datalist id="gate-entry-other-po-nos">
-                  {[...new Set(otherPoRows.map((row) => String(row.po_no || '').trim()).filter(Boolean))].map((poNo) => (
-                    <option key={poNo} value={poNo}>{poNo}</option>
-                  ))}
-                </datalist>
-              </div>
-            </div>
-          )}
           <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '110px 1fr', alignItems: 'center' }}>
             {requiredLabel('Date')}
             <input value={data.date || defaultDate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed', fontSize: '12px' }} />
@@ -3113,10 +3112,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return formatDecimal2(normalized) || normalized;
   };
   const isReelMrrType = (value) => String(value || '').trim().toLowerCase() === 'reel';
+  const isOtherMrrEntryTypeRejection = (value) => String(value || '').trim().toLowerCase() === 'rejection';
   const isGroupedApprovalDebitNoteRequired = (row) => (
     String(row?.pending_stage || '').trim() === 'pending_accounts_approval' &&
-    isReelMrrType(row?.mrr_type) &&
-    getGroupedApprovalWeightDifference(row) > 40
+    (
+      (isReelMrrType(row?.mrr_type) && getGroupedApprovalWeightDifference(row) > 40) ||
+      (String(row?.mrr_type || '').trim().toLowerCase() === 'other' && isOtherMrrEntryTypeRejection(row?.mrr_entry_type))
+    )
   );
   const getGroupedApprovalDraft = (row) => {
     const rowKey = getGroupedApprovalRowKey(row);
@@ -3632,7 +3634,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         return String(a[0] || '').localeCompare(String(b[0] || ''), undefined, { sensitivity: 'base' });
       });
 
-      setPreviewAllRows([['Firm Name', 'Firm Id', 'MRR Type', ...baseHeaders], ...mergedRows]);
+      setPreviewAllRows([['Firm Name', 'Firm Id', 'MRR Mode', ...baseHeaders], ...mergedRows]);
     } catch (err) {
       setPreviewAllRows([]);
       alert(err?.message || 'Could not load MRR rows.');
@@ -4523,8 +4525,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         mrrNo: readReportCell(firstRow, 'mrr number', 'mrr no'),
         firm: readReportCell(firstRow, 'firm name') || tempFirm?.name || '',
         firmId: readReportCell(firstRow, 'firm id') || tempFirm?.id || '',
-        mrrType: String(readReportCell(firstRow, 'mrr type') || tempType || 'reel').toLowerCase().includes('other') ? 'other' : 'reel',
-        mrrTypeLabel: readReportCell(firstRow, 'mrr type') || (String(readReportCell(firstRow, 'mrr type') || '').toLowerCase().includes('other') ? 'OTHER MRR' : 'REEL MRR'),
+        mrrType: String(readReportCell(firstRow, 'mrr mode') || tempType || 'reel').toLowerCase().includes('other') ? 'other' : 'reel',
+        mrrTypeLabel: readReportCell(firstRow, 'mrr mode') || (String(readReportCell(firstRow, 'mrr mode') || '').toLowerCase().includes('other') ? 'OTHER MRR' : 'REEL MRR'),
+        entryType: normalizeOtherMrrEntryType(readReportCell(firstRow, 'mrr type')),
         supplier: supplierValue,
         totalQty: qtyValues.length ? String(qtyValues.reduce((sum, value) => sum + value, 0)) : readReportCell(firstRow, 'required reel', 'rows added'),
         items: String(itemLines.length || rows.length || 0),
@@ -4611,6 +4614,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         summary.mrrNo,
         summary.firm,
         summary.mrrTypeLabel,
+        summary.entryType,
         summary.supplier,
         summary.poRate,
         summary.invoiceRate,
@@ -4675,6 +4679,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR No</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Firm</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Mode</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Entry Type</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Supplier</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Total Qty</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Items</th>
@@ -4693,6 +4698,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                       <td style={{ fontSize: '10px' }}>{summary.mrrNo || '-'}</td>
                       <td style={{ fontSize: '10px' }}>{summary.firm || '-'}</td>
                       <td style={{ fontSize: '10px' }}>{summary.mrrTypeLabel || '-'}</td>
+                      <td style={{ fontSize: '10px' }}>{summary.entryType || '-'}</td>
                       <td style={{ fontSize: '10px' }}>{summary.supplier || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.totalQty || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.items || '-'}</td>
@@ -4974,7 +4980,11 @@ function App() {
   const approvalStage = String(geData?.pending_stage || '').trim();
   const isApprovalMode = ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'].includes(approvalStage);
   const approvalMrrType = String(geData?.mrr_type || mrrType || '').trim().toLowerCase();
-  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && approvalMrrType === 'reel' && accountsWeightDifference > 40;
+  const approvalEntryType = normalizeOtherMrrEntryType(geData?.mrr_entry_type || invoice.mrr_entry_type || '').toLowerCase();
+  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && (
+    (approvalMrrType === 'reel' && accountsWeightDifference > 40) ||
+    (approvalMrrType === 'other' && approvalEntryType === 'rejection')
+  );
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const isGateEntryLocked = false;
   const approvalStageTitle = approvalStage === 'pending_plant_head_approval'
@@ -5034,6 +5044,7 @@ function App() {
   ];
   const otherMrrRightMetaRows = [
     [requiredLabel('SUPPLIER'), invoice.bill_to?.name_address, (v) => setInvNest('bill_to', 'name_address', v), 'supplier_datalist', isDataEntryLocked, mrrSupplierOptions],
+    [requiredLabel('MRR TYPE'), invoice.mrr_entry_type, (v) => setInvoice((p) => ({ ...p, mrr_entry_type: normalizeOtherMrrEntryType(v) })), 'select', isDataEntryLocked, OTHER_MRR_ENTRY_TYPE_OPTIONS],
     ['INVOICE BASIC VALUE', invoiceBasicValue, undefined],
     ['Insurance', invoice.totals.insurance, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, insurance: v } })), 'text', isDataEntryLocked],
     ['Round Off', invoice.totals.round_off, (v) => setInvoice((p) => ({ ...p, totals: { ...p.totals, round_off: v } })), 'text', isDataEntryLocked],
@@ -5096,6 +5107,7 @@ function App() {
     invoice: {
       ge_no: invDoc.ge_no || '',
       mrr_no: invDoc.mrr_no || '',
+      mrr_entry_type: normalizeOtherMrrEntryType(invDoc.mrr_entry_type || ''),
       date: invDoc.date || '',
       receipt_date: invDoc.receipt_date || '',
       invoice_no: invDoc.invoice_no || '',
@@ -5570,7 +5582,12 @@ function App() {
     }
     if (shouldRequireAccountsDebitNote) {
       if (!String(accountsDebitNote || '').trim() || !String(accountsDebitNoteDate || '').trim() || !String(accountsDebitNoteAmount || '').trim()) {
-        showPopup('Debit Note, Debit Note Date, and Debit Note Amount are required when weight difference is more than 40 kg.', 'error');
+        showPopup(
+          approvalMrrType === 'other'
+            ? 'Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER MRR Rejection.'
+            : 'Debit Note, Debit Note Date, and Debit Note Amount are required when weight difference is more than 40 kg.',
+          'error'
+        );
         return;
       }
     }
@@ -5670,6 +5687,12 @@ function App() {
       showPopup(invoiceMandatoryError, 'error');
       return false;
     }
+    if (isOtherMrr && !String(invoice.mrr_entry_type || '').trim()) {
+      const errorMessage = 'MRR TYPE is required for OTHER MRR.';
+      setStatus(errorMessage);
+      showPopup(errorMessage, 'error');
+      return false;
+    }
     const resolvedPackingForSave = !isOtherMrr
       ? {
           ...packing,
@@ -5756,6 +5779,7 @@ function App() {
           ge_no: syncedInvoiceForSave.ge_no || syncedPackingForSave.ge_no || prev?.ge_no || '',
           mrr_no: syncedInvoiceForSave.mrr_no || syncedPackingForSave.mrr_no || prev?.mrr_no || '',
           mrr_number: syncedInvoiceForSave.mrr_no || syncedPackingForSave.mrr_no || prev?.mrr_number || '',
+          mrr_entry_type: syncedInvoiceForSave.mrr_entry_type || prev?.mrr_entry_type || '',
           date: syncedInvoiceForSave.date || syncedPackingForSave.date || prev?.date || '',
           supplier: syncedInvoiceForSave.bill_to?.name_address || syncedPackingForSave.buyer?.name_address || prev?.supplier || '',
           supplier_name: syncedInvoiceForSave.bill_to?.name_address || syncedPackingForSave.buyer?.name_address || prev?.supplier_name || '',
@@ -5843,6 +5867,7 @@ function App() {
         ge_no: preparedInvoice.ge_no || preparedPacking.ge_no || prev?.ge_no || '',
         mrr_no: preparedInvoice.mrr_no || preparedPacking.mrr_no || prev?.mrr_no || '',
         mrr_number: preparedInvoice.mrr_no || preparedPacking.mrr_no || prev?.mrr_number || '',
+        mrr_entry_type: preparedInvoice.mrr_entry_type || prev?.mrr_entry_type || '',
         date: preparedInvoice.date || preparedPacking.date || prev?.date || '',
         supplier: preparedInvoice.bill_to?.name_address || preparedPacking.buyer?.name_address || prev?.supplier || '',
         supplier_name: preparedInvoice.bill_to?.name_address || preparedPacking.buyer?.name_address || prev?.supplier_name || '',
@@ -6044,6 +6069,7 @@ function App() {
       const parentDoc = readRowValue(parent, 'sup_doc_no', 'Sup Doc No');
       const parentTruck = readRowValue(parent, 'truck_number', 'truck_no', 'Truck Number');
       const parentSupplier = readRowValue(parent, 'supplier', 'SUPPLIER');
+      const parentEntryType = readRowValue(parent, 'mrr_entry_type', 'MRR TYPE');
       const resolvedSupplier = parentSupplier || String(pendingItem?.supplier || pendingItem?.supplier_name || '').trim();
 
       const parentValue = (...keys) => {
@@ -6145,6 +6171,7 @@ function App() {
         lr_no: readRowValue(parent, 'l_r_no', 'lr_no', 'L.R No'),
         actual_weight: readRowValue(parent, 'invoice_ttl_weight_kgs', 'Invoice Ttl Weight (Kgs)'),
         actual_mrr_weight: readRowValue(parent, 'actual_mrr_ttl_weight_kgs', 'Actual MRR Ttl Weight (Kgs)'),
+        mrr_entry_type: parentEntryType,
         bill_to: {
           ...blankInvoice.bill_to,
           name_address: resolvedSupplier
@@ -6186,6 +6213,7 @@ function App() {
         mrr_no: parentMrr || prev.mrr_no,
         mrr_number: parentMrr || prev.mrr_number,
         supplier: resolvedSupplier,
+        mrr_entry_type: parentEntryType,
         invoice_no: parentDoc,
         truck_no: parentTruck,
         plant_head_approval_timestamp: readRowValue(parent, 'plant_head_approval_timestamp', 'Plant Head Approval Timestamp'),
@@ -6424,7 +6452,9 @@ function App() {
             {approvalStage === 'pending_accounts_approval' ? (
               <div style={{ marginTop: '10px', display: 'grid', gap: '8px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 800, color: shouldRequireAccountsDebitNote ? '#b45309' : '#374151' }}>
-                  Invoice Weight: {formatDecimal2(accountsInvoiceWeight) || '0.00'} KG | Actual Weight: {formatDecimal2(accountsActualWeight) || '0.00'} KG | Difference: {formatDecimal2(accountsWeightDifference) || '0.00'} KG
+                  {approvalMrrType === 'other'
+                    ? `MRR TYPE: ${invoice.mrr_entry_type || geData?.mrr_entry_type || '-'}`
+                    : `Invoice Weight: ${formatDecimal2(accountsInvoiceWeight) || '0.00'} KG | Actual Weight: ${formatDecimal2(accountsActualWeight) || '0.00'} KG | Difference: ${formatDecimal2(accountsWeightDifference) || '0.00'} KG`}
                 </div>
                 {shouldRequireAccountsDebitNote ? (
                   <div style={{ marginTop: '2px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '8px' }}>
@@ -6576,14 +6606,42 @@ function App() {
                           </td>
                           <td style={{ width: '18%', fontWeight: 700, background: '#f8f8f8' }}>{rLabel}</td>
                           <td style={{ width: '32%' }}>
-                            <input
-                              type={rType || 'text'}
-                              value={getSafeInputValue(rType, rValue)}
-                              onChange={(e) => rOnChange && rOnChange(e.target.value)}
-                              readOnly={!!rReadOnly}
-                              disabled={!rOnChange}
-                              style={rightLocked ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined}
-                            />
+                            {rType === 'supplier_datalist' ? (
+                              <>
+                                <input
+                                  list={`other-mrr-meta-supplier-list-${idx}`}
+                                  value={getSafeInputValue('text', rValue)}
+                                  onChange={(e) => rOnChange && rOnChange(e.target.value)}
+                                  readOnly={!!rReadOnly}
+                                  disabled={!rOnChange}
+                                  style={rightLocked ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined}
+                                />
+                                <datalist id={`other-mrr-meta-supplier-list-${idx}`}>
+                                  {(mrrSupplierOptions || []).map((option) => <option key={option} value={option}>{option}</option>)}
+                                </datalist>
+                              </>
+                            ) : rType === 'select' ? (
+                              <select
+                                value={getSafeInputValue('text', rValue)}
+                                onChange={(e) => rOnChange && rOnChange(e.target.value)}
+                                disabled={rightLocked}
+                                style={rightLocked ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined}
+                              >
+                                <option value="">Select...</option>
+                                {((otherMrrRightMetaRows[idx] || [])[5] || []).map((option) => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type={rType || 'text'}
+                                value={getSafeInputValue(rType, rValue)}
+                                onChange={(e) => rOnChange && rOnChange(e.target.value)}
+                                readOnly={!!rReadOnly}
+                                disabled={!rOnChange}
+                                style={rightLocked ? { background: '#f3f3f3', cursor: 'not-allowed' } : undefined}
+                              />
+                            )}
                           </td>
                         </tr>
                       );
