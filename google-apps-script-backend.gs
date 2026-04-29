@@ -52,6 +52,7 @@ const MRR_FORM_ALIASES = {
   po_no: ['PO NO.', 'PO No', 'po_no', 'PO Number'],
   po_date: ['PO DATE', 'PO Date', 'po_date'],
   po_details: ['PO DETAILS', 'PO Details', 'po_details'],
+  po_rate: ['PO RATE', 'PO Rate', 'po_rate'],
   gsm: ['GSM', 'gsm'],
   size: ['Size', 'size'],
   unit: ['Unit', 'unit', 'size_unit'],
@@ -167,6 +168,7 @@ const MRR_FORM_CANONICAL_HEADERS = {
   po_no: 'PO NO.',
   po_date: 'PO DATE',
   po_details: 'PO DETAILS',
+  po_rate: 'PO RATE',
   gsm: 'GSM',
   size: 'Size',
   unit: 'Unit',
@@ -1071,6 +1073,7 @@ function buildMrrFormRowRecordsFromHelperRows_(invoice, packing, poRows, helperR
       assignIfPresent_(record, 'po_no', firstFilled_(row && row.po_no, row && row.party_order));
       assignIfPresent_(record, 'po_date', firstFilled_(row && row.po_date, base.date));
       assignIfPresent_(record, 'po_details', firstFilled_(row && row.po_details));
+      assignIfPresent_(record, 'po_rate', round2_(firstFilled_(row && row.po_rate)), true);
       assignIfPresent_(record, 'gsm', firstFilled_(row && row.gsm));
       assignIfPresent_(record, 'size', firstFilled_(row && row.size));
       assignIfPresent_(record, 'unit', firstFilled_(row && row.unit, row && row.size_unit, 'CM'));
@@ -1097,6 +1100,7 @@ function buildMrrFormRowRecordsFromHelperRows_(invoice, packing, poRows, helperR
     assignIfPresent_(record, 'po_no', firstFilled_(row && row.po_no, row && row.party_order));
     assignIfPresent_(record, 'po_date', firstFilled_(row && row.po_date, base.date));
     assignIfPresent_(record, 'po_details', firstFilled_(row && row.po_details));
+    assignIfPresent_(record, 'po_rate', round2_(firstFilled_(row && row.po_rate)), true);
     assignIfPresent_(record, 'gsm', firstFilled_(row && row.gsm));
     assignIfPresent_(record, 'size', firstFilled_(row && row.size));
     assignIfPresent_(record, 'unit', firstFilled_(row && row.unit, row && row.size_unit, 'CM'));

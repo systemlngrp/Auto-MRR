@@ -4512,9 +4512,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         const description = readReportCell(row, 'description', 'po details', 'reel details', 'item_name');
         return description && !isTotalLikeText(description);
       });
-      const poRates = [...new Set(rows
-        .map((row) => formatDecimal2(readReportCell(row, 'po rate', 'po_rate')))
-        .filter(Boolean))];
       const invoiceRates = [...new Set(rows
         .map((row) => formatDecimal2(readReportCell(row, 'invoice rate', 'rate', 'invoice_rate')))
         .filter(Boolean))];
@@ -4533,7 +4530,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         items: String(itemLines.length || rows.length || 0),
         mrrWeight: formatDecimal2(readReportCell(firstRow, 'actual mrr ttl weight (kgs)', 'actual_mrr_ttl_weight_kgs', 'mrr weight')),
         invoiceWeight: formatDecimal2(readReportCell(firstRow, 'invoice ttl weight (kgs)', 'invoice_ttl_weight_kgs', 'invoice weight')),
-        poRate: poRates.join(', '),
         invoiceRate: invoiceRates.join(', '),
         basicValue: formatDecimal2(readReportCell(firstRow, 'mrr basic value', 'invoice basic value', 'invoice basic amount', 'amount'))
       };
@@ -4616,7 +4612,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         summary.mrrTypeLabel,
         summary.entryType,
         summary.supplier,
-        summary.poRate,
         summary.invoiceRate,
         summary.basicValue
       ].join(' ').toLowerCase();
@@ -4685,7 +4680,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Items</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR Weight</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Weight</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>PO Rate</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Rate</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Basic Value</th>
                     <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Actions</th>
@@ -4704,7 +4698,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                       <td className="r" style={{ fontSize: '10px' }}>{summary.items || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.mrrWeight || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.invoiceWeight || '-'}</td>
-                      <td className="r" style={{ fontSize: '10px', whiteSpace: 'pre-line' }}>{summary.poRate || '-'}</td>
                       <td className="r" style={{ fontSize: '10px', whiteSpace: 'pre-line' }}>{summary.invoiceRate || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.basicValue || '-'}</td>
                       <td style={{ whiteSpace: 'nowrap', display: 'flex', gap: '4px' }}>
