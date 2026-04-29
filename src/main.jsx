@@ -2072,8 +2072,9 @@ function ReelLabelsTab({ initialMrr, helperSheetName, selectedFirm, onBack }) {
     loadAllUniqueMrr();
   }, [selectedFirm, helperSheetName]);
 
-  const handleSearch = async () => {
-    if (!searchMrr.trim()) return;
+  const handleSearch = async (mrrOverride = '') => {
+    const targetMrr = String(mrrOverride || searchMrr || '').trim();
+    if (!targetMrr) return;
     if (!selectedFirm) {
       setStatus('Select a firm first.');
       return;
@@ -2083,16 +2084,18 @@ function ReelLabelsTab({ initialMrr, helperSheetName, selectedFirm, onBack }) {
     try {
       const payload = await fetchSheetRangeWithParams({
         sheet: helperSheetName || HELPER_SHEET_NAME,
-        mrr_number: searchMrr.trim(),
+        mrr_number: targetMrr,
         spreadsheetId: selectedFirm.spreadsheetId
       }, selectedFirm.scriptUrl);
       const data = payload?.values || [];
       if (data.length) {
         setReels(data);
-        setStatus(`Found ${data.length} reels for MRR ${searchMrr}.`);
+        setSearchMrr(targetMrr);
+        setStatus(`Found ${data.length} reels for MRR ${targetMrr}.`);
       } else {
         setReels([]);
-        setStatus(`No reels found for MRR ${searchMrr}.`);
+        setSearchMrr(targetMrr);
+        setStatus(`No reels found for MRR ${targetMrr}.`);
       }
     } catch (err) {
       setReels([]);
@@ -2107,7 +2110,7 @@ function ReelLabelsTab({ initialMrr, helperSheetName, selectedFirm, onBack }) {
     if (!selectedFirm || !targetMrr || isSearching) return;
     if (autoLoadedInitialMrrRef.current === targetMrr) return;
     autoLoadedInitialMrrRef.current = targetMrr;
-    handleSearch();
+    handleSearch(targetMrr);
   }, [initialMrr, selectedFirm, helperSheetName, isSearching]);
 
   return (
