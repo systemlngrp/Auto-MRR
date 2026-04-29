@@ -6606,7 +6606,7 @@ function App() {
 
               {isOtherMrr ? (
                 <div className="wrap">
-                  <table className="table invoiceTable other-mrr-table" style={{ minWidth: "2200px" }}>
+                  <table className="table invoiceTable other-mrr-table" style={{ minWidth: "1700px" }}>
                     <thead>
                       <tr>
                         <th style={{ width: "70px" }}>S.No</th>
@@ -6616,10 +6616,7 @@ function App() {
                         <th style={{ width: "260px" }}>PO DETAILS<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>PO RATE<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "130px" }}>PO QUANTITY<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th style={{ width: "120px" }}>Sort No</th>
-                        <th style={{ width: "150px" }}>Party Order</th>
-                        <th style={{ width: "100px" }}>GSM</th>
-                        <th style={{ width: "150px" }}>Size (Optional) / Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th style={{ width: "90px" }}>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "220px" }}>Description</th>
                         <th style={{ width: "100px" }}>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "110px" }}>Qunatity<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
@@ -6631,7 +6628,7 @@ function App() {
                     <tbody>
                       {!invoice.goods.length ? (
                         <tr>
-                          <td colSpan={17} className="c" style={{ padding: '14px 8px', color: 'var(--muted)', fontWeight: 700 }}>
+                          <td colSpan={13} className="c" style={{ padding: '14px 8px', color: 'var(--muted)', fontWeight: 700 }}>
                             No rows yet. Click "+ Add Row" to start.
                           </td>
                         </tr>
@@ -6720,23 +6717,16 @@ function App() {
                               {getPoQtyOptions(row).map((option) => <option key={option} value={option} />)}
                             </datalist>
                           </td>
-                          <td><input value={row.sort_no || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'sort_no', e.target.value)} /></td>
-                          <td><input value={row.party_order || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'party_order', e.target.value)} /></td>
-                          <td><input value={row.gsm || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'gsm', e.target.value)} /></td>
                           <td>
-                            <div style={{ display: 'flex', gap: '2px' }}>
-                              <input style={{ flex: 1 }} value={row.size || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'size', e.target.value)} placeholder="Size" />
-                              <select
-                                style={{ width: '65px' }}
-                                disabled={isDataEntryLocked}
-                                value={row.size_unit || row.unit || 'Kgs'}
-                                onChange={(e) => setInvRow(i, 'size_unit', e.target.value)}
-                              >
-                                {Array.from(new Set([row.size_unit || row.unit || 'Kgs', ...OTHER_MRR_UNIT_OPTIONS])).filter(Boolean).map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
-                            </div>
+                            <select
+                              disabled={isDataEntryLocked}
+                              value={row.size_unit || row.unit || 'Kgs'}
+                              onChange={(e) => setInvRow(i, 'size_unit', e.target.value)}
+                            >
+                              {Array.from(new Set([row.size_unit || row.unit || 'Kgs', ...OTHER_MRR_UNIT_OPTIONS])).filter(Boolean).map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
                           </td>
                           <td><input value={row.description || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td>
                           <td><input value={row.hsn || '48043100'} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td>
@@ -6750,7 +6740,7 @@ function App() {
                     </tbody>
                     <tfoot>
                       <tr className="no-print">
-                        <td colSpan={14} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
+                        <td colSpan={13} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
                           <button 
                             className="btn main" 
                             onClick={addInvoiceRow}
