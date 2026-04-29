@@ -242,7 +242,7 @@ export function buildHelperRows(invoice, packing, poRows = []) {
         po_no: firstFilled(poNo, po?.po_no),
         party_order: firstFilled(row.party_order, row.po_no, poNo, po?.po_no),
         po_date: firstFilled(po?.date, packing.order_date, invoice.date),
-        supplier: firstFilled(row.supplier, po?.supplier, supplierName),
+        supplier: firstFilled(supplierName, row.supplier, po?.supplier),
         our_reel_number: firstFilled(row.reel_no, row.reels),
         supplier_reel_no: firstFilled(row.supplier_reel_no),
         reel_details: firstFilled(row.reel_details, row.item_name, row.description, po?.reel_details),
@@ -272,10 +272,10 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
   const helperValue = round2(helperRows.reduce((sum, row) => sum + n(row.value), 0));
   const helperWeight = round2(helperRows.reduce((sum, row) => sum + n(row.weight), 0));
   const supplierName = firstFilled(
-    poRows.find((row) => String(row.po_no || '').trim())?.supplier,
-    packing.distributor,
+    invoice.bill_to?.name_address,
     packing.buyer?.name_address,
-    invoice.bill_to?.name_address
+    packing.distributor,
+    poRows.find((row) => String(row.po_no || '').trim())?.supplier
   );
 
   return {

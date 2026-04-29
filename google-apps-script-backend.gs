@@ -990,7 +990,7 @@ function buildMrrFormRecord_(invoice, packing, poRows, helperRows) {
   assignIfPresent_(record, 'actual_mrr_ttl_weight_kgs', round2_(firstFilled_(invoice.actual_mrr_weight, packing.actual_total, packing.total_weight, helperWeight)), true);
   assignIfPresent_(record, 'required_reel', firstFilled_(packing.total_reels, String(rows.length), invoiceReels ? String(invoiceReels) : ''));
   assignIfPresent_(record, 'rows_added', rows.length, true);
-  assignIfPresent_(record, 'supplier', firstFilled_(packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address));
+  assignIfPresent_(record, 'supplier', firstFilled_(invoice.bill_to && invoice.bill_to.name_address, packing.buyer && packing.buyer.name_address, packing.distributor));
   // INVOICE BASIC VALUE = sum of amount of MRR reels (invoice goods amount)
   assignIfPresent_(record, 'invoice_basic_value', grossAmount, true);
   // MRR BASIC VALUE = sum of rate * net weight from packing slip rows
@@ -1149,7 +1149,7 @@ function buildHelperRows_(invoice, packing, poRows) {
   const supplierDocNo = firstFilled_(invoice.invoice_no, packing.challan_no);
   const mrrNumber = firstFilled_(packing.mrr_no, invoice.mrr_no);
   const geNumber = firstFilled_(packing.ge_no, invoice.ge_no);
-  const supplierName = firstFilled_(packing.buyer && packing.buyer.name_address, invoice.bill_to && invoice.bill_to.name_address);
+  const supplierName = firstFilled_(invoice.bill_to && invoice.bill_to.name_address, packing.buyer && packing.buyer.name_address, packing.distributor);
   const normalizedTargetMrr = normalizeDocKey_(mrrNumber);
   const normalizedTargetGe = normalizeDocKey_(geNumber);
   const isParentSummaryRow = function(row) {

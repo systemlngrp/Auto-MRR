@@ -4826,6 +4826,16 @@ function App() {
       }
       return next;
     });
+    if (group === 'bill_to' && field === 'name_address') {
+      setPacking((p) => ({
+        ...p,
+        distributor: value,
+        buyer: {
+          ...(p.buyer || {}),
+          name_address: value
+        }
+      }));
+    }
   };
   const invoiceNumericFields = new Set(['sort_no', 'gsm', 'size', 'reels', 'weight', 'rate', 'amount', 'po_rate', 'quantity', 'po_quantity']);
   const setInvRow = (i, field, value) => setInvoice((p) => {
