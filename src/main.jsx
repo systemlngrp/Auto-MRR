@@ -2024,6 +2024,7 @@ function ReelLabelsTab({ initialMrr, helperSheetName, selectedFirm, onBack }) {
   const [mrrOptions, setMrrOptions] = useState([]);
   const [isLoadingMrrOptions, setIsLoadingMrrOptions] = useState(false);
   const [printMode, setPrintMode] = useState('a4');
+  const autoLoadedInitialMrrRef = useRef('');
 
   useEffect(() => {
     if (initialMrr && !searchMrr) {
@@ -2100,6 +2101,14 @@ function ReelLabelsTab({ initialMrr, helperSheetName, selectedFirm, onBack }) {
       setIsSearching(false);
     }
   };
+
+  useEffect(() => {
+    const targetMrr = String(initialMrr || '').trim();
+    if (!selectedFirm || !targetMrr || isSearching) return;
+    if (autoLoadedInitialMrrRef.current === targetMrr) return;
+    autoLoadedInitialMrrRef.current = targetMrr;
+    handleSearch();
+  }, [initialMrr, selectedFirm, helperSheetName, isSearching]);
 
   return (
     <div className="sheet" style={{ padding: 20, position: 'relative' }}>
@@ -5506,7 +5515,8 @@ function App() {
       type: overrides.type || typeOverride || 'reel',
       view,
       pendingFilter: overrides.pendingFilter || '',
-      reportFilter: overrides.reportFilter || ''
+      reportFilter: overrides.reportFilter || '',
+      labelMrr: overrides.labelMrr || ''
     });
     setIsFirmSelected(false);
   };
@@ -5865,37 +5875,11 @@ function App() {
       showPopup('MRR No. missing for label print.', 'error');
       return;
     }
-    try {
-      setIsPreparingLabels(true);
-      const helperSheetName = getSheetName(selectedFirm.helper, mrrType);
-      const payload = await fetchSheetRangeWithParams({
-        sheet: helperSheetName,
-        mrr_number: mrrNumber,
-        spreadsheetId: selectedFirm.spreadsheetId
-      }, selectedFirm.scriptUrl);
-      const reels = Array.isArray(payload?.values) ? payload.values : [];
-      if (!reels.length) {
-        throw new Error(`No label rows found for MRR ${mrrNumber}.`);
-      }
-      setDirectLabelPrintJob({ reels, mrrNumber, firm: selectedFirm, mode: 'a4' });
-      const previousTitle = document.title;
-      document.body.classList.add('print-labels-only');
-      document.title = `MRR_${mrrNumber}_Labels`;
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-          document.title = previousTitle;
-          document.body.classList.remove('print-labels-only');
-          setDirectLabelPrintJob(null);
-        }, 1000);
-      }, 150);
-    } catch (err) {
-      document.body.classList.remove('print-labels-only');
-      setDirectLabelPrintJob(null);
-      showPopup(err?.message || 'Could not prepare labels.', 'error');
-    } finally {
-      setIsPreparingLabels(false);
-    }
+    openStageMenuView(mrrType, 'label', {
+      firmId: selectedFirm.id,
+      type: mrrType,
+      labelMrr: mrrNumber
+    });
   };
 
   const loadPendingGEs = async () => {
