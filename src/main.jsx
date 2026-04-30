@@ -3080,8 +3080,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const groupedInvoiceRateHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
   const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '7%', minWidth: '78px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedBasicValueHeaderStyle = { ...pendingHeaderCellStyle, width: '7%', minWidth: '78px' };
+  const groupedRemarkCellStyle = { ...pendingBodyCellStyle, width: '8%', minWidth: '120px', whiteSpace: 'pre-line', lineHeight: 1.35, wordBreak: 'break-word' };
+  const groupedRemarkHeaderStyle = { ...pendingHeaderCellStyle, width: '8%', minWidth: '120px' };
   const groupedActionHeaderStyle = { ...pendingHeaderCellStyle, width: '11%', minWidth: '180px' };
   const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '11%', minWidth: '180px' };
+  const groupedActionHeaderWideStyle = { ...pendingHeaderCellStyle, width: '16%', minWidth: '220px' };
+  const groupedActionCellWideStyle = { ...pendingBodyCellStyle, width: '16%', minWidth: '220px' };
 
   const getGroupedApprovalRowKey = (row) => [
     String(row?.firm_id || '').trim(),
@@ -3124,9 +3128,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     const rowKey = getGroupedApprovalRowKey(row);
     const existing = groupedAccountsApprovalDrafts[rowKey] || {};
     return {
+      plant_head_remark: existing.plant_head_remark ?? String(row?.plant_head_remark || '').trim(),
+      accounts_remark: existing.accounts_remark ?? String(row?.accounts_remark || '').trim(),
       debit_note: existing.debit_note ?? String(row?.debit_note || '').trim(),
       debit_note_date: existing.debit_note_date ?? String(row?.debit_note_date || '').trim(),
-      debit_note_amount: existing.debit_note_amount ?? String(row?.debit_note_amount || '').trim()
+      debit_note_amount: existing.debit_note_amount ?? String(row?.debit_note_amount || '').trim(),
+      md_approval_remark: existing.md_approval_remark ?? String(row?.md_approval_remark || '').trim()
     };
   };
   const setGroupedApprovalDraftField = (row, field, value) => {
@@ -3136,9 +3143,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       return {
         ...prev,
         [rowKey]: {
+          plant_head_remark: current.plant_head_remark ?? String(row?.plant_head_remark || '').trim(),
+          accounts_remark: current.accounts_remark ?? String(row?.accounts_remark || '').trim(),
           debit_note: current.debit_note ?? String(row?.debit_note || '').trim(),
           debit_note_date: current.debit_note_date ?? String(row?.debit_note_date || '').trim(),
           debit_note_amount: current.debit_note_amount ?? String(row?.debit_note_amount || '').trim(),
+          md_approval_remark: current.md_approval_remark ?? String(row?.md_approval_remark || '').trim(),
           [field]: value
         }
       };
@@ -3888,21 +3898,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
           <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px', marginBottom: '10px' }} alt="Logo" />
           <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm.name}</p>
-          <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>MODE:</span>
-            <select
-              value={tempType}
-              onChange={(e) => {
-                const nextType = e.target.value;
-                setTempType(nextType);
-                if (tempFirm) onRememberSelection?.(tempFirm, nextType);
-              }}
-              style={{ border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', fontWeight: 700, background: '#fff' }}
-            >
-              <option value="reel">REEL MRR</option>
-              <option value="other">OTHER MRR</option>
-            </select>
-          </div>
           <div style={{ position: 'relative' }}>
             {isMenuCountsLoading ? (
               <div
@@ -4149,7 +4144,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                         <th style={groupedPoRateHeaderStyle}>PO Rate</th>
                         <th style={groupedInvoiceRateHeaderStyle}>Invoice Rate</th>
                         <th style={groupedBasicValueHeaderStyle}>Basic Value</th>
-                        <th style={groupedActionHeaderStyle}>Action</th>
+                        {activeStage.key !== 'pending_plant_head_approval' ? (
+                          <th style={groupedRemarkHeaderStyle}>Remark</th>
+                        ) : null}
+                        <th style={activeStage.key === 'pending_plant_head_approval' ? groupedActionHeaderWideStyle : groupedActionHeaderStyle}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4185,7 +4183,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                           <td className="r" style={groupedPoRateCellStyle}>{getGroupedApprovalPoRate(ge) || '-'}</td>
                           <td className="r" style={groupedInvoiceRateCellStyle}>{getGroupedApprovalInvoiceRate(ge) || '-'}</td>
                           <td className="r" style={groupedBasicValueCellStyle}>{getGroupedApprovalBasicValue(ge) || '-'}</td>
-                          <td className="c" style={groupedActionCellStyle}>
+                          {activeStage.key !== 'pending_plant_head_approval' ? (
+                            <td style={groupedRemarkCellStyle}>{ge.plant_head_remark || ge.accounts_remark || ge.md_approval_remark || '-'}</td>
+                          ) : null}
+                          <td className="c" style={activeStage.key === 'pending_plant_head_approval' ? groupedActionCellWideStyle : groupedActionCellStyle}>
                             <div style={{ display: 'grid', gap: '8px', justifyItems: 'stretch' }}>
                               <div style={{ display: 'grid', gap: '8px', justifyContent: 'stretch', alignItems: 'stretch' }}>
                               <button
@@ -4224,16 +4225,26 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     const targetType = ge.mrr_type || tempType;
                                     if (!targetFirm) throw new Error('Firm context missing for approval.');
                                     const approvalDraft = getGroupedApprovalDraft(ge);
+                                    if (String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' && !String(approvalDraft.plant_head_remark || '').trim()) {
+                                      throw new Error(`Plant Head Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                    }
                                     if (isGroupedApprovalDebitNoteRequired(ge)) {
                                       if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
                                         throw new Error(`Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
                                       }
                                     }
+                                    if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
+                                      throw new Error(`MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                    }
                                     setApprovingPendingKey(rowKey);
                                     await approvePendingStage({
+                                      decision: 'approve',
                                       stage: ge.pending_stage || activeStage.key,
                                       mrrNumber: ge.mrr_number || ge.mrr_no || '',
                                       userEmail: currentUser?.email || '',
+                                      plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
+                                      accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
+                                      mdApprovalRemark: String(approvalDraft.md_approval_remark || '').trim(),
                                       debitNote: String(approvalDraft.debit_note || '').trim(),
                                       debitNoteDate: String(approvalDraft.debit_note_date || '').trim(),
                                       debitNoteAmount: String(approvalDraft.debit_note_amount || '').trim(),
@@ -4252,7 +4263,65 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               >
                                 {isRowApproving ? <span className="approving-bubble">Approving<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'APPROVE'}
                               </button>
+                              {String(ge.pending_stage || activeStage.key).trim() !== 'pending_tally_posting' ? (
+                                <button
+                                  className="btn small"
+                                  style={{ width: '100%', fontSize: '12px', padding: '9px 10px', background: '#b91c1c', color: '#fff', borderColor: '#b91c1c' }}
+                                  disabled={isAnyPendingApproval}
+                                  onClick={async () => {
+                                    try {
+                                      const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
+                                      const targetType = ge.mrr_type || tempType;
+                                      if (!targetFirm) throw new Error('Firm context missing for rejection.');
+                                      const approvalDraft = getGroupedApprovalDraft(ge);
+                                      if (String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' && !String(approvalDraft.plant_head_remark || '').trim()) {
+                                        throw new Error(`Plant Head Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      }
+                                      if (String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' && !String(approvalDraft.accounts_remark || '').trim()) {
+                                        throw new Error(`Accounts Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      }
+                                      if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
+                                        throw new Error(`MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      }
+                                      setApprovingPendingKey(rowKey);
+                                      await approvePendingStage({
+                                        decision: 'reject',
+                                        stage: ge.pending_stage || activeStage.key,
+                                        mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                        userEmail: currentUser?.email || '',
+                                        plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
+                                        accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
+                                        mdApprovalRemark: String(approvalDraft.md_approval_remark || '').trim(),
+                                        debitNote: String(approvalDraft.debit_note || '').trim(),
+                                        debitNoteDate: String(approvalDraft.debit_note_date || '').trim(),
+                                        debitNoteAmount: String(approvalDraft.debit_note_amount || '').trim(),
+                                        mrrSheetName: getSheetName(targetFirm.mrr, targetType),
+                                        helperSheetName: getSheetName(targetFirm.helper, targetType),
+                                        spreadsheetId: targetFirm?.spreadsheetId,
+                                        scriptUrl: targetFirm?.scriptUrl
+                                      });
+                                      await refreshApprovalViews();
+                                    } catch (err) {
+                                      alert(err?.message || 'Rejection failed.');
+                                    } finally {
+                                      setApprovingPendingKey('');
+                                    }
+                                  }}
+                                >
+                                  {isRowApproving ? <span className="approving-bubble">Applying<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'REJECT'}
+                                </button>
+                              ) : null}
                               </div>
+                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' ? (
+                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
+                                <input
+                                  value={getGroupedApprovalDraft(ge).plant_head_remark}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'plant_head_remark', e.target.value)}
+                                  placeholder="Plant Head Remark *"
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
+                                />
+                              </div>
+                            ) : null}
                             {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' && isGroupedApprovalDebitNoteRequired(ge) ? (
                               <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
                                 <input
@@ -4273,6 +4342,26 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                   value={getGroupedApprovalDraft(ge).debit_note_amount}
                                   onChange={(e) => setGroupedApprovalDraftField(ge, 'debit_note_amount', e.target.value)}
                                   placeholder="Debit Note Amount *"
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
+                                />
+                              </div>
+                            ) : null}
+                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' ? (
+                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
+                                <input
+                                  value={getGroupedApprovalDraft(ge).accounts_remark}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'accounts_remark', e.target.value)}
+                                  placeholder="Accounts Remark"
+                                  style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
+                                />
+                              </div>
+                            ) : null}
+                            {String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' ? (
+                              <div style={{ padding: '10px', border: '1px solid #d6c7ae', background: '#f8fafc', borderRadius: '8px', display: 'grid', gap: '8px', textAlign: 'left' }}>
+                                <input
+                                  value={getGroupedApprovalDraft(ge).md_approval_remark}
+                                  onChange={(e) => setGroupedApprovalDraftField(ge, 'md_approval_remark', e.target.value)}
+                                  placeholder="MD Approval Remark *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
                               </div>
@@ -4330,15 +4419,25 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                             const targetType = ge.mrr_type || tempType;
                             if (!targetFirm) continue;
                             const approvalDraft = getGroupedApprovalDraft(ge);
+                            if (String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' && !String(approvalDraft.plant_head_remark || '').trim()) {
+                              throw new Error(`Fill Plant Head Remark for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                            }
                             if (isGroupedApprovalDebitNoteRequired(ge)) {
                               if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
                                 throw new Error(`Fill Debit Note, Debit Note Date, and Debit Note Amount for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
                               }
                             }
+                            if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
+                              throw new Error(`Fill MD Approval Remark for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                            }
                             await approvePendingStage({
+                              decision: 'approve',
                               stage: ge.pending_stage || activeStage.key,
                               mrrNumber: ge.mrr_number || ge.mrr_no || '',
                               userEmail: currentUser?.email || '',
+                              plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
+                              accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
+                              mdApprovalRemark: String(approvalDraft.md_approval_remark || '').trim(),
                               debitNote: String(approvalDraft.debit_note || '').trim(),
                               debitNoteDate: String(approvalDraft.debit_note_date || '').trim(),
                               debitNoteAmount: String(approvalDraft.debit_note_amount || '').trim(),
@@ -4377,6 +4476,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   <th style={pendingHeaderCellStyle}>Invoice</th>
                   <th style={pendingHeaderCellStyle}>Invoice Value</th>
                   <th style={pendingHeaderCellStyle}>Truck No</th>
+                  <th style={pendingHeaderCellStyle}>Remark</th>
                   <th style={pendingHeaderCellStyle}>Action</th>
                 </tr>
               </thead>
@@ -4400,6 +4500,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
                     <td style={pendingBodyCellStyle}>{formatDecimal2(ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || '')}</td>
                     <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
+                    <td style={pendingBodyCellStyle}>{ge.plant_head_remark || ge.accounts_remark || ge.md_approval_remark || '-'}</td>
                     <td className="c" style={{ ...pendingBodyCellStyle }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
@@ -4430,37 +4531,87 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                           {pendingFilter === 'edit_ge_entry' || pendingFilter === 'edit_mrr' ? 'EDIT' : 'OPEN'}
                         </button>
                         {pendingFilter !== 'pending_mrr' && pendingFilter !== 'edit_ge_entry' && pendingFilter !== 'edit_mrr' && (
-                          <button
-                            className="btn main small"
-                            style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
-                            disabled={isAnyPendingApproval}
-                            onClick={async () => {
-                              try {
-                                setApprovingPendingKey(rowKey);
-                                const approvalResult = await approvePendingStage({
-                                  stage: pendingFilter,
-                                  mrrNumber: ge.mrr_number || ge.mrr_no || '',
-                                  userEmail: currentUser?.email || '',
-                                  mrrSheetName: getSheetName(tempFirm.mrr, tempType),
-                                  helperSheetName: getSheetName(tempFirm.helper, tempType),
-                                  spreadsheetId: tempFirm?.spreadsheetId,
-                                  scriptUrl: tempFirm?.scriptUrl
-                                });
-                                if (approvalResult?.next_stage && approvalResult.next_stage !== 'completed') {
-                                  setPendingFilter(approvalResult.next_stage);
+                          <>
+                            <button
+                              className="btn main small"
+                              style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
+                              disabled={isAnyPendingApproval}
+                              onClick={async () => {
+                                try {
+                                  setApprovingPendingKey(rowKey);
+                                  const approvalResult = await approvePendingStage({
+                                    decision: 'approve',
+                                    stage: pendingFilter,
+                                    mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                    userEmail: currentUser?.email || '',
+                                    mrrSheetName: getSheetName(tempFirm.mrr, tempType),
+                                    helperSheetName: getSheetName(tempFirm.helper, tempType),
+                                    spreadsheetId: tempFirm?.spreadsheetId,
+                                    scriptUrl: tempFirm?.scriptUrl
+                                  });
+                                  if (approvalResult?.next_stage && approvalResult.next_stage !== 'completed') {
+                                    setPendingFilter(approvalResult.next_stage);
+                                  }
+                                  await loadPendingList({ force: true });
+                                } catch (err) {
+                                  alert(err?.message || 'Approval failed.');
+                                } finally {
+                                  setApprovingPendingKey('');
                                 }
-                                await loadPendingList({ force: true });
-                              } catch (err) {
-                                alert(err?.message || 'Approval failed.');
-                              } finally {
-                                setApprovingPendingKey('');
-                              }
-                            }}
-                          >
-                            {isRowApproving ? <span className="approving-bubble">Approving<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'APPROVE'}
-                          </button>
+                              }}
+                            >
+                              {isRowApproving ? <span className="approving-bubble">Approving<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'APPROVE'}
+                            </button>
+                            {pendingFilter !== 'pending_tally_posting' && (
+                              <button
+                                className="btn small"
+                                style={{ fontSize: '12px', padding: '8px 12px', background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}
+                                disabled={isAnyPendingApproval}
+                                onClick={async () => {
+                                  try {
+                                    let plantHeadRemarkInput = '';
+                                    let accountsRemarkInput = '';
+                                    let mdRemarkInput = '';
+                                    if (pendingFilter === 'pending_plant_head_approval') {
+                                      plantHeadRemarkInput = window.prompt('Enter Plant Head Reject Remark') || '';
+                                      if (!String(plantHeadRemarkInput).trim()) throw new Error('Plant Head Remark is required for rejection.');
+                                    }
+                                    if (pendingFilter === 'pending_accounts_approval') {
+                                      accountsRemarkInput = window.prompt('Enter Accounts Reject Remark') || '';
+                                      if (!String(accountsRemarkInput).trim()) throw new Error('Accounts Remark is required for rejection.');
+                                    }
+                                    if (pendingFilter === 'pending_md_approval') {
+                                      mdRemarkInput = window.prompt('Enter MD Reject Remark') || '';
+                                      if (!String(mdRemarkInput).trim()) throw new Error('MD Approval Remark is required for rejection.');
+                                    }
+                                    setApprovingPendingKey(rowKey);
+                                    await approvePendingStage({
+                                      decision: 'reject',
+                                      stage: pendingFilter,
+                                      mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                      userEmail: currentUser?.email || '',
+                                      plantHeadRemark: plantHeadRemarkInput,
+                                      accountsRemark: accountsRemarkInput,
+                                      mdApprovalRemark: mdRemarkInput,
+                                      mrrSheetName: getSheetName(tempFirm.mrr, tempType),
+                                      helperSheetName: getSheetName(tempFirm.helper, tempType),
+                                      spreadsheetId: tempFirm?.spreadsheetId,
+                                      scriptUrl: tempFirm?.scriptUrl
+                                    });
+                                    await loadPendingList({ force: true });
+                                  } catch (err) {
+                                    alert(err?.message || 'Rejection failed.');
+                                  } finally {
+                                    setApprovingPendingKey('');
+                                  }
+                                }}
+                              >
+                                {isRowApproving ? <span className="approving-bubble">Applying<span className="approving-dots"><span></span><span></span><span></span></span></span> : 'REJECT'}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -4760,6 +4911,9 @@ function App() {
   const [accountsDebitNote, setAccountsDebitNote] = useState('');
   const [accountsDebitNoteDate, setAccountsDebitNoteDate] = useState('');
   const [accountsDebitNoteAmount, setAccountsDebitNoteAmount] = useState('');
+  const [plantHeadRemark, setPlantHeadRemark] = useState('');
+  const [accountsRemark, setAccountsRemark] = useState('');
+  const [mdApprovalRemark, setMdApprovalRemark] = useState('');
   const [selectedFirm, setSelectedFirm] = useState(null);
   const [mrrType, setMrrType] = useState('reel');
   const [isFirmSelected, setIsFirmSelected] = useState(false);
@@ -4963,6 +5117,7 @@ function App() {
   const computedPackingWeight = Number(packing.items.reduce((sum, row) => sum + n(row.net_wt), 0).toFixed(2));
   const computedPackingWeightText = String(computedPackingWeight);
   const isOtherMrr = String(mrrType || '').trim().toLowerCase() === 'other';
+  const currentModeLabel = isOtherMrr ? 'OTHER MRR' : 'REEL MRR';
   const invoiceBasicValue = Number(invoice.goods.reduce((sum, row) => sum + (n(row.amount) || (n(row.weight) * n(row.rate))), 0).toFixed(2));
   const mrrBasicValue = isOtherMrr
     ? Number(invoice.goods.reduce((sum, row) => sum + (n(row.rate) * n(row.weight)), 0).toFixed(2))
@@ -4979,6 +5134,121 @@ function App() {
     (approvalMrrType === 'other' && approvalEntryType === 'rejection')
   );
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
+  const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked && !geData;
+  const hasDraftContent = Boolean(
+    invoicePhotoScanned ||
+    packingPhotoScanned ||
+    ensureRows(invoice.goods).length ||
+    ensureRows(packing.items).length ||
+    isMeaningful(invoice.invoice_no) ||
+    isMeaningful(invoice.vehicle_no) ||
+    isMeaningful(invoice.bill_to?.name_address) ||
+    isMeaningful(packing.challan_no) ||
+    isMeaningful(packing.truck_no) ||
+    isMeaningful(invoice.ge_no) ||
+    isMeaningful(invoice.mrr_no)
+  );
+  const handlePageModeChange = async (nextType) => {
+    if (!selectedFirm || nextType === mrrType || !canChangePageMode) return;
+    if (hasDraftContent && !window.confirm('Switching mode will clear the current unsaved MRR draft. Continue?')) {
+      return;
+    }
+    const preservedGeNo = String(firstFilled(invoice.ge_no, packing.ge_no, '')).trim();
+    const preservedMrrNo = String(firstFilled(invoice.mrr_no, packing.mrr_no, '')).trim();
+    let geEntryDetails = null;
+    if (preservedGeNo || preservedMrrNo) {
+      try {
+        geEntryDetails = await fetchSheetRangeWithParams({
+          action: 'get_ge_entry_details',
+          ge_no: preservedGeNo,
+          mrr_no: preservedMrrNo,
+          spreadsheetId: selectedFirm?.spreadsheetId || ''
+        }, selectedFirm?.scriptUrl || '');
+      } catch {
+        geEntryDetails = null;
+      }
+    }
+    const firmHeader = selectedFirm?.header ? { ...selectedFirm.header, note: '' } : defaultHeader();
+    const preservedSupplierName = String(firstFilled(
+      geEntryDetails?.supplier,
+      geData?.supplier_name,
+      geData?.supplier,
+      invoice.bill_to?.name_address,
+      packing.buyer?.name_address,
+      packing.distributor,
+      ''
+    )).trim();
+    const preservedInvoiceNo = String(firstFilled(
+      geEntryDetails?.invoice_no,
+      invoice.invoice_no,
+      packing.challan_no,
+      ''
+    )).trim();
+    const preservedTruckNo = String(firstFilled(
+      geEntryDetails?.truck_no,
+      invoice.vehicle_no,
+      packing.truck_no,
+      ''
+    )).trim();
+    const preservedDate = String(firstFilled(
+      geEntryDetails?.date,
+      invoice.date,
+      packing.date,
+      ''
+    )).trim();
+    const nextInvoice = normalizeInvoice({
+      ...blankInvoice,
+      header: firmHeader,
+      ge_no: preservedGeNo,
+      mrr_no: preservedMrrNo,
+      date: preservedDate,
+      receipt_date: invoice.receipt_date || '',
+      vehicle_no: preservedTruckNo,
+      invoice_no: preservedInvoiceNo,
+      actual_weight: invoice.actual_weight || '',
+      actual_mrr_weight: invoice.actual_mrr_weight || '',
+      signatory_label: selectedFirm?.name || blankInvoice.signatory_label || '',
+      bill_to: {
+        ...blankInvoice.bill_to,
+        name_address: preservedSupplierName
+      }
+    });
+    const nextPacking = normalizePacking({
+      ...blankPacking,
+      header: firmHeader,
+      ge_no: preservedGeNo,
+      mrr_no: preservedMrrNo,
+      date: preservedDate,
+      receipt_date: packing.receipt_date || invoice.receipt_date || '',
+      truck_no: preservedTruckNo,
+      challan_no: preservedInvoiceNo,
+      actual_total: packing.actual_total || invoice.actual_mrr_weight || '',
+      distributor: preservedSupplierName,
+      receiver_label: selectedFirm?.name || '',
+      signatory_label: selectedFirm?.name || blankPacking.signatory_label || '',
+      buyer: {
+        ...blankPacking.buyer,
+        name_address: preservedSupplierName
+      }
+    });
+    setHelperSheetReelSeed(0);
+    setIsMrrSavedLocked(false);
+    setLastSavedRecord(null);
+    setInvoicePhotoScanned(false);
+    setPackingPhotoScanned(false);
+    setAccountsDebitNote('');
+    setAccountsDebitNoteDate('');
+    setAccountsDebitNoteAmount('');
+    setPlantHeadRemark('');
+    setAccountsRemark('');
+    setMdApprovalRemark('');
+    setGeData(null);
+    setMrrType(nextType);
+    setInvoice(nextInvoice);
+    setPacking(nextPacking);
+    approvalLoadKeyRef.current = '';
+    approvalSnapshotRef.current = '';
+  };
   const isGateEntryLocked = false;
   const approvalStageTitle = approvalStage === 'pending_plant_head_approval'
     ? 'Plant Head Approval View'
@@ -4993,20 +5263,23 @@ function App() {
     {
       key: 'plant_head',
       label: 'Plant Head Approval',
-      timestamp: String(geData?.plant_head_approval_timestamp || '').trim(),
-      userEmail: String(geData?.plant_head_approval_useremail || '').trim()
+      timestamp: String(geData?.plant_head_approval === 'Rejected' ? geData?.plant_head_reject_timestamp : geData?.plant_head_approval_timestamp || '').trim(),
+      userEmail: String(geData?.plant_head_approval === 'Rejected' ? geData?.plant_head_reject_usermail : geData?.plant_head_approval_useremail || '').trim(),
+      remark: String(geData?.plant_head_remark || '').trim()
     },
     {
       key: 'accounts',
       label: 'Accounts Approval',
-      timestamp: String(geData?.accounts_approval_timestamp || '').trim(),
-      userEmail: String(geData?.accounts_approval_useremail || '').trim()
+      timestamp: String(geData?.accounts_approval === 'Rejected' ? geData?.accounts_reject_timestamp : geData?.accounts_approval_timestamp || '').trim(),
+      userEmail: String(geData?.accounts_approval === 'Rejected' ? geData?.accounts_reject_usermail : geData?.accounts_approval_useremail || '').trim(),
+      remark: String(geData?.accounts_remark || '').trim()
     },
     {
       key: 'md',
       label: 'MD Approval',
-      timestamp: String(geData?.md_approval_timestamp || '').trim(),
-      userEmail: String(geData?.md_approval_useremail || '').trim()
+      timestamp: String(geData?.md_approval === 'Rejected' ? geData?.md_reject_timestamp : geData?.md_approval_timestamp || '').trim(),
+      userEmail: String(geData?.md_approval === 'Rejected' ? geData?.md_reject_usermail : geData?.md_approval_useremail || '').trim(),
+      remark: String(geData?.md_approval_remark || '').trim()
     },
     {
       key: 'tally',
@@ -5025,7 +5298,10 @@ function App() {
     setAccountsDebitNote(String(geData?.debit_note || '').trim());
     setAccountsDebitNoteDate(String(geData?.debit_note_date || '').trim());
     setAccountsDebitNoteAmount(String(geData?.debit_note_amount || '').trim());
-  }, [geData?.debit_note, geData?.debit_note_date, geData?.debit_note_amount]);
+    setPlantHeadRemark(String(geData?.plant_head_remark || '').trim());
+    setAccountsRemark(String(geData?.accounts_remark || '').trim());
+    setMdApprovalRemark(String(geData?.md_approval_remark || '').trim());
+  }, [geData?.debit_note, geData?.debit_note_date, geData?.debit_note_amount, geData?.plant_head_remark, geData?.accounts_remark, geData?.md_approval_remark]);
   const otherMrrLeftMetaRows = [
     ['G. E. No.', invoice.ge_no, undefined, 'text'],
     ['Date', invoice.date, undefined, 'date'],
@@ -5480,22 +5756,39 @@ function App() {
   };
 
   const handleFirmSelection = (firm, type = 'reel', openPending = false) => {
+    const firmHeader = firm?.header ? { ...firm.header, note: '' } : defaultHeader();
+    const nextInvoice = normalizeInvoice({
+      ...blankInvoice,
+      header: firmHeader,
+      signatory_label: firm?.name || blankInvoice.signatory_label || ''
+    });
+    const nextPacking = normalizePacking({
+      ...blankPacking,
+      header: firmHeader,
+      receiver_label: firm?.name || '',
+      signatory_label: firm?.name || blankPacking.signatory_label || ''
+    });
     setMenuBootConfig(null);
     setHelperSheetReelSeed(0);
     setIsMrrSavedLocked(false);
     setLastSavedRecord(null);
     setInvoicePhotoScanned(false);
     setPackingPhotoScanned(false);
+    setAccountsDebitNote('');
+    setAccountsDebitNoteDate('');
+    setAccountsDebitNoteAmount('');
+    setPlantHeadRemark('');
+    setAccountsRemark('');
+    setMdApprovalRemark('');
     setSelectedFirm(firm);
     setMrrType(type);
     setIsFirmSelected(true);
     setTriggerPendingModal(openPending);
-    if (firm.header) {
-      setInvoice(prev => ({ ...prev, header: firm.header }));
-      setPacking(prev => ({ ...prev, header: firm.header, receiver_label: firm.name }));
-    } else {
-      setPacking(prev => ({ ...prev, receiver_label: firm.name }));
-    }
+    setGeData(null);
+    setInvoice(nextInvoice);
+    setPacking(nextPacking);
+    approvalLoadKeyRef.current = '';
+    approvalSnapshotRef.current = '';
   };
 
   const rememberOverlaySelection = (firm, type = 'reel') => {
@@ -5566,14 +5859,14 @@ function App() {
     );
   };
 
-  const approveFromMainForm = async () => {
+  const approveFromMainForm = async (decision = 'approve') => {
     if (!isApprovalMode) return;
     const mrrNumber = String(geData?.mrr_number || geData?.mrr_no || invoice.mrr_no || packing.mrr_no || '').trim();
     if (!mrrNumber) {
       showPopup('MRR No. missing for approval.', 'error');
       return;
     }
-    if (shouldRequireAccountsDebitNote) {
+    if (decision === 'approve' && shouldRequireAccountsDebitNote) {
       if (!String(accountsDebitNote || '').trim() || !String(accountsDebitNoteDate || '').trim() || !String(accountsDebitNoteAmount || '').trim()) {
         showPopup(
           approvalMrrType === 'other'
@@ -5584,12 +5877,28 @@ function App() {
         return;
       }
     }
+    if (approvalStage === 'pending_plant_head_approval' && decision === 'reject' && !String(plantHeadRemark || '').trim()) {
+      showPopup('Plant Head Remark is required for rejection.', 'error');
+      return;
+    }
+    if (approvalStage === 'pending_accounts_approval' && decision === 'reject' && !String(accountsRemark || '').trim()) {
+      showPopup('Accounts Remark is required for rejection.', 'error');
+      return;
+    }
+    if (approvalStage === 'pending_md_approval' && decision === 'reject' && !String(mdApprovalRemark || '').trim()) {
+      showPopup('MD Approval Remark is required for rejection.', 'error');
+      return;
+    }
     try {
       setIsApprovingFromForm(true);
       const result = await approvePendingStage({
+        decision,
         stage: approvalStage,
         mrrNumber,
         userEmail: currentUser?.email || '',
+        plantHeadRemark: approvalStage === 'pending_plant_head_approval' ? plantHeadRemark : '',
+        accountsRemark: approvalStage === 'pending_accounts_approval' ? accountsRemark : '',
+        mdApprovalRemark: approvalStage === 'pending_md_approval' ? mdApprovalRemark : '',
         debitNote: approvalStage === 'pending_accounts_approval' ? accountsDebitNote : '',
         debitNoteDate: approvalStage === 'pending_accounts_approval' ? accountsDebitNoteDate : '',
         debitNoteAmount: approvalStage === 'pending_accounts_approval' ? accountsDebitNoteAmount : '',
@@ -5599,7 +5908,32 @@ function App() {
         scriptUrl: selectedFirm?.scriptUrl
       });
       const next = result?.next_stage || 'completed';
-      if (next === 'completed') {
+      if (next === 'rejected') {
+        showPopup(`Rejected ${mrrNumber}.`, 'success');
+        setGeData((prev) => {
+          if (!prev) return prev;
+          const nextState = { ...prev, pending_stage: 'rejected' };
+          if (approvalStage === 'pending_plant_head_approval') {
+            nextState.plant_head_approval = 'Rejected';
+            nextState.plant_head_reject_timestamp = result?.timestamp || nextState.plant_head_reject_timestamp || '';
+            nextState.plant_head_reject_usermail = result?.user_email || nextState.plant_head_reject_usermail || '';
+            nextState.plant_head_remark = result?.plant_head_remark ?? plantHeadRemark;
+          }
+          if (approvalStage === 'pending_accounts_approval') {
+            nextState.accounts_approval = 'Rejected';
+            nextState.accounts_reject_timestamp = result?.timestamp || nextState.accounts_reject_timestamp || '';
+            nextState.accounts_reject_usermail = result?.user_email || nextState.accounts_reject_usermail || '';
+            nextState.accounts_remark = result?.accounts_remark ?? accountsRemark;
+          }
+          if (approvalStage === 'pending_md_approval') {
+            nextState.md_approval = 'Rejected';
+            nextState.md_reject_timestamp = result?.timestamp || nextState.md_reject_timestamp || '';
+            nextState.md_reject_usermail = result?.user_email || nextState.md_reject_usermail || '';
+            nextState.md_approval_remark = result?.md_approval_remark ?? mdApprovalRemark;
+          }
+          return nextState;
+        });
+      } else if (next === 'completed') {
         showPopup(`Approved and completed for ${mrrNumber}.`, 'success');
         setGeData((prev) => {
           if (!prev) return prev;
@@ -5625,10 +5959,13 @@ function App() {
           if (approvalStage === 'pending_plant_head_approval') {
             nextState.plant_head_approval_timestamp = result?.timestamp || nextState.plant_head_approval_timestamp || '';
             nextState.plant_head_approval_useremail = result?.user_email || nextState.plant_head_approval_useremail || '';
+            nextState.plant_head_remark = result?.plant_head_remark ?? plantHeadRemark;
           }
           if (approvalStage === 'pending_accounts_approval') {
+            nextState.accounts_approval = result?.decision === 'reject' ? 'Rejected' : (nextState.accounts_approval || 'Approved');
             nextState.accounts_approval_timestamp = result?.timestamp || nextState.accounts_approval_timestamp || '';
             nextState.accounts_approval_useremail = result?.user_email || nextState.accounts_approval_useremail || '';
+            nextState.accounts_remark = result?.accounts_remark ?? accountsRemark;
             nextState.debit_note = result?.debit_note ?? accountsDebitNote;
             nextState.debit_note_date = result?.debit_note_date ?? accountsDebitNoteDate;
             nextState.debit_note_amount = result?.debit_note_amount ?? accountsDebitNoteAmount;
@@ -5636,6 +5973,7 @@ function App() {
           if (approvalStage === 'pending_md_approval') {
             nextState.md_approval_timestamp = result?.timestamp || nextState.md_approval_timestamp || '';
             nextState.md_approval_useremail = result?.user_email || nextState.md_approval_useremail || '';
+            nextState.md_approval_remark = result?.md_approval_remark ?? mdApprovalRemark;
           }
           return nextState;
         });
@@ -6209,13 +6547,22 @@ function App() {
         mrr_entry_type: parentEntryType,
         invoice_no: parentDoc,
         truck_no: parentTruck,
+        plant_head_remark: readRowValue(parent, 'plant_head_remark', 'Plant Head Remark'),
+        plant_head_reject_timestamp: readRowValue(parent, 'plant_head_reject_timestamp', 'Plant Head Reject Timestamp'),
+        plant_head_reject_usermail: readRowValue(parent, 'plant_head_reject_usermail', 'Plant Head Reject usermail', 'Plant Head Reject Usermail'),
         plant_head_approval_timestamp: readRowValue(parent, 'plant_head_approval_timestamp', 'Plant Head Approval Timestamp'),
         plant_head_approval_useremail: readRowValue(parent, 'plant_head_approval_useremail', 'Plant Head Approval User Email', 'Plant Head Approval Useremail'),
+        accounts_remark: readRowValue(parent, 'accounts_remark', 'Accounts Remark'),
+        accounts_reject_timestamp: readRowValue(parent, 'accounts_reject_timestamp', 'Accounts Reject Timestamp'),
+        accounts_reject_usermail: readRowValue(parent, 'accounts_reject_usermail', 'Acounts Reject usermail', 'Accounts Reject usermail'),
         accounts_approval_timestamp: readRowValue(parent, 'accounts_approval_timestamp', 'Accounts Approval Timestamp'),
         accounts_approval_useremail: readRowValue(parent, 'accounts_approval_useremail', 'Accounts Approval User Email', 'Accounts Approval Useremail'),
         debit_note: readRowValue(parent, 'debit_note', 'Debit Note'),
         debit_note_date: readRowValue(parent, 'debit_note_date', 'Debit Note Date'),
         debit_note_amount: readRowValue(parent, 'debit_note_amount', 'Debit Note Amount'),
+        md_reject_usermail: readRowValue(parent, 'md_reject_usermail', 'Md Reject Usermail', 'MD Reject Usermail'),
+        md_reject_timestamp: readRowValue(parent, 'md_reject_timestamp', 'Md Reject Timestamp', 'MD Reject Timestamp'),
+        md_approval_remark: readRowValue(parent, 'md_approval_remark', 'MD Approval Remark'),
         md_approval_timestamp: readRowValue(parent, 'md_approval_timestamp', 'MD Approval Timestamp'),
         md_approval_useremail: readRowValue(parent, 'md_approval_useremail', 'MD Approval User Email', 'MD Approval Useremail'),
         pending_tally_posting_timestamp: readRowValue(parent, 'pending_tally_posting_timestamp', 'Pending Tally Posting Timesyamp'),
@@ -6241,7 +6588,13 @@ function App() {
       loadPoDetails();
       loadMrrSupplierOptions();
       fetchHelperSheetReelSeed();
-      if (!geData) {
+      const hasExistingEntryIds = Boolean(
+        isMeaningful(invoice.ge_no) ||
+        isMeaningful(invoice.mrr_no) ||
+        isMeaningful(packing.ge_no) ||
+        isMeaningful(packing.mrr_no)
+      );
+      if (!geData && !hasExistingEntryIds) {
         fetchLastIds();
       }
       if (triggerPendingModal) {
@@ -6249,7 +6602,7 @@ function App() {
         loadPendingGEs();
       }
     }
-  }, [isFirmSelected, selectedFirm, mrrType, geData, triggerPendingModal]);
+  }, [isFirmSelected, selectedFirm, mrrType, geData, triggerPendingModal, invoice.ge_no, invoice.mrr_no, packing.ge_no, packing.mrr_no]);
 
   useEffect(() => {
     if (!isFirmSelected || !selectedFirm || !geData) return;
@@ -6411,7 +6764,7 @@ function App() {
 
       <div className="pageHeader no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <h1 style={{ margin: 0 }}>MRR Management</h1>
+          <h1 style={{ margin: 0 }}>{`MRR Management (${currentModeLabel})`}</h1>
           <div className="toolbar" style={{ marginTop: 0 }}>
             <button
               className="btn"
@@ -6422,6 +6775,17 @@ function App() {
               {'< Back'}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>Mode:</span>
+              <select
+                value={mrrType}
+                onChange={(e) => handlePageModeChange(e.target.value)}
+                disabled={!canChangePageMode}
+                title={canChangePageMode ? 'Change current MRR mode' : 'Mode can only be changed for a fresh editable MRR draft'}
+                style={{ border: '1px solid #a8a8a8', padding: '4px 8px', fontSize: '11px', fontWeight: 700, background: canChangePageMode ? '#fff' : '#f5f5f5', minWidth: '92px' }}
+              >
+                <option value="reel">REEL MRR</option>
+                <option value="other">OTHER MRR</option>
+              </select>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>Firm:</span>
               <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, border: '1px solid #a8a8a8', background: '#f5f5f5', minWidth: '68px', textAlign: 'center' }}>
                 {selectedFirm?.name || '-'}
@@ -6438,12 +6802,32 @@ function App() {
             <div style={{ marginTop: '8px', display: 'grid', gap: '4px', color: '#333', fontWeight: 700 }}>
               {approvalStatusRows.map((row) => (
                 <div key={row.key}>
-                  {row.label}: {row.timestamp ? `${row.timestamp}${row.userEmail ? ` | ${row.userEmail}` : ''}` : 'Pending'}
+                  {row.label}: {row.timestamp ? `${row.timestamp}${row.userEmail ? ` | ${row.userEmail}` : ''}${row.remark ? ` | Remark: ${row.remark}` : ''}` : 'Pending'}
                 </div>
               ))}
             </div>
+            {approvalStage === 'pending_plant_head_approval' ? (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Plant Head Remark (Required For Reject)</div>
+                <input
+                  value={plantHeadRemark}
+                  onChange={(e) => setPlantHeadRemark(e.target.value)}
+                  placeholder="Enter Plant Head Remark"
+                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                />
+              </div>
+            ) : null}
             {approvalStage === 'pending_accounts_approval' ? (
               <div style={{ marginTop: '10px', display: 'grid', gap: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Accounts Remark (Required For Reject)</div>
+                  <input
+                    value={accountsRemark}
+                    onChange={(e) => setAccountsRemark(e.target.value)}
+                    placeholder="Enter Accounts Remark"
+                    style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                  />
+                </div>
                 <div style={{ fontSize: '11px', fontWeight: 800, color: shouldRequireAccountsDebitNote ? '#b45309' : '#374151' }}>
                   {approvalMrrType === 'other'
                     ? `MRR TYPE: ${invoice.mrr_entry_type || geData?.mrr_entry_type || '-'}`
@@ -6484,6 +6868,17 @@ function App() {
                 ) : null}
               </div>
             ) : null}
+            {approvalStage === 'pending_md_approval' ? (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>MD Approval Remark (Required For Reject)</div>
+                <input
+                  value={mdApprovalRemark}
+                  onChange={(e) => setMdApprovalRemark(e.target.value)}
+                  placeholder="Enter MD Approval Remark"
+                  style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
+                />
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -6522,6 +6917,7 @@ function App() {
             </table>
             <div style={{ borderTop: '1px dashed #b6ad9e', padding: '8px 10px', fontSize: '11px', fontWeight: 700, background: '#fffdf7' }}>
               GE ENTRY Details:
+              {' '}| Mode: <span style={{ color: 'var(--primary)' }}>{currentModeLabel}</span>
               {' '}GE No: <span style={{ color: 'var(--primary)' }}>{geData?.ge_no || invoice.ge_no || packing.ge_no || '-'}</span>
               {' '}| MRR No: <span style={{ color: 'var(--primary)' }}>{geData?.mrr_no || geData?.mrr_number || invoice.mrr_no || packing.mrr_no || '-'}</span>
               {' '}| Supplier: <span>{geData?.supplier || invoice.bill_to?.name_address || packing.buyer?.name_address || '-'}</span>
@@ -6839,7 +7235,7 @@ function App() {
                     </colgroup>
                     <thead>
                       <tr>
-                        <th>S.No</th><th>Description<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Sord</th><th>Party Order</th><th>GSM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Size<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Reels<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Weight<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Amount<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Action</th>
+                        <th>S.No</th><th>Description<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Sord</th><th>Party Order</th><th>GSM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Size<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Reels<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Weight<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Amount<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6878,7 +7274,10 @@ function App() {
             <div className="actions">
               {isOtherMrr && (
                 isApprovalMode
-                  ? <button className="btn main" disabled={isSaving || isApprovingFromForm} onClick={approveFromMainForm}>{isApprovingFromForm ? <span className="spinner" /> : 'Approve'}</button>
+                  ? <>
+                      <button className="btn main" disabled={isSaving || isApprovingFromForm} onClick={() => approveFromMainForm('approve')}>{isApprovingFromForm ? <span className="spinner" /> : 'Approve'}</button>
+                      {approvalStage !== 'pending_tally_posting' ? <button className="btn" style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} disabled={isSaving || isApprovingFromForm} onClick={() => approveFromMainForm('reject')}>{isApprovingFromForm ? <span className="spinner" /> : 'Reject'}</button> : null}
+                    </>
                   : <>
                       <button className="btn" disabled={isSaving || isDataEntryLocked} onClick={addInvoiceRow}>+ Add Row</button>
                       <button className="btn main" disabled={isSaving || isDataEntryLocked} onClick={() => saveAllData({ goToMenuAfterSuccess: false })}>{isSavingInvoice ? 'Saving...' : 'Save OTHER MRR'}</button>
@@ -6946,13 +7345,13 @@ function App() {
                         <th>Description<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Supplier Reel No.<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>ERP Code<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th>Reel No.<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Our Reel No.<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Sord No.</th>
                         <th>BF<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>GSM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Size<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th>Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>PO Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Net Wt(Kgs.)<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Action</th>
@@ -7008,7 +7407,10 @@ function App() {
               <div className="actions">
                 {!isApprovalMode && <button className="btn" disabled={isSavingInvoice || isSavingPacking || isDataEntryLocked} onClick={addPackingRow}>Add Packing Row</button>}
                 {isApprovalMode
-                  ? <button className="btn main" disabled={isSavingInvoice || isSavingPacking || isApprovingFromForm} onClick={approveFromMainForm}>{isApprovingFromForm ? <span className="spinner" /> : 'Approve'}</button>
+                  ? <>
+                      <button className="btn main" disabled={isSavingInvoice || isSavingPacking || isApprovingFromForm} onClick={() => approveFromMainForm('approve')}>{isApprovingFromForm ? <span className="spinner" /> : 'Approve'}</button>
+                      {approvalStage !== 'pending_tally_posting' ? <button className="btn" style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} disabled={isSavingInvoice || isSavingPacking || isApprovingFromForm} onClick={() => approveFromMainForm('reject')}>{isApprovingFromForm ? <span className="spinner" /> : 'Reject'}</button> : null}
+                    </>
                   : <button className="btn main" disabled={isSavingInvoice || isSavingPacking || isDataEntryLocked} onClick={() => saveAllData({ goToMenuAfterSuccess: false })}>{isSaving ? 'Saving...' : 'Save All Data'}</button>}
               </div>
             </section>

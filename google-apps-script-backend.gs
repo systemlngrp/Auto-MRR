@@ -33,15 +33,24 @@ const MRR_FORM_ALIASES = {
   plant_head_approval: ['Plant Head Approval', 'plant_head_approval'],
   plant_head_approval_timestamp: ['Plant Head Approval Timestamp', 'plant_head_approval_timestamp'],
   plant_head_approval_useremail: ['Plant Head Approval User Email', 'Plant Head Approval Useremail', 'plant_head_approval_useremail'],
+  plant_head_remark: ['Plant Head Remark', 'plant_head_remark'],
+  plant_head_reject_timestamp: ['Plant Head Reject Timestamp', 'plant_head_reject_timestamp'],
+  plant_head_reject_usermail: ['Plant Head Reject usermail', 'Plant Head Reject Usermail', 'plant_head_reject_usermail'],
   accounts_approval: ['Accounts Approval', 'accounts_approval'],
   accounts_approval_timestamp: ['Accounts Approval Timestamp', 'accounts_approval_timestamp'],
   accounts_approval_useremail: ['Accounts Approval User Email', 'Accounts Approval Useremail', 'accounts_approval_useremail'],
+  accounts_remark: ['Accounts Remark', 'accounts_remark'],
+  accounts_reject_timestamp: ['Accounts Reject Timestamp', 'accounts_reject_timestamp'],
+  accounts_reject_usermail: ['Acounts Reject usermail', 'Accounts Reject usermail', 'accounts_reject_usermail'],
   debit_note: ['Debit Note', 'debit_note'],
   debit_note_date: ['Debit Note Date', 'debit_note_date'],
   debit_note_amount: ['Debit Note Amount', 'debit_note_amount'],
   md_approval: ['MD Approval', 'md_approval'],
   md_approval_timestamp: ['MD Approval Timestamp', 'md_approval_timestamp'],
   md_approval_useremail: ['MD Approval User Email', 'MD Approval Useremail', 'md_approval_useremail'],
+  md_approval_remark: ['MD Approval Remark', 'md_approval_remark'],
+  md_reject_usermail: ['Md Reject Usermail', 'MD Reject Usermail', 'md_reject_usermail'],
+  md_reject_timestamp: ['Md Reject Timestamp', 'MD Reject Timestamp', 'md_reject_timestamp'],
   pending_tally_posting_timestamp: ['Pending Tally Posting Timestamp', 'Pending Tally Posting Timesyamp', 'pending_tally_posting_timestamp'],
   pending_tally_posting_useremail: ['Pending Tally Posting User Email', 'Pending Tally Posting Useremail', 'pending_tally_posting_useremail'],
   s_no: ['S.No', 'S NO.', 'S No', 's_no', 'sno'],
@@ -94,15 +103,24 @@ const HELPER_SHEET_ALIASES = {
   'plant_head_approval': ['Plant Head Approval', 'plant_head_approval'],
   'plant_head_approval_timestamp': ['Plant Head Approval Timestamp', 'plant_head_approval_timestamp'],
   'plant_head_approval_useremail': ['Plant Head Approval User Email', 'Plant Head Approval Useremail', 'plant_head_approval_useremail'],
+  'plant_head_remark': ['Plant Head Remark', 'plant_head_remark'],
+  'plant_head_reject_timestamp': ['Plant Head Reject Timestamp', 'plant_head_reject_timestamp'],
+  'plant_head_reject_usermail': ['Plant Head Reject usermail', 'Plant Head Reject Usermail', 'plant_head_reject_usermail'],
   'accounts_approval': ['Accounts Approval', 'accounts_approval'],
   'accounts_approval_timestamp': ['Accounts Approval Timestamp', 'accounts_approval_timestamp'],
   'accounts_approval_useremail': ['Accounts Approval User Email', 'Accounts Approval Useremail', 'accounts_approval_useremail'],
+  'accounts_remark': ['Accounts Remark', 'accounts_remark'],
+  'accounts_reject_timestamp': ['Accounts Reject Timestamp', 'accounts_reject_timestamp'],
+  'accounts_reject_usermail': ['Acounts Reject usermail', 'Accounts Reject usermail', 'accounts_reject_usermail'],
   'debit_note': ['Debit Note', 'debit_note'],
   'debit_note_date': ['Debit Note Date', 'debit_note_date'],
   'debit_note_amount': ['Debit Note Amount', 'debit_note_amount'],
   'md_approval': ['MD Approval', 'md_approval'],
   'md_approval_timestamp': ['MD Approval Timestamp', 'md_approval_timestamp'],
   'md_approval_useremail': ['MD Approval User Email', 'MD Approval Useremail', 'md_approval_useremail'],
+  'md_approval_remark': ['MD Approval Remark', 'md_approval_remark'],
+  'md_reject_usermail': ['Md Reject Usermail', 'MD Reject Usermail', 'md_reject_usermail'],
+  'md_reject_timestamp': ['Md Reject Timestamp', 'MD Reject Timestamp', 'md_reject_timestamp'],
   'pending_tally_posting_timestamp': ['Pending Tally Posting Timestamp', 'Pending Tally Posting Timesyamp', 'pending_tally_posting_timestamp'],
   'pending_tally_posting_useremail': ['Pending Tally Posting User Email', 'Pending Tally Posting Useremail', 'pending_tally_posting_useremail']
 };
@@ -149,15 +167,24 @@ const MRR_FORM_CANONICAL_HEADERS = {
   plant_head_approval: 'Plant Head Approval',
   plant_head_approval_timestamp: 'Plant Head Approval Timestamp',
   plant_head_approval_useremail: 'Plant Head Approval User Email',
+  plant_head_remark: 'Plant Head Remark',
+  plant_head_reject_timestamp: 'Plant Head Reject Timestamp',
+  plant_head_reject_usermail: 'Plant Head Reject usermail',
   accounts_approval: 'Accounts Approval',
   accounts_approval_timestamp: 'Accounts Approval Timestamp',
   accounts_approval_useremail: 'Accounts Approval User Email',
+  accounts_remark: 'Accounts Remark',
+  accounts_reject_timestamp: 'Accounts Reject Timestamp',
+  accounts_reject_usermail: 'Acounts Reject usermail',
   debit_note: 'Debit Note',
   debit_note_date: 'Debit Note Date',
   debit_note_amount: 'Debit Note Amount',
   md_approval: 'MD Approval',
   md_approval_timestamp: 'MD Approval Timestamp',
   md_approval_useremail: 'MD Approval User Email',
+  md_approval_remark: 'MD Approval Remark',
+  md_reject_usermail: 'Md Reject Usermail',
+  md_reject_timestamp: 'Md Reject Timestamp',
   pending_tally_posting_timestamp: 'Pending Tally Posting Timestamp',
   pending_tally_posting_useremail: 'Pending Tally Posting User Email',
   s_no: 'S.No',
@@ -210,15 +237,24 @@ const HELPER_SHEET_CANONICAL_HEADERS = {
   plant_head_approval: 'Plant Head Approval',
   plant_head_approval_timestamp: 'Plant Head Approval Timestamp',
   plant_head_approval_useremail: 'Plant Head Approval User Email',
+  plant_head_remark: 'Plant Head Remark',
+  plant_head_reject_timestamp: 'Plant Head Reject Timestamp',
+  plant_head_reject_usermail: 'Plant Head Reject usermail',
   accounts_approval: 'Accounts Approval',
   accounts_approval_timestamp: 'Accounts Approval Timestamp',
   accounts_approval_useremail: 'Accounts Approval User Email',
+  accounts_remark: 'Accounts Remark',
+  accounts_reject_timestamp: 'Accounts Reject Timestamp',
+  accounts_reject_usermail: 'Acounts Reject usermail',
   debit_note: 'Debit Note',
   debit_note_date: 'Debit Note Date',
   debit_note_amount: 'Debit Note Amount',
   md_approval: 'MD Approval',
   md_approval_timestamp: 'MD Approval Timestamp',
   md_approval_useremail: 'MD Approval User Email',
+  md_approval_remark: 'MD Approval Remark',
+  md_reject_usermail: 'Md Reject Usermail',
+  md_reject_timestamp: 'Md Reject Timestamp',
   pending_tally_posting_timestamp: 'Pending Tally Posting Timestamp',
   pending_tally_posting_useremail: 'Pending Tally Posting User Email'
 };
@@ -255,15 +291,24 @@ const STRICT_MRR_FORM_HEADERS = [
   'L.R No',
   'Plant Head Approval',
   'Plant Head Approval Timestamp',
+  'Plant Head Remark',
+  'Plant Head Reject Timestamp',
+  'Plant Head Reject usermail',
   'Accounts Approval Timestamp',
   'Accounts Approval Useremail',
+  'Accounts Reject Timestamp',
+  'Acounts Reject usermail',
+  'Accounts Remark',
+  'Accounts Approval',
+  'Md Reject Usermail',
+  'Md Reject Timestamp',
   'MD Approval Timestamp',
   'MD Approval Useremail',
+  'MD Approval Remark',
+  'MD Approval',
   'Pending Tally Posting Timesyamp',
   'Pending Tally Posting Useremail',
   'Plant Head Approval User Email',
-  'Accounts Approval',
-  'MD Approval',
   'Debit Note',
   'Debit Note Date',
   'Debit Note Amount',
@@ -310,17 +355,25 @@ function doGet(e) {
 
     if (action === 'approve_pending_stage') {
       const stage = String(e.parameter.stage || '').trim().toLowerCase();
+      const decision = String(e.parameter.decision || 'approve').trim().toLowerCase();
       const mrrNumber = String(e.parameter.mrr_number || '').trim();
       const userEmail = String(e.parameter.user_email || '').trim();
+      const plantHeadRemark = String(e.parameter.plant_head_remark || '').trim();
+      const accountsRemark = String(e.parameter.accounts_remark || '').trim();
+      const mdApprovalRemark = String(e.parameter.md_approval_remark || '').trim();
       const debitNote = String(e.parameter.debit_note || '').trim();
       const debitNoteDate = String(e.parameter.debit_note_date || '').trim();
       const debitNoteAmount = String(e.parameter.debit_note_amount || '').trim();
       const mrrSheetName = String(e.parameter.mrrSheet || DEFAULT_SHEETS.mrrForm).trim();
       const helperSheetName = String(e.parameter.helperSheet || DEFAULT_SHEETS.helper).trim();
       const result = approvePendingStage_(ss, {
+        decision: decision,
         stage: stage,
         mrrNumber: mrrNumber,
         userEmail: userEmail,
+        plantHeadRemark: plantHeadRemark,
+        accountsRemark: accountsRemark,
+        mdApprovalRemark: mdApprovalRemark,
         debitNote: debitNote,
         debitNoteDate: debitNoteDate,
         debitNoteAmount: debitNoteAmount,
@@ -596,8 +649,11 @@ function doGet(e) {
           const entryTypeIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.mrr_entry_type);
           const docIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.sup_doc_no);
           const truckIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.truck_number);
+          const plantHeadStatusIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.plant_head_approval);
           const plantHeadApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.plant_head_approval_timestamp);
+          const accountsStatusIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.accounts_approval);
           const accountsApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.accounts_approval_timestamp);
+          const mdStatusIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.md_approval);
           const mdApprovalIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.md_approval_timestamp);
           const tallyIndex = findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.pending_tally_posting_timestamp);
 
@@ -605,8 +661,11 @@ function doGet(e) {
             const mrrNumber = mrrIndex === -1 ? '' : String(row[mrrIndex]).trim();
             if (!mrrNumber) return;
 
+            const plantHeadStatus = plantHeadStatusIndex === -1 ? '' : String(row[plantHeadStatusIndex]).trim();
             const plantHeadApproval = plantHeadApprovalIndex === -1 ? '' : String(row[plantHeadApprovalIndex]).trim();
+            const accountsStatus = accountsStatusIndex === -1 ? '' : String(row[accountsStatusIndex]).trim();
             const accountsApproval = accountsApprovalIndex === -1 ? '' : String(row[accountsApprovalIndex]).trim();
+            const mdStatus = mdStatusIndex === -1 ? '' : String(row[mdStatusIndex]).trim();
             const mdApproval = mdApprovalIndex === -1 ? '' : String(row[mdApprovalIndex]).trim();
             const tallyPosting = tallyIndex === -1 ? '' : String(row[tallyIndex]).trim();
 
@@ -614,15 +673,21 @@ function doGet(e) {
             let pendingLabel = '';
             let sortOrder = 99;
 
-            if (!plantHeadApproval) {
+            if (
+              String(plantHeadStatus).toLowerCase() === 'rejected' ||
+              String(accountsStatus).toLowerCase() === 'rejected' ||
+              String(mdStatus).toLowerCase() === 'rejected'
+            ) {
+              return;
+            } else if (String(plantHeadStatus).toLowerCase() !== 'approved') {
               pendingStage = 'pending_plant_head_approval';
               pendingLabel = 'Pending Plant Head Approval';
               sortOrder = 2;
-            } else if (!accountsApproval) {
+            } else if (String(accountsStatus).toLowerCase() !== 'approved') {
               pendingStage = 'pending_accounts_approval';
               pendingLabel = 'Pending Accounts Approval';
               sortOrder = 3;
-            } else if (!mdApproval) {
+            } else if (String(mdStatus).toLowerCase() !== 'approved') {
               pendingStage = 'pending_md_approval';
               pendingLabel = 'Pending MD Approval';
               sortOrder = 4;
@@ -645,8 +710,10 @@ function doGet(e) {
               mrr_entry_type: entryTypeIndex === -1 ? '' : row[entryTypeIndex],
               invoice_no: docIndex === -1 ? '' : row[docIndex],
               truck_no: truckIndex === -1 ? '' : row[truckIndex],
+              plant_head_remark: findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.plant_head_remark) === -1 ? '' : row[findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.plant_head_remark)],
               plant_head_approval_timestamp: plantHeadApproval,
               accounts_approval_timestamp: accountsApproval,
+              md_approval_remark: findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.md_approval_remark) === -1 ? '' : row[findColumnIndex_(mrrHeaders, MRR_FORM_ALIASES.md_approval_remark)],
               md_approval_timestamp: mdApproval,
               pending_tally_posting_timestamp: tallyPosting
             };
@@ -718,6 +785,47 @@ function doGet(e) {
           }
         }
       }
+      return jsonOutput_({ ok: false });
+    }
+
+    if (action === 'get_ge_entry_details') {
+      const geSheetName = 'GE ENTRY';
+      const geSheet = getSheetOrThrow_(ss, geSheetName);
+      const geHeaders = getHeaders_(geSheet);
+      const lastGeRow = geSheet.getLastRow();
+      const requestedGeNo = normalizeKey_(String(e.parameter.ge_no || '').trim());
+      const requestedMrrNo = normalizeKey_(String(e.parameter.mrr_no || '').trim());
+
+      if (lastGeRow >= 2 && (requestedGeNo || requestedMrrNo)) {
+        const geIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.ge_no);
+        const mrrIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.mrr_no);
+        const dateIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.date);
+        const supplierIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.supplier);
+        const invoiceIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.invoice_no);
+        const truckIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.truck_no);
+        const valueIndex = findColumnIndex_(geHeaders, GE_ENTRY_ALIASES.total_value);
+        const geData = geSheet.getRange(2, 1, lastGeRow - 1, geHeaders.length).getDisplayValues();
+
+        for (let i = geData.length - 1; i >= 0; i--) {
+          const row = geData[i];
+          const rowGe = geIndex === -1 ? '' : normalizeKey_(row[geIndex]);
+          const rowMrr = mrrIndex === -1 ? '' : normalizeKey_(row[mrrIndex]);
+          const geMatch = !!(requestedGeNo && rowGe && rowGe === requestedGeNo);
+          const mrrMatch = !!(requestedMrrNo && rowMrr && rowMrr === requestedMrrNo);
+          if (!geMatch && !mrrMatch) continue;
+          return jsonOutput_({
+            ok: true,
+            ge_no: geIndex === -1 ? '' : row[geIndex],
+            mrr_no: mrrIndex === -1 ? '' : row[mrrIndex],
+            date: dateIndex === -1 ? '' : row[dateIndex],
+            supplier: supplierIndex === -1 ? '' : row[supplierIndex],
+            invoice_no: invoiceIndex === -1 ? '' : row[invoiceIndex],
+            truck_no: truckIndex === -1 ? '' : row[truckIndex],
+            total_value: valueIndex === -1 ? '' : row[valueIndex]
+          });
+        }
+      }
+
       return jsonOutput_({ ok: false });
     }
 
@@ -1958,9 +2066,13 @@ function authenticateUser_(ss, loginId, password) {
 }
 
 function approvePendingStage_(ss, params) {
+  const decision = String(params.decision || 'approve').trim().toLowerCase() === 'reject' ? 'reject' : 'approve';
   const stage = normalizePendingStage_(params.stage);
   const mrrNumber = String(params.mrrNumber || '').trim();
   const userEmail = String(params.userEmail || '').trim();
+  const plantHeadRemark = String(params.plantHeadRemark || '').trim();
+  const accountsRemark = String(params.accountsRemark || '').trim();
+  const mdApprovalRemark = String(params.mdApprovalRemark || '').trim();
   const mrrSheetName = String(params.mrrSheetName || DEFAULT_SHEETS.mrrForm).trim();
   const helperSheetName = String(params.helperSheetName || DEFAULT_SHEETS.helper).trim();
   const debitNote = String(params.debitNote || '').trim();
@@ -1969,46 +2081,79 @@ function approvePendingStage_(ss, params) {
 
   if (!mrrNumber) throw new Error('MRR Number is required.');
   if (!userEmail) throw new Error('User email is required for approval.');
+  if (stage === 'pending_plant_head_approval' && decision === 'reject' && !plantHeadRemark) {
+    throw new Error('Plant Head Remark is required for rejection.');
+  }
+  if (stage === 'pending_accounts_approval' && decision === 'reject' && !accountsRemark) {
+    throw new Error('Accounts Remark is required for rejection.');
+  }
+  if (stage === 'pending_md_approval' && decision === 'reject' && !mdApprovalRemark) {
+    throw new Error('MD Approval Remark is required for rejection.');
+  }
 
   var statusField = '';
-  var timestampField = '';
-  var userField = '';
+  var approveTimestampField = '';
+  var approveUserField = '';
+  var rejectTimestampField = '';
+  var rejectUserField = '';
   if (stage === 'pending_plant_head_approval') {
     statusField = 'plant_head_approval';
-    timestampField = 'plant_head_approval_timestamp';
-    userField = 'plant_head_approval_useremail';
+    approveTimestampField = 'plant_head_approval_timestamp';
+    approveUserField = 'plant_head_approval_useremail';
+    rejectTimestampField = 'plant_head_reject_timestamp';
+    rejectUserField = 'plant_head_reject_usermail';
   } else if (stage === 'pending_accounts_approval') {
     statusField = 'accounts_approval';
-    timestampField = 'accounts_approval_timestamp';
-    userField = 'accounts_approval_useremail';
+    approveTimestampField = 'accounts_approval_timestamp';
+    approveUserField = 'accounts_approval_useremail';
+    rejectTimestampField = 'accounts_reject_timestamp';
+    rejectUserField = 'accounts_reject_usermail';
   } else if (stage === 'pending_md_approval') {
     statusField = 'md_approval';
-    timestampField = 'md_approval_timestamp';
-    userField = 'md_approval_useremail';
+    approveTimestampField = 'md_approval_timestamp';
+    approveUserField = 'md_approval_useremail';
+    rejectTimestampField = 'md_reject_timestamp';
+    rejectUserField = 'md_reject_usermail';
   } else if (stage === 'pending_tally_posting') {
-    timestampField = 'pending_tally_posting_timestamp';
-    userField = 'pending_tally_posting_useremail';
+    approveTimestampField = 'pending_tally_posting_timestamp';
+    approveUserField = 'pending_tally_posting_useremail';
   } else {
     throw new Error('Unsupported approval stage: ' + stage);
   }
 
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd-MM-yyyy HH:mm:ss');
   const updates = {};
-  if (statusField) updates[statusField] = 'Approved';
-  updates[timestampField] = stamp;
-  updates[userField] = userEmail;
+  if (statusField) updates[statusField] = decision === 'reject' ? 'Rejected' : 'Approved';
+  if (decision === 'reject' && rejectTimestampField) {
+    updates[rejectTimestampField] = stamp;
+    updates[rejectUserField] = userEmail;
+  } else {
+    updates[approveTimestampField] = stamp;
+    updates[approveUserField] = userEmail;
+  }
+  if (stage === 'pending_plant_head_approval') {
+    updates.plant_head_remark = plantHeadRemark;
+  }
   if (stage === 'pending_accounts_approval') {
+    updates.accounts_remark = accountsRemark;
     updates.debit_note = debitNote;
     updates.debit_note_date = debitNoteDate;
     updates.debit_note_amount = debitNoteAmount;
   }
+  if (stage === 'pending_md_approval') {
+    updates.md_approval_remark = mdApprovalRemark;
+  }
 
   const mrrSheet = getSheetOrThrow_(ss, mrrSheetName);
-  const requiredApprovalFields = ['mrr_number', timestampField, userField];
+  const requiredApprovalFields = ['mrr_number'];
   if (statusField) requiredApprovalFields.push(statusField);
+  if (decision === 'reject' && rejectTimestampField) requiredApprovalFields.push(rejectTimestampField, rejectUserField);
+  else if (approveTimestampField) requiredApprovalFields.push(approveTimestampField, approveUserField);
+  if (stage === 'pending_plant_head_approval') requiredApprovalFields.push('plant_head_remark');
   if (stage === 'pending_accounts_approval') {
-    requiredApprovalFields.push('debit_note', 'debit_note_date', 'debit_note_amount');
+    requiredApprovalFields.push('accounts_remark', 'debit_note', 'debit_note_date', 'debit_note_amount');
   }
+  if (stage === 'pending_md_approval') requiredApprovalFields.push('md_approval_remark');
   ensureColumnsByAliases_(mrrSheet, MRR_FORM_ALIASES, MRR_FORM_CANONICAL_HEADERS, requiredApprovalFields, 'approvePendingStage');
   if (!isMrrCompleteInGeEntry_(ss, mrrNumber)) {
     throw new Error('MRR must be completed before approval.');
@@ -2018,13 +2163,13 @@ function approvePendingStage_(ss, params) {
   if (!currentState.found) {
     throw new Error('MRR not found in ' + mrrSheetName + ': ' + mrrNumber);
   }
-  if (stage === 'pending_accounts_approval' && !currentState.plantHeadApproval) {
+  if (stage === 'pending_accounts_approval' && !currentState.plantHeadApproved) {
     throw new Error('Plant Head approval is required before Accounts approval.');
   }
-  if (stage === 'pending_md_approval' && !currentState.accountsApproval) {
+  if (stage === 'pending_md_approval' && !currentState.accountsApproved) {
     throw new Error('Accounts approval is required before MD approval.');
   }
-  if (stage === 'pending_tally_posting' && (!currentState.accountsApproval || !currentState.mdApproval)) {
+  if (stage === 'pending_tally_posting' && (!currentState.accountsApproved || !currentState.mdApproved)) {
     throw new Error('Accounts and MD approvals are required before Tally posting.');
   }
 
@@ -2032,11 +2177,15 @@ function approvePendingStage_(ss, params) {
   const mrrUpdatedRows = updateApprovalColumnsByMrr_(mrrSheet, mrrNumber, MRR_FORM_ALIASES, updates);
   // Mirror the same approval state on child/helper rows for the same MRR.
   const helperSheet = getSheetOrThrow_(ss, helperSheetName);
-  const requiredHelperApprovalFields = ['mrr_number', timestampField, userField];
+  const requiredHelperApprovalFields = ['mrr_number'];
   if (statusField) requiredHelperApprovalFields.push(statusField);
+  if (decision === 'reject' && rejectTimestampField) requiredHelperApprovalFields.push(rejectTimestampField, rejectUserField);
+  else if (approveTimestampField) requiredHelperApprovalFields.push(approveTimestampField, approveUserField);
+  if (stage === 'pending_plant_head_approval') requiredHelperApprovalFields.push('plant_head_remark');
   if (stage === 'pending_accounts_approval') {
-    requiredHelperApprovalFields.push('debit_note', 'debit_note_date', 'debit_note_amount');
+    requiredHelperApprovalFields.push('accounts_remark', 'debit_note', 'debit_note_date', 'debit_note_amount');
   }
+  if (stage === 'pending_md_approval') requiredHelperApprovalFields.push('md_approval_remark');
   ensureColumnsByAliases_(helperSheet, HELPER_SHEET_ALIASES, HELPER_SHEET_CANONICAL_HEADERS, requiredHelperApprovalFields, 'approvePendingStageHelper');
   const helperUpdatedRows = updateApprovalColumnsByMrr_(helperSheet, mrrNumber, HELPER_SHEET_ALIASES, updates);
   let geCompletedRows = 0;
@@ -2044,21 +2193,27 @@ function approvePendingStage_(ss, params) {
     geCompletedRows = markGeEntryCompleteByMrr_(ss, mrrNumber, stamp);
   }
 
-  const nextStage = stage === 'pending_plant_head_approval'
-    ? 'pending_accounts_approval'
-    : stage === 'pending_accounts_approval'
-      ? 'pending_md_approval'
-      : stage === 'pending_md_approval'
-      ? 'pending_tally_posting'
-      : 'completed';
+  const nextStage = decision === 'reject'
+    ? 'rejected'
+    : stage === 'pending_plant_head_approval'
+      ? 'pending_accounts_approval'
+      : stage === 'pending_accounts_approval'
+        ? 'pending_md_approval'
+        : stage === 'pending_md_approval'
+          ? 'pending_tally_posting'
+          : 'completed';
 
   return {
+    decision: decision,
     stage: stage,
     next_stage: nextStage,
-    completed: nextStage === 'completed',
+    completed: nextStage === 'completed' || nextStage === 'rejected',
     mrr_number: mrrNumber,
     timestamp: stamp,
     user_email: userEmail,
+    plant_head_remark: plantHeadRemark,
+    accounts_remark: accountsRemark,
+    md_approval_remark: mdApprovalRemark,
     debit_note: debitNote,
     debit_note_date: debitNoteDate,
     debit_note_amount: debitNoteAmount,
@@ -2094,14 +2249,17 @@ function isMrrCompleteInGeEntry_(ss, mrrNumber) {
 
 function getLatestApprovalStateByMrr_(sheet, mrrNumber, aliasMap) {
   const headers = getHeaders_(sheet);
-  if (!headers.length) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false };
+  if (!headers.length) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false, plantHeadApproved: false, accountsApproved: false, mdApproved: false };
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false };
+  if (lastRow < 2) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false, plantHeadApproved: false, accountsApproved: false, mdApproved: false };
 
   const mrrIndex = findColumnIndex_(headers, aliasMap.mrr_number);
-  if (mrrIndex === -1) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false };
+  if (mrrIndex === -1) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false, plantHeadApproved: false, accountsApproved: false, mdApproved: false };
+  const plantHeadStatusIndex = findColumnIndex_(headers, aliasMap.plant_head_approval);
   const plantHeadIndex = findColumnIndex_(headers, aliasMap.plant_head_approval_timestamp);
+  const accountsStatusIndex = findColumnIndex_(headers, aliasMap.accounts_approval);
   const accountsIndex = findColumnIndex_(headers, aliasMap.accounts_approval_timestamp);
+  const mdStatusIndex = findColumnIndex_(headers, aliasMap.md_approval);
   const mdIndex = findColumnIndex_(headers, aliasMap.md_approval_timestamp);
   const tallyIndex = findColumnIndex_(headers, aliasMap.pending_tally_posting_timestamp);
 
@@ -2112,14 +2270,21 @@ function getLatestApprovalStateByMrr_(sheet, mrrNumber, aliasMap) {
     if (normalizeKey_(data[i][mrrIndex]) !== target) continue;
     latest = data[i];
   }
-  if (!latest) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false };
+  if (!latest) return { found: false, plantHeadApproval: false, accountsApproval: false, mdApproval: false, tallyPosting: false, plantHeadApproved: false, accountsApproved: false, mdApproved: false };
+
+  const plantHeadStatus = plantHeadStatusIndex !== -1 ? String(latest[plantHeadStatusIndex] || '').trim().toLowerCase() : '';
+  const accountsStatus = accountsStatusIndex !== -1 ? String(latest[accountsStatusIndex] || '').trim().toLowerCase() : '';
+  const mdStatus = mdStatusIndex !== -1 ? String(latest[mdStatusIndex] || '').trim().toLowerCase() : '';
 
   return {
     found: true,
     plantHeadApproval: plantHeadIndex !== -1 ? String(latest[plantHeadIndex] || '').trim() !== '' : false,
     accountsApproval: accountsIndex !== -1 ? String(latest[accountsIndex] || '').trim() !== '' : false,
     mdApproval: mdIndex !== -1 ? String(latest[mdIndex] || '').trim() !== '' : false,
-    tallyPosting: tallyIndex !== -1 ? String(latest[tallyIndex] || '').trim() !== '' : false
+    tallyPosting: tallyIndex !== -1 ? String(latest[tallyIndex] || '').trim() !== '' : false,
+    plantHeadApproved: plantHeadStatus === 'approved',
+    accountsApproved: accountsStatus === 'approved',
+    mdApproved: mdStatus === 'approved'
   };
 }
 

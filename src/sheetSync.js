@@ -416,9 +416,13 @@ export async function approvePendingStage(params = {}) {
   }
   const payload = await fetchSheetRangeWithParams({
     action: 'approve_pending_stage',
+    decision: params.decision,
     stage: params.stage,
     mrr_number: params.mrrNumber,
     user_email: params.userEmail,
+    plant_head_remark: params.plantHeadRemark,
+    accounts_remark: params.accountsRemark,
+    md_approval_remark: params.mdApprovalRemark,
     debit_note: params.debitNote,
     debit_note_date: params.debitNoteDate,
     debit_note_amount: params.debitNoteAmount,
