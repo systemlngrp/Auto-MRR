@@ -359,11 +359,41 @@ function toGeRowArray(array $data): array
     ];
 }
 
+function toPoRowArray(array $data): array
+{
+    return [
+        value($data, 'sno', 's_no'),
+        value($data, 'po_no'),
+        value($data, 'date'),
+        value($data, 'supplier'),
+        value($data, 'po_details'),
+        value($data, 'erp_code'),
+        value($data, 'size'),
+        value($data, 'gsm'),
+        value($data, 'bf'),
+        value($data, 'reel_details'),
+        value($data, 'unit'),
+        value($data, 'rate', 'po_rate'),
+        value($data, 'quantity'),
+        value($data, 'status'),
+        value($data, 'quantity_received'),
+        value($data, 'pending'),
+        value($data, 'closed'),
+        value($data, 'rapc'),
+    ];
+}
+
 function rowsPayload(string $sheetName, array $rows): array
 {
     if (strcasecmp($sheetName, 'GE ENTRY') === 0) {
         $header = GE_HEADERS;
         $body = array_map(fn($row) => toGeRowArray(decodeData($row)), $rows);
+        return [$header, ...$body];
+    }
+
+    if (strcasecmp($sheetName, 'PO DETAILS') === 0 || strcasecmp($sheetName, 'OTHER PO') === 0) {
+        $header = ['S.NO.', 'PO NO.', 'DATE', 'SUPPLIER', 'PO DETAILS', 'ERP CODE', 'SIZE', 'GSM', 'BF', 'REEL DETAILS', 'UNIT', 'PO RATE', 'QUANTITY', 'STATUS', 'QUANTITY RECEIVED', 'PENDING', 'CLOSED', 'RAPC'];
+        $body = array_map(fn($row) => toPoRowArray(decodeData($row)), $rows);
         return [$header, ...$body];
     }
 
@@ -841,6 +871,15 @@ try {
         jsonOut(['ok' => true, 'values' => $result]);
     }
 
+    if ($action === 'get_users') {
+        $stmt = db()->prepare("SELECT login_id, display_name, user_email, role, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC");
+        $stmt->execute(['firm_id' => $firmId]);
+        jsonOut([
+            'ok' => true,
+            'users' => $stmt->fetchAll(),
+        ]);
+    }
+
     if ($action === 'get_pending_ge') {
         $mrrSheetName = trim((string)($_GET['mrrSheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $geRows = fetchRecordRows($firmId, 'GE ENTRY');
@@ -959,6 +998,132 @@ try {
     }
 
     $payload = readPayload();
+    if ($action === 'save_po_rows') {
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $sheetName = trim((string)($payload['sheetName'] ?? 'PO DETAILS')) ?: 'PO DETAILS';
+        $rows = is_array($payload['rows'] ?? null) ? $payload['rows'] : [];
+        $pdo = db();
+        $delete = $pdo->prepare("DELETE FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet_name AND row_type = 'po_row'");
+        $delete->execute([
+            'firm_id' => $firmId,
+            'sheet_name' => $sheetName,
+        ]);
+        foreach ($rows as $index => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            upsertRecord([
+                'firm_id' => $firmId,
+                'sheet_name' => $sheetName,
+                'row_type' => 'po_row',
+                'row_sort' => $index + 1,
+                'record_group_id' => trim((string)($row['po_no'] ?? '')),
+                'mrr_number' => null,
+                'ge_no' => null,
+                'invoice_no' => null,
+                'supplier' => trim((string)($row['supplier'] ?? '')),
+                'truck_no' => null,
+                'pending_stage' => null,
+                'date_value' => trim((string)($row['date'] ?? '')),
+                'approval_status_plant' => null,
+                'approval_status_accounts' => null,
+                'approval_status_md' => null,
+                'tally_posted' => 0,
+                'data_json' => json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+        }
+        jsonOut([
+            'ok' => true,
+            'sheetName' => $sheetName,
+            'savedRows' => count($rows),
+        ]);
+    }
+    if ($action === 'save_users') {
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $users = is_array($payload['users'] ?? null) ? $payload['users'] : [];
+        foreach ($users as $user) {
+            if (!is_array($user)) continue;
+            $loginId = trim((string)($user['login_id'] ?? ''));
+            if ($loginId === '') continue;
+
+            $displayName = trim((string)($user['display_name'] ?? ''));
+            $userEmail = trim((string)($user['user_email'] ?? ''));
+            $role = trim((string)($user['role'] ?? ''));
+            $password = trim((string)($user['password'] ?? ''));
+            $active = trim((string)($user['active'] ?? '1')) === '0' ? 0 : 1;
+
+            $check = db()->prepare("SELECT id FROM app_users WHERE firm_id = :firm_id AND login_id = :login_id LIMIT 1");
+            $check->execute([
+                'firm_id' => $firmId,
+                'login_id' => $loginId,
+            ]);
+            $exists = $check->fetch();
+
+            if ($exists) {
+                if ($password !== '') {
+                    $update = db()->prepare("
+                        UPDATE app_users
+                        SET display_name = :display_name,
+                            user_email = :user_email,
+                            role = :role,
+                            password_hash = :password_hash,
+                            password_plain = NULL,
+                            active = :active,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE firm_id = :firm_id AND login_id = :login_id
+                    ");
+                    $update->execute([
+                        'display_name' => $displayName,
+                        'user_email' => $userEmail,
+                        'role' => $role,
+                        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                        'active' => $active,
+                        'firm_id' => $firmId,
+                        'login_id' => $loginId,
+                    ]);
+                } else {
+                    $update = db()->prepare("
+                        UPDATE app_users
+                        SET display_name = :display_name,
+                            user_email = :user_email,
+                            role = :role,
+                            active = :active,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE firm_id = :firm_id AND login_id = :login_id
+                    ");
+                    $update->execute([
+                        'display_name' => $displayName,
+                        'user_email' => $userEmail,
+                        'role' => $role,
+                        'active' => $active,
+                        'firm_id' => $firmId,
+                        'login_id' => $loginId,
+                    ]);
+                }
+            } else {
+                $insert = db()->prepare("
+                    INSERT INTO app_users (
+                        firm_id, login_id, user_email, display_name, role, password_hash, password_plain, active
+                    ) VALUES (
+                        :firm_id, :login_id, :user_email, :display_name, :role, :password_hash, NULL, :active
+                    )
+                ");
+                $insert->execute([
+                    'firm_id' => $firmId,
+                    'login_id' => $loginId,
+                    'user_email' => $userEmail,
+                    'display_name' => $displayName,
+                    'role' => $role,
+                    'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
+                    'active' => $active,
+                ]);
+            }
+        }
+        jsonOut([
+            'ok' => true,
+            'savedUsers' => count($users),
+        ]);
+    }
     if ($action === 'save_ge_entry') {
         jsonOut(saveGeEntryAction($payload));
     }

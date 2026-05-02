@@ -68,6 +68,6 @@ INSERT INTO app_users (
   active
 )
 VALUES
-  ('lnki', 'admin', 'admin@lngrp.local', 'Admin', 'admin', 'CHANGE_ME', 1)
+  ('lnki', 'system', 'system@lngrp', 'System Test', 'admin', 'abcd', 1)
 ON DUPLICATE KEY UPDATE
   updated_at = CURRENT_TIMESTAMP;

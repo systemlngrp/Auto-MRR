@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -7,7 +7,9 @@ import ProfileMenu from './components/layout/ProfileMenu';
 import { directLabelPrintStyles, labelStyles, printGridStyles, styles } from './styles/appStyles';
 import { getSafeInputValue, normalizeInputDateValue } from './utils/inputFormatters';
 import GateEntryPage from './pages/GateEntryPage';
+import PoDetailsPage from './pages/PoDetailsPage';
 import ReelLabelsPage from './pages/ReelLabelsPage';
+import UsersPage from './pages/UsersPage';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
@@ -3035,27 +3037,43 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setLabelInitialMrr(''); setStep(5); }}
+              onClick={() => { setStep(8); }}
             >
-              6. DOWNLOAD LABEL
+              6. PO DETAILS
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setLabelInitialMrr(''); setStep(5); }}
+            >
+              7. DOWNLOAD LABEL
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#a95f14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={async () => {
                 setReportFilter('pending');
                 await loadPreviewAllMrr();
                 setStep(7);
               }}
             >
-              7. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
-            </button>            <button
+              8. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setStep(9); }}
+            >
+              9. USERS
+            </button>
+            <button
               className="btn"
               style={backButtonStyle}
               onClick={() => { setStep(2); }}
             >
               ← Back to Firms
-            </button>            </div>
+            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -3117,6 +3135,42 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           />
         </div>
       </div>
+    );
+  }
+
+  if (step === 8) {
+    return (
+      <>
+        {userBadge}
+        <PoDetailsPage
+          selectedFirm={tempFirm}
+          initialType={tempType}
+          deps={{
+            getSheetName,
+            fetchSheetRange,
+            normalizePoRow,
+            sheetValuesToPoRows,
+            savePoRowsToSheets
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 9) {
+    return (
+      <>
+        {userBadge}
+        <UsersPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchUsers,
+            saveUsers
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
     );
   }
 

@@ -21,6 +21,12 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 VITE_HOSTINGER_API_URL=https://your-domain.com/api/index.php
 ```
 
+## Default test user
+
+- Login ID: `system`
+- Email: `system@lngrp`
+- Password: `abcd`
+
 ## Notes
 
 - The React app now targets the Hostinger API directly.

@@ -436,6 +436,50 @@ export async function approvePendingStage(params = {}) {
   return payload;
 }
 
+export async function savePoRowsToSheets(rows = [], options = {}) {
+  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) {
+    throw new Error('Missing backend URL.');
+  }
+  const payload = await submitPayload({
+    action: 'save_po_rows',
+    firm_id: options.spreadsheetId,
+    spreadsheetId: options.spreadsheetId,
+    scriptUrl: targetScriptUrl,
+    sheetName: options.sheetName || PO_SHEET_NAME,
+    rows
+  });
+  if (!payload?.ok) {
+    throw new Error(payload?.error || 'Could not save PO rows.');
+  }
+  return payload;
+}
+
+export async function fetchUsers(options = {}) {
+  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) throw new Error('Missing backend URL.');
+  const payload = await fetchSheetRangeWithParams({
+    action: 'get_users',
+    spreadsheetId: options.spreadsheetId
+  }, targetScriptUrl);
+  if (!payload?.ok) throw new Error(payload?.error || 'Could not load users.');
+  return Array.isArray(payload.users) ? payload.users : [];
+}
+
+export async function saveUsers(rows = [], options = {}) {
+  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  if (!targetScriptUrl) throw new Error('Missing backend URL.');
+  const payload = await submitPayload({
+    action: 'save_users',
+    firm_id: options.spreadsheetId,
+    spreadsheetId: options.spreadsheetId,
+    scriptUrl: targetScriptUrl,
+    users: rows
+  });
+  if (!payload?.ok) throw new Error(payload?.error || 'Could not save users.');
+  return payload;
+}
+
 /**
  * Fetch a list of unique suppliers from a PO sheet.
  * Defaults to `PO DETAILS` for backward compatibility.
