@@ -57,6 +57,57 @@ function jsonOut(array $data, int $status = 200): void
     exit;
 }
 
+function createTraceId(): string
+{
+    try {
+        return date('Ymd-His') . '-' . bin2hex(random_bytes(4));
+    } catch (Throwable $e) {
+        return date('Ymd-His') . '-' . substr(md5((string)mt_rand()), 0, 8);
+    }
+}
+
+function loggerPath(): string
+{
+    return __DIR__ . '/save-debug.log';
+}
+
+function loggerContextSummary(array $payload): array
+{
+    $invoice = is_array($payload['invoice'] ?? null) ? $payload['invoice'] : [];
+    $packing = is_array($payload['packing'] ?? null) ? $payload['packing'] : [];
+    $geEntry = is_array($payload['geEntry'] ?? null) ? $payload['geEntry'] : [];
+    $users = is_array($payload['users'] ?? null) ? $payload['users'] : [];
+    $rows = is_array($payload['rows'] ?? null) ? $payload['rows'] : [];
+    $options = is_array($payload['options'] ?? null) ? $payload['options'] : [];
+
+    return [
+        'firm_id' => trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? $_GET['firm_id'] ?? $_GET['spreadsheetId'] ?? '')),
+        'sheet_name' => trim((string)($payload['sheetName'] ?? $options['mrrSheetName'] ?? $_GET['sheet'] ?? $_GET['mrrSheet'] ?? '')),
+        'helper_sheet_name' => trim((string)($options['helperSheetName'] ?? $_GET['helperSheet'] ?? '')),
+        'mrr_number' => value($invoice, 'mrr_no', 'mrr_number', 'mrrNo') ?: value($packing, 'mrr_no', 'mrr_number'),
+        'ge_no' => value($geEntry, 'ge_no') ?: value($invoice, 'ge_no') ?: value($packing, 'ge_no'),
+        'invoice_no' => value($geEntry, 'invoice_no') ?: value($invoice, 'invoice_no'),
+        'supplier' => value($geEntry, 'supplier') ?: value($invoice, 'supplier') ?: value($packing, 'supplier'),
+        'users_count' => count($users),
+        'rows_count' => count($rows),
+    ];
+}
+
+function writeBackendLog(string $event, array $context = []): void
+{
+    $line = json_encode([
+        'timestamp' => date('c'),
+        'event' => $event,
+        'context' => $context,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if ($line === false) {
+        return;
+    }
+
+    @file_put_contents(loggerPath(), $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
 function db(): PDO
 {
     static $pdo = null;
@@ -569,9 +620,14 @@ function updateApprovalDataForMrr(string $firmId, string $mrrNumber, string $sta
 
 function saveGeEntryAction(array $payload): array
 {
+    $traceId = createTraceId();
     $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
     $geEntry = is_array($payload['geEntry'] ?? null) ? $payload['geEntry'] : [];
     $sheetName = 'GE ENTRY';
+    writeBackendLog('save_ge_entry_start', array_merge(
+        ['trace_id' => $traceId, 'action' => 'save_ge_entry'],
+        loggerContextSummary($payload)
+    ));
 
     $pdo = db();
     $stmt = $pdo->prepare("SELECT ge_no FROM app_records WHERE firm_id = :firm_id AND sheet_name = 'GE ENTRY'");
@@ -608,11 +664,21 @@ function saveGeEntryAction(array $payload): array
         'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ]);
 
-    return ['ok' => true, 'ge_no' => $geNo, 'mrr_no' => value($data, 'mrr_no', 'mrr_number')];
+    writeBackendLog('save_ge_entry_success', [
+        'trace_id' => $traceId,
+        'firm_id' => $firmId,
+        'sheet_name' => $sheetName,
+        'ge_no' => $geNo,
+        'mrr_no' => value($data, 'mrr_no', 'mrr_number'),
+        'invoice_no' => value($data, 'invoice_no'),
+    ]);
+
+    return ['ok' => true, 'trace_id' => $traceId, 'ge_no' => $geNo, 'mrr_no' => value($data, 'mrr_no', 'mrr_number')];
 }
 
 function saveInvoiceOrPackingAction(array $payload, string $action): array
 {
+    $traceId = createTraceId();
     $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
     $invoice = is_array($payload['invoice'] ?? null) ? $payload['invoice'] : [];
     $packing = is_array($payload['packing'] ?? null) ? $payload['packing'] : [];
@@ -620,6 +686,10 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
     $derived = is_array($payload['derived'] ?? null) ? $payload['derived'] : [];
     $sheetName = trim((string)($options['mrrSheetName'] ?? 'MRR FORM')) ?: 'MRR FORM';
     $helperSheetName = trim((string)($options['helperSheetName'] ?? 'HELPER SHEET')) ?: 'HELPER SHEET';
+    writeBackendLog($action . '_start', array_merge(
+        ['trace_id' => $traceId, 'action' => $action],
+        loggerContextSummary($payload)
+    ));
     $mrrNumber = value($invoice, 'mrr_no', 'mrr_number', 'mrrNo');
     if ($mrrNumber === '') {
         $mrrNumber = value($packing, 'mrr_no', 'mrr_number');
@@ -782,8 +852,20 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         'ge_no' => $geNo,
     ]);
 
+    writeBackendLog($action . '_success', [
+        'trace_id' => $traceId,
+        'firm_id' => $firmId,
+        'sheet_name' => $sheetName,
+        'helper_sheet_name' => $helperSheetName,
+        'mrr_number' => $mrrNumber,
+        'ge_no' => $geNo,
+        'invoice_rows' => count($invoiceGoods),
+        'helper_rows' => count($helperRows),
+    ]);
+
     return [
         'ok' => true,
+        'trace_id' => $traceId,
         'mrrForm' => ['updatedRows' => 1, 'insertedRows' => 0],
         'helperSheet' => ['insertedRows' => count($helperRows), 'deletedRows' => 0, 'sheet' => $helperSheetName],
         'mrr_number' => $mrrNumber,
@@ -1007,9 +1089,14 @@ try {
 
     $payload = readPayload();
     if ($action === 'save_po_rows') {
+        $traceId = createTraceId();
         $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
         $sheetName = trim((string)($payload['sheetName'] ?? 'PO DETAILS')) ?: 'PO DETAILS';
         $rows = is_array($payload['rows'] ?? null) ? $payload['rows'] : [];
+        writeBackendLog('save_po_rows_start', array_merge(
+            ['trace_id' => $traceId, 'action' => 'save_po_rows'],
+            loggerContextSummary($payload)
+        ));
         $pdo = db();
         $delete = $pdo->prepare("DELETE FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet_name AND row_type = 'po_row'");
         $delete->execute([
@@ -1040,15 +1127,27 @@ try {
                 'data_json' => json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
         }
+        writeBackendLog('save_po_rows_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'sheet_name' => $sheetName,
+            'saved_rows' => count($rows),
+        ]);
         jsonOut([
             'ok' => true,
+            'trace_id' => $traceId,
             'sheetName' => $sheetName,
             'savedRows' => count($rows),
         ]);
     }
     if ($action === 'save_users') {
+        $traceId = createTraceId();
         $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
         $users = is_array($payload['users'] ?? null) ? $payload['users'] : [];
+        writeBackendLog('save_users_start', array_merge(
+            ['trace_id' => $traceId, 'action' => 'save_users'],
+            loggerContextSummary($payload)
+        ));
         foreach ($users as $user) {
             if (!is_array($user)) continue;
             $loginId = trim((string)($user['login_id'] ?? ''));
@@ -1127,8 +1226,14 @@ try {
                 ]);
             }
         }
+        writeBackendLog('save_users_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'saved_users' => count($users),
+        ]);
         jsonOut([
             'ok' => true,
+            'trace_id' => $traceId,
             'savedUsers' => count($users),
         ]);
     }
@@ -1141,6 +1246,14 @@ try {
 
     jsonOut(['ok' => false, 'error' => 'Unsupported action.'], 400);
 } catch (Throwable $e) {
+    writeBackendLog('api_error', [
+        'trace_id' => createTraceId(),
+        'action' => strtolower(trim((string)($_GET['action'] ?? $_POST['action'] ?? 'unknown'))),
+        'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ]);
     jsonOut([
         'ok' => false,
         'error' => $e->getMessage(),
