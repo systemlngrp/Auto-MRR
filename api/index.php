@@ -66,12 +66,22 @@ function getConfig(): array
         return $config;
     }
 
-    $configPath = __DIR__ . '/config.php';
-    if (!file_exists($configPath)) {
-        $configPath = __DIR__ . '/config.sample.php';
+    $candidatePaths = [
+        __DIR__ . '/config.php',
+        dirname(__DIR__) . '/../api-config.php',
+        __DIR__ . '/config.sample.php',
+    ];
+
+    $configPath = '';
+    foreach ($candidatePaths as $candidatePath) {
+        if (file_exists($candidatePath)) {
+            $configPath = $candidatePath;
+            break;
+        }
     }
+
     if (!file_exists($configPath)) {
-        throw new RuntimeException('Missing API config file. Create api/config.php from api/config.sample.php.');
+        throw new RuntimeException('Missing API config file. Create api/config.php or place api-config.php above public_html.');
     }
 
     try {

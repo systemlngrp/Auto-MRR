@@ -17,6 +17,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+api/config.php
+api-config.php
 
 # Logs
 npm-debug.log*
