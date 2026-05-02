@@ -18,7 +18,7 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 5. Set the frontend env:
 
 ```env
-VITE_HOSTINGER_API_URL=https://your-domain.com/api/index.php
+VITE_HOSTINGER_API_URL=https://aqua-flamingo-710728.hostingersite.com//api/index.php
 ```
 
 ## Default test user

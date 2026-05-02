@@ -797,8 +797,15 @@ try {
     if ($action === 'authenticate_user') {
         $loginId = trim((string)($_GET['login_id'] ?? $_POST['login_id'] ?? ''));
         $password = trim((string)($_GET['password'] ?? $_POST['password'] ?? ''));
-        $stmt = db()->prepare("SELECT * FROM app_users WHERE firm_id = :firm_id AND login_id = :login_id AND active = 1 LIMIT 1");
-        $stmt->execute(['firm_id' => $firmId, 'login_id' => $loginId]);
+        $stmt = db()->prepare("
+            SELECT *
+            FROM app_users
+            WHERE active = 1
+              AND (login_id = :login_id OR user_email = :login_id)
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['login_id' => $loginId]);
         $user = $stmt->fetch();
         if (!$user) {
             jsonOut(['ok' => false, 'error' => 'Invalid user ID or password.'], 401);
@@ -817,6 +824,7 @@ try {
                 'display_name' => $user['display_name'],
                 'role' => $user['role'],
                 'firm_id' => $user['firm_id'],
+                'master_login' => true,
             ],
         ]);
     }
