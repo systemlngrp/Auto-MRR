@@ -198,11 +198,13 @@ export default function GateEntryPage({
         mrrSheetName: getSheetName(firm?.mrr, mrrType),
         mode: mrrType
       });
-      const finalGeNo = res?.ge_no || data.ge_no || '';
-      const finalEntry = { ...payload, ge_no: finalGeNo, mrr_no: finalGeNo };
+      const finalGeNo = String(res?.ge_no || data?.ge_no || geNo || '').trim();
+      const finalEntry = { ...(payload || {}), ge_no: finalGeNo, mrr_no: finalGeNo };
       setData(finalEntry);
       setStatus('Gate Entry saved successfully.');
-      onSave(finalGeNo, finalEntry);
+      if (typeof onSave === 'function') {
+        onSave(finalGeNo, finalEntry);
+      }
     } catch (err) {
       setStatus(err.message || 'Error saving gate entry');
     } finally {
@@ -305,10 +307,12 @@ export default function GateEntryPage({
         formatAmount={formatDecimal2}
         onDownload={downloadGateEntryPdfDirect}
         onClose={() => {
-          const finalGeNo = savedEntry?.ge_no || data.ge_no;
-          const finalEntry = savedEntry || data;
+          const finalGeNo = String(savedEntry?.ge_no || data?.ge_no || geNo || '').trim();
+          const finalEntry = savedEntry || data || {};
           setSavedEntry(null);
-          onSave(finalGeNo, finalEntry);
+          if (typeof onSave === 'function') {
+            onSave(finalGeNo, finalEntry);
+          }
         }}
       />
       {showFullPageLoader ? (
