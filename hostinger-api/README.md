@@ -1,6 +1,6 @@
 # Hostinger API
 
-This folder replaces the current Google Apps Script backend with a `PHP + MySQL` API that keeps the same action-style contract used by the React app.
+This folder provides the `PHP + MySQL` backend used by the React app on Hostinger.
 
 ## Files
 
@@ -23,6 +23,6 @@ VITE_HOSTINGER_API_URL=https://your-domain.com/api/index.php
 
 ## Notes
 
-- The React app reuses the existing `sheetSync.js` flow.
-- In Hostinger mode, the frontend sends the firm ID (`lnki`, `unit_1`, `unit_2`) as the tenant key.
-- `app_records` acts like a database-backed replacement for the old sheet rows.
+- The React app now targets the Hostinger API directly.
+- The frontend sends the firm ID (`lnki`, `unit_1`, `unit_2`) as the tenant key.
+- `app_records` stores the row data that used to live in spreadsheet tabs.

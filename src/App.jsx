@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, HELPER_SHEET_NAME, SCRIPT_URL, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -74,19 +74,14 @@ function syncBrowserPath(nextPath, { replace = false } = {}) {
   window.history[method]({}, '', normalizedTarget);
 }
 let GEMINI_COOLDOWN_UNTIL = 0;
-
-const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbysFVxjcEORHOSsVV54GBaCny1dIqgiUcPGI4tIlTVJHp-PujausTXXTWRt9AUDToladA/exec';
 const HOSTINGER_API_URL = String(import.meta.env.VITE_HOSTINGER_API_URL || '').trim();
-const USE_HOSTINGER_API = HOSTINGER_API_URL !== '';
-const resolveBackendUrl = (fallbackUrl) => USE_HOSTINGER_API ? HOSTINGER_API_URL : fallbackUrl;
-const resolveBackendTenant = (firmId, fallbackId) => USE_HOSTINGER_API ? firmId : fallbackId;
 
 const FIRMS = [
   { 
     id: 'lnki', 
     name: 'LNKI', 
-    scriptUrl: resolveBackendUrl(APPS_SCRIPT_WEBAPP_URL), 
-    spreadsheetId: resolveBackendTenant('lnki', import.meta.env.VITE_LNKI_SPREADSHEET_ID || '114qzPknHLYtQnMAH3URakk9djBjDL3zpd59fd3OWau0'),
+    scriptUrl: HOSTINGER_API_URL,
+    spreadsheetId: 'lnki',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -104,8 +99,8 @@ const FIRMS = [
   { 
     id: 'unit_1', 
     name: 'UNIT-1', 
-    scriptUrl: resolveBackendUrl(import.meta.env.VITE_UNIT_1_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzVrmOY-Av3ipONSmLwhyHbJkPeSAYj8uC6emIVKQ1IMOY2OALhcrE2r_g8OYFaqcxoTA/exec'),
-    spreadsheetId: resolveBackendTenant('unit_1', import.meta.env.VITE_UNIT_1_SPREADSHEET_ID || '1kQ8DI2Y_aPHkoCdQMcsDOJYsgXshOIVr2D4K0145VkE'),
+    scriptUrl: HOSTINGER_API_URL,
+    spreadsheetId: 'unit_1',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -123,8 +118,8 @@ const FIRMS = [
   { 
     id: 'unit_2', 
     name: 'UNIT-2', 
-    scriptUrl: resolveBackendUrl('https://script.google.com/macros/s/AKfycbx5iuQm8cx7fSMFyCPXEcT4AhNBW5894XpOGDeZZGSxcZ18A0OkQLHy511c53RbY2Ew/exec'), 
-    spreadsheetId: resolveBackendTenant('unit_2', '1t546U74lRikGjQhAc42TLeullDCzeKmmOZe7QA9OBt8'),
+    scriptUrl: HOSTINGER_API_URL, 
+    spreadsheetId: 'unit_2',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -5126,7 +5121,7 @@ function App() {
     const goToMenuAfterSuccess = options.goToMenuAfterSuccess !== false;
     const mrrNumber = String(invoice.mrr_no || packing.mrr_no || '').trim();
     if (!mrrNumber) {
-      const errorMessage = 'MRR No. is required before saving to Google Sheets.';
+      const errorMessage = 'MRR No. is required before saving.';
       setStatus(errorMessage);
       showPopup(errorMessage, 'error');
       return false;
@@ -5264,7 +5259,7 @@ function App() {
           error: err?.message || String(err),
           stack: err?.stack || ''
         });
-        setStatus(err?.message || 'Could not save data to Google Sheets.');
+        setStatus(err?.message || 'Could not save data to the database.');
         showPopup(err?.message || 'Error saving invoice', 'error');
         return false;
       } finally {
@@ -5353,7 +5348,7 @@ function App() {
         error: err?.message || String(err),
         stack: err?.stack || ''
       });
-      const errorMessage = err?.message || 'Could not save data to Google Sheets.';
+      const errorMessage = err?.message || 'Could not save data to the database.';
       setStatus(errorMessage);
       showPopup(errorMessage, 'error');
       return false;

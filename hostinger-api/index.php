@@ -381,7 +381,7 @@ function rowsPayload(string $sheetName, array $rows): array
 
 function getFirmId(): string
 {
-    $candidate = trim((string)($_GET['spreadsheetId'] ?? $_POST['spreadsheetId'] ?? ''));
+    $candidate = trim((string)($_GET['firm_id'] ?? $_POST['firm_id'] ?? $_GET['spreadsheetId'] ?? $_POST['spreadsheetId'] ?? ''));
     return $candidate !== '' ? $candidate : 'lnki';
 }
 
@@ -539,7 +539,7 @@ function updateApprovalDataForMrr(string $firmId, string $mrrNumber, string $sta
 
 function saveGeEntryAction(array $payload): array
 {
-    $firmId = trim((string)($payload['spreadsheetId'] ?? 'lnki'));
+    $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
     $geEntry = is_array($payload['geEntry'] ?? null) ? $payload['geEntry'] : [];
     $sheetName = 'GE ENTRY';
 
@@ -583,7 +583,7 @@ function saveGeEntryAction(array $payload): array
 
 function saveInvoiceOrPackingAction(array $payload, string $action): array
 {
-    $firmId = trim((string)($payload['spreadsheetId'] ?? 'lnki'));
+    $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
     $invoice = is_array($payload['invoice'] ?? null) ? $payload['invoice'] : [];
     $packing = is_array($payload['packing'] ?? null) ? $payload['packing'] : [];
     $options = is_array($payload['options'] ?? null) ? $payload['options'] : [];

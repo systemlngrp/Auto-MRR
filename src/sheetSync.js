@@ -1,4 +1,4 @@
-export const SCRIPT_URL = import.meta.env.VITE_PO_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwiyz-CktQyrxFP2U-LPHYm8zcECnPWQsK6NRYtt83w2Hzm24xZLL70PjD6yTHDiEhQOw/exec';
+export const SCRIPT_URL = import.meta.env.VITE_HOSTINGER_API_URL || '';
 export const PO_SHEET_NAME = import.meta.env.VITE_PO_SHEET_NAME || 'PO DETAILS';
 export const MRR_FORM_SHEET_NAME = import.meta.env.VITE_MRR_FORM_SHEET_NAME || 'MRR FORM';
 export const HELPER_SHEET_NAME = import.meta.env.VITE_HELPER_SHEET_NAME || 'HELPER SHEET';
@@ -94,7 +94,7 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_T
     return { response, payload };
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please check Apps Script URL/deployment and internet.`);
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please check the Hostinger API and internet connection.`);
     }
     if (error instanceof TypeError) {
       const target = String(url || '');
@@ -104,7 +104,7 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = SHEET_FETCH_T
       } catch {
         // Keep original text when URL parsing fails.
       }
-      throw new Error(`Could not reach ${host}. Please check your internet/DNS connection and confirm the Google Apps Script web app URL is valid and deployed.`);
+      throw new Error(`Could not reach ${host}. Please check your internet/DNS connection and confirm the Hostinger API URL is valid.`);
     }
     throw error;
   } finally {
@@ -308,7 +308,7 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
 export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
+    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
   const urlParams = new URLSearchParams({
     sheet: sheetName || PO_SHEET_NAME,
@@ -319,7 +319,7 @@ export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
   const { response, payload } = await fetchJsonWithTimeout(url);
   if (!response.ok || payload?.ok === false) {
-    throw new Error(payload?.error || payload?.message || 'Could not load PO details from Google Apps Script.');
+    throw new Error(payload?.error || payload?.message || 'Could not load records from the Hostinger API.');
   }
   return payload;
 }
@@ -327,7 +327,7 @@ export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
 export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
+    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
 
   const url = new URL(targetScriptUrl);
@@ -340,7 +340,7 @@ export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
   const { response, payload } = await fetchJsonWithTimeout(url.toString());
   if (!response.ok || payload?.ok === false) {
     if (params.action === 'verify' || params.action === 'verify_ge') return null;
-    throw new Error(payload?.error || payload?.message || 'Error: Could not verify Google Sheets write.');
+    throw new Error(payload?.error || payload?.message || 'Error: Could not verify Hostinger database write.');
   }
   return payload;
 }
@@ -348,7 +348,7 @@ export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
 export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, prefix, geSheetName = 'GE ENTRY') {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL. Set VITE_PO_SCRIPT_URL in .env or provide a firm-specific URL.');
+    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
 
   const urlParams = new URLSearchParams({
@@ -374,7 +374,7 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
 export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptUrl, helperSheetName) {
   const targetScriptUrl = scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL.');
+    throw new Error('Missing backend URL.');
   }
 
   const urlParams = new URLSearchParams({
@@ -395,7 +395,7 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
 export async function authenticateUser(loginId, password, options = {}) {
   const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL.');
+    throw new Error('Missing backend URL.');
   }
   const payload = await fetchSheetRangeWithParams({
     action: 'authenticate_user',
@@ -412,7 +412,7 @@ export async function authenticateUser(loginId, password, options = {}) {
 export async function approvePendingStage(params = {}) {
   const targetScriptUrl = params.scriptUrl || SCRIPT_URL;
   if (!targetScriptUrl) {
-    throw new Error('Missing script URL.');
+    throw new Error('Missing backend URL.');
   }
   const payload = await fetchSheetRangeWithParams({
     action: 'approve_pending_stage',
@@ -441,7 +441,7 @@ export async function approvePendingStage(params = {}) {
  * Defaults to `PO DETAILS` for backward compatibility.
  */
 export async function fetchUniqueSuppliers(firm, sheetName = 'PO DETAILS') {
-  if (!firm?.scriptUrl) throw new Error(`Script URL missing for firm ${firm?.name}`);
+  if (!firm?.scriptUrl) throw new Error(`Backend URL missing for firm ${firm?.name}`);
   const targetSheet = String(sheetName || 'PO DETAILS').trim() || 'PO DETAILS';
   const url = `${firm.scriptUrl}?action=get_suppliers&sheet=${encodeURIComponent(targetSheet)}&spreadsheetId=${firm.spreadsheetId || ''}`;
   const { response: res, payload: data } = await fetchJsonWithTimeout(url);
@@ -449,122 +449,17 @@ export async function fetchUniqueSuppliers(firm, sheetName = 'PO DETAILS') {
   return data.values || [];
 }
 
-
-function submitPayloadWithForm(payload) {
-  return new Promise((resolve, reject) => {
-    try {
-      const iframeName = `sheet-save-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const iframe = document.createElement('iframe');
-      iframe.name = iframeName;
-      iframe.style.display = 'none';
-
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = payload.scriptUrl || SCRIPT_URL;
-      form.target = iframeName;
-      form.style.display = 'none';
-
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'payload';
-      input.value = JSON.stringify(payload);
-      form.appendChild(input);
-      const transport = document.createElement('input');
-      transport.type = 'hidden';
-      transport.name = 'transport';
-      transport.value = 'iframe_form';
-      form.appendChild(transport);
-
-      const cleanup = () => {
-        setTimeout(() => {
-          iframe.remove();
-          form.remove();
-        }, 500);
-      };
-      let settled = false;
-      const finish = (fn, value) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        fn(value);
-      };
-
-      iframe.addEventListener('load', () => {
-        finish(resolve);
-      }, { once: true });
-
-      iframe.addEventListener('error', () => {
-        finish(reject, new Error('Could not submit data to Google Sheets.'));
-      }, { once: true });
-
-      document.body.appendChild(iframe);
-      document.body.appendChild(form);
-      form.submit();
-      // Give Apps Script enough time to acquire lock and finish writes.
-      setTimeout(() => {
-        finish(reject, new Error('Save request timed out. Please retry.'));
-      }, 45000);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-async function submitPayloadNoCors(payload) {
-  const targetScriptUrl = payload.scriptUrl || SCRIPT_URL;
-  const formBody = new URLSearchParams();
-  formBody.set('payload', JSON.stringify(payload));
-  formBody.set('transport', 'fetch_no_cors');
-
-  await fetch(targetScriptUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-    },
-    body: formBody.toString()
-  });
-
-  return { ok: true, transport: 'fetch_no_cors' };
-}
-
-function isGoogleAppsScriptUrl(url) {
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    return host === 'script.google.com' || host.endsWith('.script.google.com');
-  } catch {
-    return false;
-  }
-}
-
 async function submitPayload(payload) {
   const targetScriptUrl = payload.scriptUrl || SCRIPT_URL;
-  if (isGoogleAppsScriptUrl(targetScriptUrl)) {
-    try {
-      return await submitPayloadNoCors(payload);
-    } catch (noCorsError) {
-      await submitPayloadWithForm(payload);
-      return { ok: true, transport: 'form_fallback' };
-    }
+  const { response, payload: resPayload } = await fetchJsonWithTimeout(targetScriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }, SHEET_FETCH_TIMEOUT_MS);
+  if (!response.ok || resPayload?.ok === false) {
+    throw new Error(resPayload?.error || resPayload?.message || `Backend save failed (${response.status}).`);
   }
-  try {
-    const { response, payload: resPayload } = await fetchJsonWithTimeout(targetScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }, SHEET_FETCH_TIMEOUT_MS);
-    if (!response.ok || resPayload?.ok === false) {
-      const backendError = new Error(resPayload?.error || resPayload?.message || `Backend save failed (${response.status}).`);
-      backendError.isBackendError = true;
-      throw backendError;
-    }
-    return resPayload || { ok: true };
-  } catch (error) {
-    if (error?.isBackendError) throw error;
-    // Fallback for environments where direct POST response is blocked.
-    await submitPayloadWithForm(payload);
-    return { ok: true, transport: 'form_fallback' };
-  }
+  return resPayload || { ok: true };
 }
 
 function getMrrNumber(invoice, packing) {
@@ -697,7 +592,7 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
   }
 
   if (action === 'save_invoice') {
-    throw new Error(`Save request was sent, but no MRR FORM row was found for MRR Number ${mrrNumber}. Check the Apps Script deployment, web app permissions, and sheet headers.`);
+    throw new Error(`Save request was sent, but no MRR FORM row was found for MRR Number ${mrrNumber}. Check the Hostinger API and database records.`);
   }
 
   // Strict final fallback: allow zero helper rows only when payload had no helper rows to write.
@@ -721,7 +616,7 @@ async function verifyWrite(action, invoice, packing, spreadsheetId, scriptUrl, o
     `${mrrSheetName} rows found: ${latestMrrCount}. ` +
     `Helper rows found: ${latestHelperCount} in ${helperSheetCandidates.join(' / ')}. ` +
     `Expected helper rows: ${expectedHelperRowsCount}. ` +
-    `Check Apps Script deployment, write permissions, and sheet header names.`
+    `Check the Hostinger API, database permissions, and record mappings.`
   );
 }
 
@@ -759,7 +654,7 @@ function canAcceptSaveFromDiagnostics(action, diagnostics, expectedHelperRowsCou
 
 async function postSheetAction(action, invoice, packing, poRows = [], options = {}) {
   if (!SCRIPT_URL) {
-    throw new Error('Missing PO script URL. Set VITE_PO_SCRIPT_URL in .env.');
+    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
 
   const requestId = `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
