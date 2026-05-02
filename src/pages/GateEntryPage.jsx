@@ -68,20 +68,9 @@ export default function GateEntryPage({
       ...prev,
       date: prev.date || defaultDate,
       ge_no: prev.ge_no || geNo || getGateEntryNo(initialData) || '',
-      mrr_no: (prev.ge_no || geNo || getGateEntryNo(initialData) || '')
+      mrr_no: prev.mrr_no || ''
     }));
   }, [defaultDate, geNo, getGateEntryNo, initialData]);
-
-  useEffect(() => {
-    setData((prev) => {
-      const resolvedGeNo = prev.ge_no || geNo || getGateEntryNo(initialData) || '';
-      if ((prev.mrr_no || '') === resolvedGeNo) return prev;
-      return {
-        ...prev,
-        mrr_no: resolvedGeNo
-      };
-    });
-  }, [data.ge_no, geNo, getGateEntryNo, initialData]);
 
   useEffect(() => {
     async function loadSuppliers() {
@@ -184,7 +173,7 @@ export default function GateEntryPage({
         ...gateEntryData,
         total_value: formatDecimal2(data.total_value || ''),
         ge_no: data.ge_no || getGateEntryNo(initialData) || geNo || '',
-        mrr_no: data.ge_no || getGateEntryNo(initialData) || geNo || '',
+        mrr_no: data.mrr_no || '',
         original_ge_no: getGateEntryNo(initialData) || '',
         firm_code: getFirmCode(firm)
       };
@@ -199,7 +188,7 @@ export default function GateEntryPage({
         mode: mrrType
       });
       const finalGeNo = String(res?.ge_no || data?.ge_no || geNo || '').trim();
-      const finalEntry = { ...(payload || {}), ge_no: finalGeNo, mrr_no: finalGeNo };
+      const finalEntry = { ...(payload || {}), ge_no: finalGeNo, mrr_no: String(res?.mrr_no || payload?.mrr_no || '').trim() };
       setData(finalEntry);
       setStatus('Gate Entry saved successfully.');
       if (typeof onSave === 'function') {
@@ -258,7 +247,7 @@ export default function GateEntryPage({
           </div>
           <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '110px 1fr', alignItems: 'center' }}>
             {requiredLabel('MRR No')}
-            <input value={data.ge_no || geNo || ''} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed', fontSize: '12px' }} />
+            <input value={data.mrr_no || ''} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed', fontSize: '12px' }} />
           </div>
           <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '110px 1fr', alignItems: 'center' }}>{requiredLabel('Invoice No')}<input value={data.invoice_no} onChange={(e) => setData({ ...data, invoice_no: e.target.value })} placeholder="Enter Invoice No" style={{ fontSize: '12px' }} /></div>
           <div className="row full" style={{ borderTop: 'none', padding: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '110px 1fr', alignItems: 'center' }}>{requiredLabel('Invoice Value')}<input type="number" step="0.01" value={data.total_value} onBlur={(e) => setData({ ...data, total_value: formatDecimal2(e.target.value) })} onChange={(e) => setData({ ...data, total_value: e.target.value })} placeholder="Enter Total Value" style={{ fontSize: '12px' }} /></div>

@@ -71,7 +71,15 @@ async function fetchJson(url, options = {}) {
       throw new Error(payload?.error || payload?.message || `Request failed with status ${response.status}.`);
     }
     if (!payload || typeof payload !== 'object') {
-      throw new Error('Backend returned an empty or invalid JSON response.');
+      const preview = String(text || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 220);
+      throw new Error(
+        preview
+          ? `Backend returned invalid JSON. Response preview: ${preview}`
+          : 'Backend returned an empty or invalid JSON response.'
+      );
     }
     if (payload?.ok === false) {
       throw new Error(payload?.error || payload?.message || 'Backend request failed.');

@@ -1024,7 +1024,8 @@ try {
         foreach ($geRows as $row) {
             $data = decodeData($row);
             $mrrNo = value($data, 'mrr_no', 'mrr_number');
-            if ($mrrNo !== '') {
+            $rowPendingStage = trim((string)($row['pending_stage'] ?? ''));
+            if ($rowPendingStage !== 'pending_mrr' && $mrrNo !== '') {
                 continue;
             }
             $result[] = [
