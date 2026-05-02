@@ -2,11 +2,11 @@
 
 return [
     'db' => [
-        'host' => 'localhost',
+        'host' => 'https://aqua-flamingo-710728.hostingersite.com/',
         'port' => 3306,
         'database' => 'u380633007_mrrscan',
         'username' => 'u380633007_mrrscan',
-        'password' => 'CHANGE_ME',
+        'password' => '!Office1@',
         'charset' => 'utf8mb4',
     ],
     'cors' => [
