@@ -769,6 +769,10 @@ async function postSheetAction(action, invoice, packing, poRows = [], options = 
   const expectedHelperRowsCount = action === 'save_packing'
     ? buildHelperRows(invoice, packing, poRows).length
     : 0;
+  const helperRows = action === 'save_packing' ? buildHelperRows(invoice, packing, poRows) : [];
+  const mrrFormRecord = action === 'save_invoice' || action === 'save_packing'
+    ? buildMrrFormRecord(invoice, packing, poRows)
+    : {};
   const shouldVerify = options.verifyWrite !== false;
   const shouldValidateMrrHeaders = options.enforceStrictMrrHeaders !== false;
 
@@ -796,6 +800,10 @@ async function postSheetAction(action, invoice, packing, poRows = [], options = 
     invoice,
     packing,
     poRows,
+    derived: {
+      helperRows,
+      mrrFormRecord
+    },
     geEntry: options.geEntry,
     requestId,
     options: {

@@ -76,13 +76,17 @@ function syncBrowserPath(nextPath, { replace = false } = {}) {
 let GEMINI_COOLDOWN_UNTIL = 0;
 
 const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbysFVxjcEORHOSsVV54GBaCny1dIqgiUcPGI4tIlTVJHp-PujausTXXTWRt9AUDToladA/exec';
+const HOSTINGER_API_URL = String(import.meta.env.VITE_HOSTINGER_API_URL || '').trim();
+const USE_HOSTINGER_API = HOSTINGER_API_URL !== '';
+const resolveBackendUrl = (fallbackUrl) => USE_HOSTINGER_API ? HOSTINGER_API_URL : fallbackUrl;
+const resolveBackendTenant = (firmId, fallbackId) => USE_HOSTINGER_API ? firmId : fallbackId;
 
 const FIRMS = [
   { 
     id: 'lnki', 
     name: 'LNKI', 
-    scriptUrl: APPS_SCRIPT_WEBAPP_URL, 
-    spreadsheetId: import.meta.env.VITE_LNKI_SPREADSHEET_ID || '114qzPknHLYtQnMAH3URakk9djBjDL3zpd59fd3OWau0',
+    scriptUrl: resolveBackendUrl(APPS_SCRIPT_WEBAPP_URL), 
+    spreadsheetId: resolveBackendTenant('lnki', import.meta.env.VITE_LNKI_SPREADSHEET_ID || '114qzPknHLYtQnMAH3URakk9djBjDL3zpd59fd3OWau0'),
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -100,8 +104,8 @@ const FIRMS = [
   { 
     id: 'unit_1', 
     name: 'UNIT-1', 
-    scriptUrl: import.meta.env.VITE_UNIT_1_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzVrmOY-Av3ipONSmLwhyHbJkPeSAYj8uC6emIVKQ1IMOY2OALhcrE2r_g8OYFaqcxoTA/exec',
-    spreadsheetId: import.meta.env.VITE_UNIT_1_SPREADSHEET_ID || '1kQ8DI2Y_aPHkoCdQMcsDOJYsgXshOIVr2D4K0145VkE',
+    scriptUrl: resolveBackendUrl(import.meta.env.VITE_UNIT_1_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzVrmOY-Av3ipONSmLwhyHbJkPeSAYj8uC6emIVKQ1IMOY2OALhcrE2r_g8OYFaqcxoTA/exec'),
+    spreadsheetId: resolveBackendTenant('unit_1', import.meta.env.VITE_UNIT_1_SPREADSHEET_ID || '1kQ8DI2Y_aPHkoCdQMcsDOJYsgXshOIVr2D4K0145VkE'),
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
@@ -119,8 +123,8 @@ const FIRMS = [
   { 
     id: 'unit_2', 
     name: 'UNIT-2', 
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbx5iuQm8cx7fSMFyCPXEcT4AhNBW5894XpOGDeZZGSxcZ18A0OkQLHy511c53RbY2Ew/exec', 
-    spreadsheetId: '1t546U74lRikGjQhAc42TLeullDCzeKmmOZe7QA9OBt8',
+    scriptUrl: resolveBackendUrl('https://script.google.com/macros/s/AKfycbx5iuQm8cx7fSMFyCPXEcT4AhNBW5894XpOGDeZZGSxcZ18A0OkQLHy511c53RbY2Ew/exec'), 
+    spreadsheetId: resolveBackendTenant('unit_2', '1t546U74lRikGjQhAc42TLeullDCzeKmmOZe7QA9OBt8'),
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
     mrr: { reel: 'MRR FORM', sheet: 'MRR FORM', other: 'OTHER MRR' }, 
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
