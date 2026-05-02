@@ -24,8 +24,8 @@ export default function UsersPage({ selectedFirm, deps, onBack }) {
       setStatus('Loading users...');
       try {
         const users = await fetchUsers({
-          spreadsheetId: selectedFirm.spreadsheetId,
-          scriptUrl: selectedFirm.scriptUrl
+          firmKey: selectedFirm.firmKey,
+          backendUrl: selectedFirm.backendUrl
         });
         setRows(users.length ? users.map((row) => ({ ...blankUser(), ...row, password: '' })) : [blankUser()]);
         setStatus('');
@@ -74,8 +74,8 @@ export default function UsersPage({ selectedFirm, deps, onBack }) {
     setStatus('Saving users...');
     try {
       await saveUsers(users, {
-        spreadsheetId: selectedFirm.spreadsheetId,
-        scriptUrl: selectedFirm.scriptUrl
+        firmKey: selectedFirm.firmKey,
+        backendUrl: selectedFirm.backendUrl
       });
       setRows(users.map((row) => ({ ...row, password: '' })));
       setStatus('Users saved successfully.');

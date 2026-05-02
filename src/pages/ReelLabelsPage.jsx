@@ -31,8 +31,7 @@ export default function ReelLabelsPage({
       try {
         const payload = await fetchSheetRange(
           helperSheetName || helperSheetNameFallback,
-          selectedFirm.spreadsheetId,
-          selectedFirm.scriptUrl
+          selectedFirm
         );
         const rows = Array.isArray(payload?.values) ? payload.values : [];
         const unique = new Set();
@@ -77,8 +76,9 @@ export default function ReelLabelsPage({
       const payload = await fetchSheetRangeWithParams({
         sheet: helperSheetName || helperSheetNameFallback,
         mrr_number: targetMrr,
-        spreadsheetId: selectedFirm.spreadsheetId
-      }, selectedFirm.scriptUrl);
+        firmKey: selectedFirm.firmKey,
+        backendUrl: selectedFirm.backendUrl
+      });
       const data = payload?.values || [];
       if (data.length) {
         setReels(data);

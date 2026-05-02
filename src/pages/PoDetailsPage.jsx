@@ -65,7 +65,7 @@ export default function PoDetailsPage({
       setIsLoading(true);
       setStatus(`Loading ${activeSheetName}...`);
       try {
-        const payload = await fetchSheetRange(activeSheetName, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
+        const payload = await fetchSheetRange(activeSheetName, selectedFirm);
         const allRows = Array.isArray(payload?.data)
           ? payload.data.map((row) => normalizePoRow(row))
           : sheetValuesToPoRows(payload?.values || []);
@@ -117,8 +117,8 @@ export default function PoDetailsPage({
     try {
       await savePoRowsToSheets(cleanRows, {
         sheetName: activeSheetName,
-        spreadsheetId: selectedFirm.spreadsheetId,
-        scriptUrl: selectedFirm.scriptUrl
+        firmKey: selectedFirm.firmKey,
+        backendUrl: selectedFirm.backendUrl
       });
       setRows(cleanRows);
       setStatus(`${activeSheetName} saved successfully.`);

@@ -111,7 +111,7 @@ export default function GateEntryPage({
       setIsLoadingOtherPo(true);
       try {
         const poSheet = getSheetName(firm?.po, 'other') || 'OTHER PO';
-        const payload = await fetchSheetRange(poSheet, firm.spreadsheetId, firm.scriptUrl);
+        const payload = await fetchSheetRange(poSheet, firm);
         const allRows = Array.isArray(payload?.data)
           ? payload.data.map((row) => normalizePoRow(row))
           : sheetValuesToPoRows(payload?.values || []);
@@ -128,11 +128,11 @@ export default function GateEntryPage({
 
   useEffect(() => {
     async function loadNextGeNo() {
-      if (!firm?.scriptUrl) return;
+      if (!firm?.backendUrl && !firm?.scriptUrl) return;
       if (getGateEntryNo(initialData) || geNo || data.ge_no) return;
       try {
         const prefix = `${getFirmCode(firm)}/${getFinancialYearLabel(data.date || defaultDate)}/`;
-        const latest = await fetchLatestMrrGe('GE ENTRY', firm.spreadsheetId, firm.scriptUrl, prefix);
+        const latest = await fetchLatestMrrGe('GE ENTRY', firm, null, prefix);
         const nextGeNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.ge || 0) + 1);
         setData((prev) => prev.ge_no ? prev : { ...prev, ge_no: nextGeNo });
       } catch (err) {
@@ -193,8 +193,8 @@ export default function GateEntryPage({
       });
 
       const res = await saveGeEntryToSheets(payload, {
-        scriptUrl: firm.scriptUrl,
-        spreadsheetId: firm.spreadsheetId,
+        backendUrl: firm.backendUrl,
+        firmKey: firm.firmKey,
         mrrSheetName: getSheetName(firm?.mrr, mrrType),
         mode: mrrType
       });
