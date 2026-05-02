@@ -13,9 +13,10 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 1. Import `schema.sql` in Hostinger phpMyAdmin.
 2. Copy `config.sample.php` to `config.php`.
 3. Set your real DB password in `config.php`.
-4. Upload the `hostinger-api` folder to your site, for example:
+4. For normal Hostinger web hosting, set MySQL host to `localhost` in `config.php`.
+5. Upload the `api` folder to your site, for example:
    - `public_html/api/index.php`
-5. Set the frontend env:
+6. Set the frontend env:
 
 ```env
 VITE_HOSTINGER_API_URL=https://aqua-flamingo-710728.hostingersite.com//api/index.php
@@ -34,3 +35,4 @@ VITE_HOSTINGER_API_URL=https://aqua-flamingo-710728.hostingersite.com//api/index
 - `app_records` stores the operational records used by the app.
 - Save requests now write debug entries to `api/save-debug.log` beside `index.php`.
 - Each save response includes a `trace_id` so you can match frontend saves with backend log lines.
+- If the frontend shows `Backend returned an empty or invalid JSON response`, open `https://your-site/api/index.php?action=get_pending_ge&firm_id=lnki` directly in the browser. You should get JSON. If you get HTML or a blank page, `config.php` or PHP itself is failing before the API can respond.

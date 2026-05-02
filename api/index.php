@@ -2,16 +2,8 @@
 
 declare(strict_types=1);
 
-date_default_timezone_set('Asia/Kolkata');
-
-$configPath = __DIR__ . '/config.php';
-if (!file_exists($configPath)) {
-    $configPath = __DIR__ . '/config.sample.php';
-}
-$config = require $configPath;
-
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: ' . (($config['cors']['allow_origin'] ?? '*') ?: '*'));
+header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
@@ -66,6 +58,59 @@ function createTraceId(): string
     }
 }
 
+function getConfig(): array
+{
+    static $config = null;
+
+    if (is_array($config)) {
+        return $config;
+    }
+
+    $configPath = __DIR__ . '/config.php';
+    if (!file_exists($configPath)) {
+        $configPath = __DIR__ . '/config.sample.php';
+    }
+    if (!file_exists($configPath)) {
+        throw new RuntimeException('Missing API config file. Create api/config.php from api/config.sample.php.');
+    }
+
+    try {
+        $loaded = require $configPath;
+    } catch (Throwable $e) {
+        throw new RuntimeException('Invalid API config file: ' . $e->getMessage(), 0, $e);
+    }
+
+    if (!is_array($loaded)) {
+        throw new RuntimeException('Invalid API config file: expected a PHP array.');
+    }
+
+    $timezone = trim((string)($loaded['app']['timezone'] ?? 'Asia/Kolkata'));
+    if ($timezone === '') {
+        $timezone = 'Asia/Kolkata';
+    }
+    date_default_timezone_set($timezone);
+
+    $allowOrigin = trim((string)($loaded['cors']['allow_origin'] ?? '*'));
+    header('Access-Control-Allow-Origin: ' . ($allowOrigin !== '' ? $allowOrigin : '*'));
+
+    $host = trim((string)($loaded['db']['host'] ?? ''));
+    if ($host === '') {
+        throw new RuntimeException('Database host is missing in api/config.php.');
+    }
+    if (preg_match('#^https?://#i', $host)) {
+        throw new RuntimeException('Database host must be a MySQL hostname like localhost, not a website URL.');
+    }
+
+    $database = trim((string)($loaded['db']['database'] ?? ''));
+    $username = trim((string)($loaded['db']['username'] ?? ''));
+    if ($database === '' || $username === '') {
+        throw new RuntimeException('Database name and username are required in api/config.php.');
+    }
+
+    $config = $loaded;
+    return $config;
+}
+
 function loggerPath(): string
 {
     return __DIR__ . '/save-debug.log';
@@ -111,12 +156,12 @@ function writeBackendLog(string $event, array $context = []): void
 function db(): PDO
 {
     static $pdo = null;
-    global $config;
 
     if ($pdo instanceof PDO) {
         return $pdo;
     }
 
+    $config = getConfig();
     $db = $config['db'] ?? [];
     $dsn = sprintf(
         'mysql:host=%s;port=%d;dbname=%s;charset=%s',
