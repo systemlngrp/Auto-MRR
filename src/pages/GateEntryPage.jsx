@@ -198,7 +198,7 @@ export default function GateEntryPage({
         mrrSheetName: getSheetName(firm?.mrr, mrrType),
         mode: mrrType
       });
-      const finalGeNo = res.ge_no || data.ge_no || '';
+      const finalGeNo = res?.ge_no || data.ge_no || '';
       const finalEntry = { ...payload, ge_no: finalGeNo, mrr_no: finalGeNo };
       setData(finalEntry);
       setStatus('Gate Entry saved successfully.');
