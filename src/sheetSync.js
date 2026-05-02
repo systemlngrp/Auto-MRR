@@ -1,8 +1,11 @@
 export const SCRIPT_URL = import.meta.env.VITE_HOSTINGER_API_URL || '';
-export const PO_SHEET_NAME = import.meta.env.VITE_PO_SHEET_NAME || 'PO DETAILS';
-export const MRR_FORM_SHEET_NAME = import.meta.env.VITE_MRR_FORM_SHEET_NAME || 'MRR FORM';
-export const HELPER_SHEET_NAME = import.meta.env.VITE_HELPER_SHEET_NAME || 'HELPER SHEET';
-export const SHEET_WRITE_API_KEY = import.meta.env.VITE_SHEET_WRITE_API_KEY || '';
+export const PO_SHEET_NAME = 'PO DETAILS';
+export const MRR_FORM_SHEET_NAME = 'MRR FORM';
+export const HELPER_SHEET_NAME = 'HELPER SHEET';
+export const SHEET_WRITE_API_KEY = '';
+const REQUEST_TIMEOUT_MS = 45000;
+const getBackendUrl = (value, options = {}) => value || options.backendUrl || options.scriptUrl || SCRIPT_URL;
+const getFirmKey = (value, options = {}) => value || options.firmKey || options.spreadsheetId || '';
 
 const n = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -38,7 +41,7 @@ const normalizeText = (value) => String(value ?? '').trim().toLowerCase();
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const VERIFY_TIMEOUT_MS = 45000;
 const VERIFY_INTERVAL_MS = 2000;
-const SHEET_FETCH_TIMEOUT_MS = 45000;
+const SHEET_FETCH_TIMEOUT_MS = REQUEST_TIMEOUT_MS;
 const STRICT_MRR_FORM_HEADERS = [
   'Mrr form Id',
   'Date',
@@ -123,12 +126,12 @@ function formatHeaderList(values = [], limit = 12) {
   return values.slice(0, limit).map((v) => `"${v}"`).join(', ');
 }
 
-async function validateStrictMrrFormHeaders(spreadsheetId, scriptUrl, mrrSheetName) {
-  const payload = await fetchSheetRange(mrrSheetName, spreadsheetId, scriptUrl);
+async function validateStrictMrrFormHeaders(firmKey, backendUrl, mrrSheetName) {
+  const payload = await fetchSheetRange(mrrSheetName, firmKey, backendUrl);
   const rows = Array.isArray(payload?.values) ? payload.values : [];
   const headers = Array.isArray(rows[0]) ? rows[0].map((h) => String(h || '').trim()) : [];
   if (!headers.length) {
-    throw new Error(`MRR FORM header validation failed: sheet "${mrrSheetName}" is empty or has no header row.`);
+    throw new Error(`MRR data validation failed: dataset "${mrrSheetName}" is empty or has no header row.`);
   }
 
   const actualNorm = headers.map(normalizeStrictHeader);
@@ -150,7 +153,7 @@ async function validateStrictMrrFormHeaders(spreadsheetId, scriptUrl, mrrSheetNa
   }
   if (missingHeaders.length) {
     throw new Error(
-      `MRR FORM header validation failed. Missing required columns: ${missingHeaders.join(', ')}. ` +
+      `MRR data validation failed. Missing required columns: ${missingHeaders.join(', ')}. ` +
       `Please update "${mrrSheetName}" headers exactly and retry save.`
     );
   }
@@ -305,8 +308,8 @@ export function buildMrrFormRecord(invoice, packing, poRows = []) {
   };
 }
 
-export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
-  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+export async function fetchSheetRange(sheetName, firmKey, backendUrl) {
+  const targetScriptUrl = getBackendUrl(backendUrl);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
@@ -314,7 +317,8 @@ export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
     sheet: sheetName || PO_SHEET_NAME,
     action: 'get_rows'
   });
-  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+  const resolvedFirmKey = getFirmKey(firmKey);
+  if (resolvedFirmKey) urlParams.set('firmKey', resolvedFirmKey);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
   const { response, payload } = await fetchJsonWithTimeout(url);
@@ -324,14 +328,16 @@ export async function fetchSheetRange(sheetName, spreadsheetId, scriptUrl) {
   return payload;
 }
 
-export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
-  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+export async function fetchSheetRangeWithParams(params = {}, backendUrl) {
+  const targetScriptUrl = getBackendUrl(backendUrl);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
 
   const url = new URL(targetScriptUrl);
-  Object.entries(params).forEach(([key, value]) => {
+  const normalizedParams = { ...params };
+  if (normalizedParams.firmKey && !normalizedParams.spreadsheetId) normalizedParams.spreadsheetId = normalizedParams.firmKey;
+  Object.entries(normalizedParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && String(value).trim() !== '') {
       url.searchParams.set(key, String(value));
     }
@@ -345,8 +351,8 @@ export async function fetchSheetRangeWithParams(params = {}, scriptUrl) {
   return payload;
 }
 
-export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, prefix, geSheetName = 'GE ENTRY') {
-  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+export async function fetchLatestMrrGe(sheetName, firmKey, backendUrl, prefix, geSheetName = 'GE ENTRY') {
+  const targetScriptUrl = getBackendUrl(backendUrl);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.');
   }
@@ -357,7 +363,8 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
     mrrSheet: sheetName,
     geSheet: geSheetName
   });
-  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+  const resolvedFirmKey = getFirmKey(firmKey);
+  if (resolvedFirmKey) urlParams.set('firmKey', resolvedFirmKey);
   if (prefix) urlParams.set('prefix', prefix);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
@@ -371,8 +378,8 @@ export async function fetchLatestMrrGe(sheetName, spreadsheetId, scriptUrl, pref
   };
 }
 
-export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptUrl, helperSheetName) {
-  const targetScriptUrl = scriptUrl || SCRIPT_URL;
+export async function fetchPendingGeEntries(mrrSheetName, firmKey, backendUrl, helperDatasetName) {
+  const targetScriptUrl = getBackendUrl(backendUrl);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL.');
   }
@@ -381,19 +388,23 @@ export async function fetchPendingGeEntries(mrrSheetName, spreadsheetId, scriptU
     action: 'get_pending_ge',
     mrrSheet: mrrSheetName
   });
-  if (helperSheetName) urlParams.set('helperSheet', helperSheetName);
-  if (spreadsheetId) urlParams.set('spreadsheetId', spreadsheetId);
+  if (helperDatasetName) urlParams.set('helperSheet', helperDatasetName);
+  const resolvedFirmKey = getFirmKey(firmKey);
+  if (resolvedFirmKey) urlParams.set('firmKey', resolvedFirmKey);
 
   const url = `${targetScriptUrl}?${urlParams.toString()}`;
   const { response, payload } = await fetchJsonWithTimeout(url);
   if (!response.ok || payload?.ok === false) {
     throw new Error(payload?.error || payload?.message || 'Could not fetch pending Gate Entries.');
   }
-  return payload.values || [];
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+  return Array.isArray(payload?.values) ? payload.values : [];
 }
 
 export async function authenticateUser(loginId, password, options = {}) {
-  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  const targetScriptUrl = getBackendUrl('', options);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL.');
   }
@@ -401,7 +412,7 @@ export async function authenticateUser(loginId, password, options = {}) {
     action: 'authenticate_user',
     login_id: loginId,
     password,
-    spreadsheetId: options.spreadsheetId
+    firmKey: options.firmKey || options.spreadsheetId
   }, targetScriptUrl);
   if (!payload?.ok || !payload?.user) {
     throw new Error(payload?.error || 'Invalid user ID or password.');
@@ -410,7 +421,7 @@ export async function authenticateUser(loginId, password, options = {}) {
 }
 
 export async function approvePendingStage(params = {}) {
-  const targetScriptUrl = params.scriptUrl || SCRIPT_URL;
+  const targetScriptUrl = getBackendUrl('', params);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL.');
   }
@@ -428,7 +439,7 @@ export async function approvePendingStage(params = {}) {
     debit_note_amount: params.debitNoteAmount,
     mrrSheet: params.mrrSheetName,
     helperSheet: params.helperSheetName,
-    spreadsheetId: params.spreadsheetId
+    firmKey: params.firmKey || params.spreadsheetId
   }, targetScriptUrl);
   if (!payload?.ok) {
     throw new Error(payload?.error || 'Could not approve pending stage.');
@@ -437,16 +448,16 @@ export async function approvePendingStage(params = {}) {
 }
 
 export async function savePoRowsToSheets(rows = [], options = {}) {
-  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  const targetScriptUrl = getBackendUrl('', options);
   if (!targetScriptUrl) {
     throw new Error('Missing backend URL.');
   }
   const payload = await submitPayload({
     action: 'save_po_rows',
-    firm_id: options.spreadsheetId,
-    spreadsheetId: options.spreadsheetId,
+    firm_id: options.firmKey || options.spreadsheetId,
+    spreadsheetId: options.firmKey || options.spreadsheetId,
     scriptUrl: targetScriptUrl,
-    sheetName: options.sheetName || PO_SHEET_NAME,
+    sheetName: options.sheetName || options.datasetName || PO_SHEET_NAME,
     rows
   });
   if (!payload?.ok) {
@@ -456,23 +467,23 @@ export async function savePoRowsToSheets(rows = [], options = {}) {
 }
 
 export async function fetchUsers(options = {}) {
-  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  const targetScriptUrl = getBackendUrl('', options);
   if (!targetScriptUrl) throw new Error('Missing backend URL.');
   const payload = await fetchSheetRangeWithParams({
     action: 'get_users',
-    spreadsheetId: options.spreadsheetId
+    firmKey: options.firmKey || options.spreadsheetId
   }, targetScriptUrl);
   if (!payload?.ok) throw new Error(payload?.error || 'Could not load users.');
   return Array.isArray(payload.users) ? payload.users : [];
 }
 
 export async function saveUsers(rows = [], options = {}) {
-  const targetScriptUrl = options.scriptUrl || SCRIPT_URL;
+  const targetScriptUrl = getBackendUrl('', options);
   if (!targetScriptUrl) throw new Error('Missing backend URL.');
   const payload = await submitPayload({
     action: 'save_users',
-    firm_id: options.spreadsheetId,
-    spreadsheetId: options.spreadsheetId,
+    firm_id: options.firmKey || options.spreadsheetId,
+    spreadsheetId: options.firmKey || options.spreadsheetId,
     scriptUrl: targetScriptUrl,
     users: rows
   });
@@ -481,13 +492,14 @@ export async function saveUsers(rows = [], options = {}) {
 }
 
 /**
- * Fetch a list of unique suppliers from a PO sheet.
- * Defaults to `PO DETAILS` for backward compatibility.
+ * Fetch a list of unique suppliers from the PO dataset.
  */
 export async function fetchUniqueSuppliers(firm, sheetName = 'PO DETAILS') {
-  if (!firm?.scriptUrl) throw new Error(`Backend URL missing for firm ${firm?.name}`);
+  const backendUrl = firm?.backendUrl || firm?.scriptUrl;
+  const firmKey = firm?.firmKey || firm?.spreadsheetId;
+  if (!backendUrl) throw new Error(`Backend URL missing for firm ${firm?.name}`);
   const targetSheet = String(sheetName || 'PO DETAILS').trim() || 'PO DETAILS';
-  const url = `${firm.scriptUrl}?action=get_suppliers&sheet=${encodeURIComponent(targetSheet)}&spreadsheetId=${firm.spreadsheetId || ''}`;
+  const url = `${backendUrl}?action=get_suppliers&sheet=${encodeURIComponent(targetSheet)}&firmKey=${encodeURIComponent(firmKey || '')}`;
   const { response: res, payload: data } = await fetchJsonWithTimeout(url);
   if (!data?.ok) throw new Error(data?.error || `Failed to fetch suppliers for ${firm.name}.`);
   return data.values || [];

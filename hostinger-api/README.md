@@ -31,4 +31,4 @@ VITE_HOSTINGER_API_URL=https://aqua-flamingo-710728.hostingersite.com//api/index
 
 - The React app now targets the Hostinger API directly.
 - The frontend sends the firm ID (`lnki`, `unit_1`, `unit_2`) as the tenant key.
-- `app_records` stores the row data that used to live in spreadsheet tabs.
+- `app_records` stores the operational records used by the app.

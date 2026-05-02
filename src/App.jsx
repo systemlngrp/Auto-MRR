@@ -82,6 +82,8 @@ const FIRMS = [
   { 
     id: 'lnki', 
     name: 'LNKI', 
+    backendUrl: HOSTINGER_API_URL,
+    firmKey: 'lnki',
     scriptUrl: HOSTINGER_API_URL,
     spreadsheetId: 'lnki',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -101,6 +103,8 @@ const FIRMS = [
   { 
     id: 'unit_1', 
     name: 'UNIT-1', 
+    backendUrl: HOSTINGER_API_URL,
+    firmKey: 'unit_1',
     scriptUrl: HOSTINGER_API_URL,
     spreadsheetId: 'unit_1',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -120,6 +124,8 @@ const FIRMS = [
   { 
     id: 'unit_2', 
     name: 'UNIT-2', 
+    backendUrl: HOSTINGER_API_URL, 
+    firmKey: 'unit_2',
     scriptUrl: HOSTINGER_API_URL, 
     spreadsheetId: 'unit_2',
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -2996,7 +3002,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
           <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px', marginBottom: '10px' }} alt="Logo" />
-          <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm.name}</p>
+          <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm?.name || ''}</p>
           <div style={{ position: 'relative' }}>
             {isMenuCountsLoading ? (
               <div
@@ -4919,7 +4925,7 @@ function App() {
       const maxReel = getMaxOurReelNoFromSheetPayload(payload);
       setHelperSheetReelSeed(maxReel);
     } catch (err) {
-      console.warn('Could not load last reel number from helper sheet:', err?.message || err);
+      console.warn('Could not load last reel number from item records:', err?.message || err);
       setHelperSheetReelSeed(0);
     }
   };
@@ -5372,7 +5378,7 @@ function App() {
       });
       const successMessage = result?.verificationSkipped
         ? `Saved for ${mrrNumber}.`
-        : `Saved for ${mrrNumber}. HELPER SHEET rows found: ${Number(result?.helperSheet?.insertedRows || 0)}. MRR FORM rows found: ${Number(result?.mrrForm?.updatedRows || 0)}.`;
+        : `Saved for ${mrrNumber}. Item rows found: ${Number(result?.helperSheet?.insertedRows || 0)}. MRR rows found: ${Number(result?.mrrForm?.updatedRows || 0)}.`;
       const finalMessage = result?.warning ? `${successMessage} ${result.warning}` : successMessage;
       setStatus(finalMessage);
       showPopup(finalMessage, 'success');
@@ -5576,7 +5582,7 @@ function App() {
       const parentRowsForMrr = parentRows.filter(rowBelongsToMrr);
       const helperRowsForMrr = helperRows.filter(rowBelongsToMrr);
       if (!parentRowsForMrr.length && !helperRowsForMrr.length) {
-        throw new Error(`No saved rows found in backend sheets for MRR ${mrrNumber}.`);
+        throw new Error(`No saved rows found in backend records for MRR ${mrrNumber}.`);
       }
       const parent = parentRowsForMrr.find((row) => {
         const sno = String(row?.s_no || row?.sno || '').trim();
