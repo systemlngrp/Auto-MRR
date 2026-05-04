@@ -1789,6 +1789,54 @@ function getMrrNo(data) {
   return String(source.mrr_no || source.mrr_number || '').trim();
 }
 
+function normalizeGeRow(data = {}) {
+  if (Array.isArray(data)) {
+    return {
+      timestamp: String(data[0] || '').trim(),
+      date: String(data[1] || '').trim(),
+      ge_no: String(data[2] || '').trim(),
+      ge_entry: String(data[2] || '').trim(),
+      supplier: String(data[3] || '').trim(),
+      supplier_name: String(data[3] || '').trim(),
+      invoice_no: String(data[4] || '').trim(),
+      total_value: String(data[5] || '').trim(),
+      truck_no: String(data[6] || '').trim(),
+      mrr: String(data[15] || '').trim(),
+      mrr_complete: String(data[16] || '').trim()
+    };
+  }
+
+  const source = data && typeof data === 'object' ? data : {};
+  const geNo = String(
+    source.ge_no ||
+    source.ge_entry ||
+    source.ge_entry_no ||
+    source['GE Entry'] ||
+    ''
+  ).trim();
+  const supplier = String(
+    source.supplier ||
+    source.supplier_name ||
+    source['Supplier Name'] ||
+    ''
+  ).trim();
+
+  return {
+    ...source,
+    timestamp: String(source.timestamp || source.Timestamp || '').trim(),
+    date: String(source.date || source.Date || '').trim(),
+    ge_no: geNo,
+    ge_entry: geNo,
+    supplier,
+    supplier_name: supplier,
+    invoice_no: String(source.invoice_no || source['Invoice No'] || '').trim(),
+    total_value: String(source.total_value || source.total_invocie_value || source['Total Invocie Value'] || '').trim(),
+    truck_no: String(source.truck_no || source['Truck No'] || '').trim(),
+    mrr: String(source.mrr || source.MRR || '').trim(),
+    mrr_complete: String(source.mrr_complete || source['MRR COMPLETE'] || '').trim()
+  };
+}
+
 function normalizeGateEntryInitialData(initialData, geNo, defaultDate) {
   const source = initialData || {};
   return {
@@ -2056,7 +2104,7 @@ function getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm = null)
   return isAuthenticated ? 2 : 1;
 }
 
-const DEFAULT_MASTER_LOGIN_IDS = new Set(['system', 'system@lngrp']);
+const DEFAULT_MASTER_LOGIN_IDS = new Set(['system', 'system@lngrp', 'system@lngrp.in']);
 const DEFAULT_MASTER_PASSWORD = 'abcd';
 
 function isDefaultMasterLogin(loginId, password) {
