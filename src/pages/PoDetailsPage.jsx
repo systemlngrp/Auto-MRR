@@ -395,10 +395,42 @@ export default function PoDetailsPage({
                   </div>
                   <div>
                     <label style={labelStyle}>Supplier Name <span style={{ color: '#b91c1c' }}>*</span></label>
-                    <input list="po-supplier-options" value={formData.supplier} onChange={(e) => { setFormData({ ...formData, supplier: e.target.value }); setErrors({ ...errors, supplier: '' }); }} style={inputStyle('supplier')} placeholder="Search or select supplier name" />
-                    <datalist id="po-supplier-options">
-                      {suppliers.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}
-                    </datalist>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ flex: 1, position: 'relative' }}>
+                        <input 
+                          list="po-supplier-options" 
+                          value={formData.supplier} 
+                          onChange={(e) => { setFormData({ ...formData, supplier: e.target.value }); setErrors({ ...errors, supplier: '' }); }} 
+                          style={inputStyle('supplier')} 
+                          placeholder="Search or select supplier" 
+                        />
+                        <datalist id="po-supplier-options">
+                          {suppliers.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}
+                        </datalist>
+                      </div>
+                      <button 
+                        className="btn" 
+                        type="button"
+                        onClick={() => {
+                          const name = window.prompt('Enter New Supplier Name:');
+                          if (!name || !name.trim()) return;
+                          const trimmed = name.trim();
+                          const exists = suppliers.some(s => s.toLowerCase() === trimmed.toLowerCase());
+                          if (exists) {
+                            alert('This supplier already exists in the list.');
+                          } else {
+                            // Add to local state for immediate feedback
+                            setSuppliers(prev => [...new Set([...prev, trimmed])].sort());
+                          }
+                          setFormData({ ...formData, supplier: trimmed });
+                          setErrors({ ...errors, supplier: '' });
+                        }}
+                        style={{ padding: '0 12px', fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '42px', minWidth: '42px' }}
+                        title="Add New Supplier"
+                      >
+                        +
+                      </button>
+                    </div>
                     {errorMsg(errors.supplier)}
                   </div>
                   <div>

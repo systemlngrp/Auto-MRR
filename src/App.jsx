@@ -3079,34 +3079,48 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(8); }}
+              onClick={() => { setTempView('form'); setStep(8); }}
             >
-              6. PO DETAILS
+              6. ADD PO
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#4b2162', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setTempView('list'); setStep(8); }}
+            >
+              7. PO LIST / EDIT
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setLabelInitialMrr(''); setStep(5); }}
             >
-              7. DOWNLOAD LABEL
+              8. DOWNLOAD LABEL
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#a95f14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={async () => {
-                setReportFilter('pending');
+                setReportFilter('all');
                 await loadPreviewAllMrr();
                 setStep(7);
               }}
             >
-              8. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
+              9. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(9); }}
+              onClick={() => { setTempView('form'); setStep(9); }}
             >
-              9. USERS
+              10. ADD USER
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0d615b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setTempView('list'); setStep(9); }}
+            >
+              11. USER LIST / EDIT
             </button>
             <button
               className="btn"
