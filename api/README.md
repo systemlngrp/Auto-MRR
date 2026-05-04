@@ -4,7 +4,7 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 
 ## Files
 
-- `schema.sql`: database tables for users, records, and approval logs
+- `schema.sql`: database tables for users, suppliers, PO rows, GE Entry, MRR parent/child rows, and approval logs
 - `config.sample.php`: copy to `config.php` and fill with your real database credentials
 - `index.php`: single API endpoint compatible with the current frontend action flow
 
@@ -32,7 +32,16 @@ VITE_HOSTINGER_API_URL=https://aqua-flamingo-710728.hostingersite.com//api/index
 
 - The React app now targets the Hostinger API directly.
 - The frontend sends the firm ID (`lnki`, `unit_1`, `unit_2`) as the tenant key.
-- `app_records` stores the operational records used by the app.
+- The API now stores business data in dedicated tables:
+- `suppliers`
+- `reel_po_rows`
+- `other_po_rows`
+- `ge_entries`
+- `reel_mrr_parents`
+- `reel_mrr_children`
+- `other_mrr_parents`
+- `other_mrr_children`
+- `app_records` remains in the schema only for backward compatibility and old data inspection.
 - Save requests now write debug entries to `api/save-debug.log` beside `index.php`.
 - Each save response includes a `trace_id` so you can match frontend saves with backend log lines.
 - If the frontend shows `Backend returned an empty or invalid JSON response`, open `https://your-site/api/index.php?action=get_pending_ge&firm_id=lnki` directly in the browser. You should get JSON. If you get HTML or a blank page, `config.php` or PHP itself is failing before the API can respond.
