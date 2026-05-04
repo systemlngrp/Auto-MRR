@@ -4905,12 +4905,13 @@ function App() {
     setStatus(`Syncing ${selectedFirm.name} IDs (Next Number + 1)...`);
     
     try {
-      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl, getFirmCode(selectedFirm), 'GE ENTRY');
+      const baseDate = invoice.date || packing.date || new Date().toLocaleDateString('en-GB');
+      const prefix = `${getFirmCode(selectedFirm)}/${getFinancialYearLabel(baseDate)}/`;
+      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl, prefix, 'GE ENTRY');
       const lastMrr = Number(data.mrr) || 0;
       const lastGe = Number(data.ge) || 0;
       
       console.log(`${selectedFirm.name} Latest IDs:`, { mrr: lastMrr, ge: lastGe });
-      const baseDate = invoice.date || packing.date || new Date().toLocaleDateString('en-GB');
       const nextMrr = formatGateEntryNumber(selectedFirm, baseDate, lastMrr + 1);
       const nextGe = formatGateEntryNumber(selectedFirm, baseDate, lastGe + 1);
       

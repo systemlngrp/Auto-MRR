@@ -1501,7 +1501,7 @@ try {
         jsonOut([
             'ok' => true,
             'mrr' => numericSuffixMax($mrrValues, $prefix),
-            'ge' => numericSuffixMax($geValues),
+            'ge' => numericSuffixMax($geValues, $prefix),
         ]);
     }
 
