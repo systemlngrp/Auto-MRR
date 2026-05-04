@@ -711,8 +711,15 @@ function fetchSheetDataRows(string $firmId, string $sheetName, ?string $mrrNumbe
     $childTable = mrrChildTableForSheet($sheetName);
     $params = ['firm_id' => $firmId];
 
+    // Detect if child table has source_type column
+    $childCols = $pdo->query("DESCRIBE {$childTable}")->fetchAll(PDO::FETCH_COLUMN);
+    $hasSourceType = in_array('source_type', $childCols, true);
+
     if (isHelperSheetName($sheetName)) {
-        $sql = "SELECT * FROM {$childTable} WHERE firm_id = :firm_id AND source_type = 'helper_item'";
+        $sql = "SELECT * FROM {$childTable} WHERE firm_id = :firm_id";
+        if ($hasSourceType) {
+            $sql .= " AND source_type = 'helper_item'";
+        }
         if ($mrrNumber !== null && $mrrNumber !== '') {
             $sql .= " AND mrr_no = :mrr_no";
             $params['mrr_no'] = $mrrNumber;
@@ -741,7 +748,10 @@ function fetchSheetDataRows(string $firmId, string $sheetName, ?string $mrrNumbe
     $parentStmt->execute($params);
     $parents = array_map('hydrateMrrParentRow', $parentStmt->fetchAll());
 
-    $childSql = "SELECT * FROM {$childTable} WHERE firm_id = :firm_id AND source_type = 'mrr_item'";
+    $childSql = "SELECT * FROM {$childTable} WHERE firm_id = :firm_id";
+    if ($hasSourceType) {
+        $childSql .= " AND source_type = 'mrr_item'";
+    }
     if ($mrrNumber !== null && $mrrNumber !== '') {
         $childSql .= " AND mrr_no = :mrr_no";
     }

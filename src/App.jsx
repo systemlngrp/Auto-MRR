@@ -10,6 +10,7 @@ import GateEntryPage from './pages/GateEntryPage';
 import PoDetailsPage from './pages/PoDetailsPage';
 import ReelLabelsPage from './pages/ReelLabelsPage';
 import UsersPage from './pages/UsersPage';
+import GateEntriesPage from './pages/GateEntriesPage';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
