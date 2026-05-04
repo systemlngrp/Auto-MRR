@@ -3044,55 +3044,46 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <button 
               className="btn main" 
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#2c3e50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(4); }}
+              onClick={() => { setStep(11); }}
             >
-              1. NEW GATE ENTRY
-            </button>
-            <button 
-              className="btn main" 
-              disabled={isLoadingPending}
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#4a4f57', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setPendingFilter('edit_ge_entry'); setStep(6); }}
-            >
-              2. EDIT GE ENTRY {menuCountText(pendingCounts.edit_ge_entry)}
-            </button>
-            <button 
-              className="btn main" 
-              disabled={isLoadingPending}
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#27ae60', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setPendingFilter('pending_mrr'); setStep(6); }}
-            >
-              3. PENDING MRR {menuCountText(pendingCounts.pending_mrr)}
+              1. GATE ENTRIES
             </button>
             <button 
               className="btn main" 
               disabled={isLoadingPending || isLoadingEditMrr}
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#2f5a8a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setPendingFilter('edit_mrr'); setStep(6); }}
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#27ae60', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setStep(12); }}
             >
-              4. EDIT MRR {menuCountText(pendingCounts.edit_mrr)}
+              2. MRR ENTRIES {menuCountText(pendingCounts.pending_mrr + pendingCounts.edit_mrr)}
             </button>
             <button
               className="btn main"
               disabled={isLoadingAllApprovals}
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#384152', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setPendingFilter('all_approvals'); setStep(6); }}
+              onClick={() => { setReportFilter('pending'); loadPreviewAllMrr(); setStep(7); }}
             >
-              5. ALL APPROVALS (GROUPED) {menuCountText(pendingCounts.all_approvals)}
+              3. ALL APPROVALS {menuCountText(pendingCounts.all_approvals)}
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setStep(8); }}
             >
-              6. PO DETAILS
+              4. PO DETAILS
+            </button>
+            <button
+              className="btn main"
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => { setStep(9); }}
+            >
+              5. USERS
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setLabelInitialMrr(''); setStep(5); }}
             >
-              7. DOWNLOAD LABEL
+              6. DOWNLOAD LABEL
             </button>
             <button
               className="btn main"
@@ -3103,14 +3094,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 setStep(7);
               }}
             >
-              8. REVIEW ALL MRR {menuCountText(pendingCounts.all_approvals)}
-            </button>
-            <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(9); }}
-            >
-              9. USERS
+              7. REVIEW ALL MRR
             </button>
             <button
               className="btn"
