@@ -1075,7 +1075,8 @@ function saveGeEntryAction(array $payload): array
     if ($existingId) {
         $update = $pdo->prepare("
             UPDATE ge_entries
-            SET mrr_no = :mrr_no,
+            SET ge_no = :ge_no,
+                mrr_no = :mrr_no,
                 entry_date = :entry_date,
                 supplier_name = :supplier_name,
                 invoice_no = :invoice_no,
@@ -1091,7 +1092,7 @@ function saveGeEntryAction(array $payload): array
                 pic8 = :pic8,
                 mrr_complete = :mrr_complete,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = :id
+            WHERE id = :id AND firm_id = :firm_id
         ");
         $update->execute($params + ['id' => $existingId]);
     } else {
@@ -1231,6 +1232,8 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         $updateParent = $pdo->prepare("
             UPDATE {$parentTable}
             SET record_group_id = :record_group_id,
+                ge_no = :ge_no,
+                mrr_no = :mrr_no,
                 mrr_form_id = :mrr_form_id,
                 entry_date = :entry_date,
                 receipt_date = :receipt_date,
@@ -1256,7 +1259,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
                 tally_posted = :tally_posted,
                 extra_json = :extra_json,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = :id
+            WHERE id = :id AND firm_id = :firm_id
         ");
         $updateParent->execute($parentParams + ['id' => $existingParentId]);
         $parentId = (int)$existingParentId;

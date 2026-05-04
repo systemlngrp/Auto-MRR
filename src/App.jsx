@@ -285,6 +285,16 @@ const formatToleranceValue = (value) => {
   if (!Number.isFinite(value)) return '';
   return String(Number(value.toFixed(2)));
 };
+const getPercentageToleranceBounds = (value, tolerancePercent = 15) => {
+  const base = n(value);
+  if (!Number.isFinite(base) || base <= 0) return null;
+  const tolerance = base * (Number(tolerancePercent || 0) / 100);
+  return {
+    min: Math.max(0, base - tolerance),
+    target: base,
+    max: base + tolerance
+  };
+};
 const getQuantityToleranceOptions = (value, tolerance = 15) => {
   const base = n(value);
   if (!Number.isFinite(base) || base <= 0) return [];
@@ -4855,6 +4865,43 @@ function App() {
       : uniqueText(effectivePoRows.map((po) => po.po_no).filter(Boolean));
     return withCurrentOption(options, row.po_no);
   };
+  const getPackingAllocationKey = (row, record = null) => {
+    const source = record || findBestPoRecordForRow(row, getPoRowsForRow(row)) || row;
+    return [
+      String(source?.po_no || row?.po_no || '').trim(),
+      String(source?.po_details || row?.po_details || '').trim(),
+      String(source?.erp_code || row?.erp_code || '').trim(),
+      String(source?.reel_details || row?.item_name || row?.reel_details || '').trim()
+    ].join('|').toLowerCase();
+  };
+  const getPackingPoBaseQuantity = (row, record = null) => {
+    const source = record || findBestPoRecordForRow(row, getPoRowsForRow(row));
+    return n(firstFilled(source?.quantity, source?.quantity_received, 0));
+  };
+  const getAllocatedPackingWeight = (row, excludeIndex = -1) => {
+    const record = findBestPoRecordForRow(row, getPoRowsForRow(row));
+    const targetKey = getPackingAllocationKey(row, record);
+    return ensureRows(packing.items).reduce((sum, item, idx) => {
+      if (idx === excludeIndex) return sum;
+      if (getPackingAllocationKey(item) !== targetKey) return sum;
+      return sum + n(item?.net_wt);
+    }, 0);
+  };
+  const getPackingRemainingQuantityInfo = (row, excludeIndex = -1) => {
+    const record = findBestPoRecordForRow(row, getPoRowsForRow(row));
+    const baseQty = getPackingPoBaseQuantity(row, record);
+    if (!(baseQty > 0)) return null;
+    const allocated = getAllocatedPackingWeight(row, excludeIndex);
+    const bounds = getPercentageToleranceBounds(baseQty, 15);
+    if (!bounds) return null;
+    return {
+      baseQty,
+      allocated,
+      remainingTarget: Math.max(0, bounds.target - allocated),
+      remainingMin: Math.max(0, bounds.min - allocated),
+      remainingMax: Math.max(0, bounds.max - allocated)
+    };
+  };
   const getPoRateOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => String(po.rate || '').trim()).filter(Boolean)), row.po_rate);
   const getPoQtyOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).flatMap((po) => {
     const exactQty = String(firstFilled(po.quantity, po.quantity_received, '')).trim();
@@ -4865,13 +4912,23 @@ function App() {
   }).filter(Boolean)), row.po_quantity);
   const getDescriptionOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => po.reel_details).filter(Boolean)), row.item_name || row.reel_details);
   const getErpCodeOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).filter((po) => !(row.item_name || row.reel_details) || po.reel_details === (row.item_name || row.reel_details)).map((po) => po.erp_code).filter(Boolean)), row.erp_code);
-  const getPackingWeightOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).flatMap((po) => {
-    const exactQty = String(firstFilled(po.quantity_received, po.quantity, '')).trim();
-    return [
-      exactQty,
-      ...getQuantityToleranceOptions(exactQty)
-    ];
-  }).filter(Boolean)), row.net_wt);
+  const getPackingWeightOptions = (row, rowIndex = -1) => {
+    const remainingInfo = getPackingRemainingQuantityInfo(row, rowIndex);
+    if (remainingInfo) {
+      return withCurrentOption(uniqueText([
+        formatToleranceValue(remainingInfo.remainingMin),
+        formatToleranceValue(remainingInfo.remainingTarget),
+        formatToleranceValue(remainingInfo.remainingMax)
+      ].filter(Boolean)), row.net_wt);
+    }
+    return withCurrentOption(uniqueText(getPoRowsForRow(row).flatMap((po) => {
+      const exactQty = String(firstFilled(po.quantity_received, po.quantity, '')).trim();
+      return [
+        exactQty,
+        ...getQuantityToleranceOptions(exactQty)
+      ];
+    }).filter(Boolean)), row.net_wt);
+  };
   const fillPackRowFromPoRecord = (row, record, overrides = {}) => ({
     ...row,
     ...overrides,
@@ -5415,6 +5472,18 @@ function App() {
       if (packingMandatoryError) {
         setStatus(packingMandatoryError);
         showPopup(packingMandatoryError, 'error');
+        return false;
+      }
+      const exceededPackingRow = ensureRows(resolvedPackingForSave.items).find((row, index) => {
+        const remainingInfo = getPackingRemainingQuantityInfo(row, index);
+        if (!remainingInfo) return false;
+        return n(row?.net_wt) > remainingInfo.remainingMax;
+      });
+      if (exceededPackingRow) {
+        const remainingInfo = getPackingRemainingQuantityInfo(exceededPackingRow, resolvedPackingForSave.items.indexOf(exceededPackingRow));
+        const errorMessage = `Net weight exceeds PO allowed limit for ${exceededPackingRow.po_details || exceededPackingRow.po_no || 'selected PO'}. Allowed max is ${formatToleranceValue(remainingInfo?.remainingMax || 0)} after attached rows.`;
+        setStatus(errorMessage);
+        showPopup(errorMessage, 'error');
         return false;
       }
     }
@@ -6782,10 +6851,15 @@ function App() {
                               value={row.net_wt}
                               readOnly={isDataEntryLocked}
                               onChange={(e) => setPackRow(i, 'net_wt', e.target.value)}
-                              placeholder="PO Qty or +/-15"
+                              placeholder="Remaining qty +/-15%"
+                              title={(() => {
+                                const info = getPackingRemainingQuantityInfo(row, i);
+                                if (!info) return 'Enter scanned net weight';
+                                return `Remaining target ${formatToleranceValue(info.remainingTarget)} kg. Allowed range ${formatToleranceValue(info.remainingMin)} to ${formatToleranceValue(info.remainingMax)} kg.`;
+                              })()}
                             />
                             <datalist id={`packing-weight-options-${i}`}>
-                              {getPackingWeightOptions(row).map((option) => <option key={option} value={option} />)}
+                              {getPackingWeightOptions(row, i).map((option) => <option key={option} value={option} />)}
                             </datalist>
                           </td>
                           <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
