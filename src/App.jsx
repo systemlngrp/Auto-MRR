@@ -3485,7 +3485,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                   const prefetched = approvalPrefetchCacheRef.current.get(
                                     buildApprovalPrefetchKey(ge, targetFirm.id, targetType)
                                   )?.data;
-                                  onGeSubmit(ge.ge_no || ge.ge_entry, {
+                                  onSelect(targetFirm, targetType, false, {
                                     ...ge,
                                     return_menu_firm_id: tempFirm?.id || '',
                                     return_menu_type: tempType || 'reel',
@@ -3493,7 +3493,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     prefetched_parent_rows: prefetched?.parentRows || undefined,
                                     prefetched_helper_rows: prefetched?.helperRows || undefined
                                   });
-                                  onSelect(targetFirm, targetType);
                                 }}
                               >
                                 OPEN
@@ -3812,8 +3811,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               selectedPending.pending_stage = 'completed_mrr';
                               selectedPending.force_load_saved = true;
                             }
-                            onGeSubmit(ge.ge_no || ge.ge_entry, selectedPending);
-                            onSelect(tempFirm, tempType);
+                            onSelect(tempFirm, tempType, false, selectedPending);
                           }}
                         >
                           {pendingFilter === 'edit_ge_entry' || pendingFilter === 'edit_mrr' ? 'EDIT' : 'OPEN'}
@@ -5182,7 +5180,7 @@ function App() {
     }
   };
 
-  const handleFirmSelection = (firm, type = 'reel', openPending = false) => {
+  const handleFirmSelection = (firm, type = 'reel', openPending = false, pendingItem = null) => {
     const firmHeader = firm?.header ? { ...firm.header, note: '' } : defaultHeader();
     const nextInvoice = normalizeInvoice({
       ...blankInvoice,
@@ -5211,9 +5209,52 @@ function App() {
     setMrrType(type);
     setIsFirmSelected(true);
     setTriggerPendingModal(openPending);
-    setGeData(null);
-    setInvoice(nextInvoice);
-    setPacking(nextPacking);
+    if (pendingItem) {
+      const geNo = pendingItem.ge_entry || pendingItem.ge_no || pendingItem.ge_entry_no || '';
+      const supplier = pendingItem.supplier_name || pendingItem.supplier || '';
+      const truck = pendingItem.truck_no || '';
+      const invNo = pendingItem.invoice_no || '';
+      const mrrNo = pendingItem.mrr_number || pendingItem.mrr_no || '';
+      const docDate = pendingItem.date || '';
+      const receiptDate = getTodayInputDate();
+      setGeData(pendingItem);
+      setInvoice(normalizeInvoice({
+        ...blankInvoice,
+        header: firmHeader,
+        ge_no: String(geNo),
+        mrr_no: String(mrrNo),
+        date: docDate || blankInvoice.date,
+        receipt_date: receiptDate,
+        vehicle_no: truck,
+        invoice_no: invNo,
+        signatory_label: firm?.name || blankInvoice.signatory_label || '',
+        bill_to: {
+          ...blankInvoice.bill_to,
+          name_address: supplier
+        },
+        goods: []
+      }));
+      setPacking(normalizePacking({
+        ...blankPacking,
+        header: firmHeader,
+        ge_no: String(geNo),
+        mrr_no: String(mrrNo),
+        date: docDate || blankPacking.date,
+        receipt_date: receiptDate,
+        truck_no: truck,
+        challan_no: invNo,
+        signatory_label: firm?.name || blankPacking.signatory_label || '',
+        buyer: {
+          ...blankPacking.buyer,
+          name_address: supplier
+        },
+        items: []
+      }));
+    } else {
+      setGeData(null);
+      setInvoice(nextInvoice);
+      setPacking(nextPacking);
+    }
     approvalLoadKeyRef.current = '';
     approvalSnapshotRef.current = '';
   };
