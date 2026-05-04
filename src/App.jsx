@@ -2446,7 +2446,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return [
       firmId || item?.firm_id || '',
       type || item?.mrr_type || '',
-      String(item?.mrr_number || item?.mrr_no || '').trim()
+      String(item?.mrr_number || item?.mrr_no || '').trim(),
+      String(item?.ge_no || item?.ge_entry || '').trim()
     ].join('|');
   };
 
@@ -2466,11 +2467,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       fetchSheetRangeWithParams({
         sheet: getSheetName(targetFirm.mrr, targetType),
         mrr_number: mrrNumber,
+        ge_no: String(item?.ge_no || item?.ge_entry || '').trim(),
         spreadsheetId: targetFirm.spreadsheetId
       }, targetFirm.scriptUrl),
       fetchSheetRangeWithParams({
         sheet: getSheetName(targetFirm.helper, targetType),
         mrr_number: mrrNumber,
+        ge_no: String(item?.ge_no || item?.ge_entry || '').trim(),
         spreadsheetId: targetFirm.spreadsheetId
       }, targetFirm.scriptUrl).catch(() => null)
     ]).then(([parentPayload, helperPayload]) => {
@@ -2638,14 +2641,16 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       const byMrr = new Map();
       rows.forEach((rowObj) => {
         const mrrNo = readValue(rowObj, ['MRR No', 'MRR Number', 'mrr_no', 'mrr_number']);
+        const geNo = readValue(rowObj, ['GE Entry', 'GE No', 'ge_no', 'ge_entry']);
         if (!mrrNo) return;
-        byMrr.set(mrrNo, {
+        const recordKey = [String(geNo).trim(), String(mrrNo).trim()].join('|');
+        byMrr.set(recordKey, {
           pending_stage: 'completed_mrr',
           force_load_saved: true,
           mrr_no: mrrNo,
           mrr_number: mrrNo,
-          ge_no: readValue(rowObj, ['GE Entry', 'GE No', 'ge_no', 'ge_entry']),
-          ge_entry: readValue(rowObj, ['GE Entry', 'GE No', 'ge_no', 'ge_entry']),
+          ge_no: geNo,
+          ge_entry: geNo,
           date: readValue(rowObj, ['Date', 'date']),
           supplier: readValue(rowObj, ['SUPPLIER', 'supplier']),
           invoice_no: readValue(rowObj, ['Sup Doc No', 'Supplier Document No', 'sup_doc_no', 'invoice_no']),
@@ -3432,6 +3437,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                       decision: 'approve',
                                       stage: ge.pending_stage || activeStage.key,
                                       mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                      geNo: ge.ge_no || ge.ge_entry || '',
                                       userEmail: currentUser?.email || '',
                                       plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
                                       accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
@@ -3479,6 +3485,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                         decision: 'reject',
                                         stage: ge.pending_stage || activeStage.key,
                                         mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                        geNo: ge.ge_no || ge.ge_entry || '',
                                         userEmail: currentUser?.email || '',
                                         plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
                                         accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
@@ -3625,6 +3632,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               decision: 'approve',
                               stage: ge.pending_stage || activeStage.key,
                               mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                              geNo: ge.ge_no || ge.ge_entry || '',
                               userEmail: currentUser?.email || '',
                               plantHeadRemark: String(approvalDraft.plant_head_remark || '').trim(),
                               accountsRemark: String(approvalDraft.accounts_remark || '').trim(),
@@ -3736,6 +3744,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     decision: 'approve',
                                     stage: pendingFilter,
                                     mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                    geNo: ge.ge_no || ge.ge_entry || '',
                                     userEmail: currentUser?.email || '',
                                     mrrSheetName: getSheetName(tempFirm.mrr, tempType),
                                     helperSheetName: getSheetName(tempFirm.helper, tempType),
@@ -3782,6 +3791,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                       decision: 'reject',
                                       stage: pendingFilter,
                                       mrrNumber: ge.mrr_number || ge.mrr_no || '',
+                                      geNo: ge.ge_no || ge.ge_entry || '',
                                       userEmail: currentUser?.email || '',
                                       plantHeadRemark: plantHeadRemarkInput,
                                       accountsRemark: accountsRemarkInput,
@@ -5118,6 +5128,7 @@ function App() {
         decision,
         stage: approvalStage,
         mrrNumber,
+        geNo: geData?.ge_no || geData?.ge_entry || invoice.ge_no || packing.ge_no || '',
         userEmail: currentUser?.email || '',
         plantHeadRemark: approvalStage === 'pending_plant_head_approval' ? plantHeadRemark : '',
         accountsRemark: approvalStage === 'pending_accounts_approval' ? accountsRemark : '',
@@ -5563,6 +5574,7 @@ function App() {
 
   const loadSavedDataForApproval = async (pendingItem, firmCtx, typeCtx) => {
     const mrrNumber = String(pendingItem?.mrr_number || pendingItem?.mrr_no || '').trim();
+    const geNo = String(pendingItem?.ge_no || pendingItem?.ge_entry || '').trim();
     if (!mrrNumber) return;
     const mrrSheetName = getSheetName(firmCtx.mrr, typeCtx);
     const helperSheetName = getSheetName(firmCtx.helper, typeCtx);
@@ -5593,11 +5605,13 @@ function App() {
           fetchSheetRangeWithParams({
             sheet: mrrSheetName,
             mrr_number: mrrNumber,
+            ge_no: geNo,
             spreadsheetId
           }, scriptUrl),
           fetchSheetRangeWithParams({
             sheet: helperSheetName,
             mrr_number: mrrNumber,
+            ge_no: geNo,
             spreadsheetId
           }, scriptUrl).catch(() => null)
         ]);

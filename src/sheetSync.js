@@ -334,6 +334,7 @@ export async function approvePendingStage(options = {}) {
     firm_id: firmId,
     spreadsheetId: firmId,
     mrr_number: options.mrrNumber,
+    ge_no: options.geNo,
     stage: options.stage,
     decision: options.decision,
     user_email: options.userEmail,

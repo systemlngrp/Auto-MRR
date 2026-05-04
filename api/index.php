@@ -261,6 +261,19 @@ function determinePendingStage(array $data): string
     return 'completed';
 }
 
+function makeRecordGroupId(string $mrrNumber, string $geNo = ''): string
+{
+    $mrrNumber = trim($mrrNumber);
+    $geNo = trim($geNo);
+    if ($mrrNumber === '') {
+        return $geNo;
+    }
+    if ($geNo === '') {
+        return $mrrNumber;
+    }
+    return $geNo . '::' . $mrrNumber;
+}
+
 function upsertRecord(array $record): void
 {
     $pdo = db();
@@ -279,17 +292,22 @@ function upsertRecord(array $record): void
     $stmt->execute($record);
 }
 
-function deleteSheetRows(string $firmId, string $sheetName, string $mrrNumber, array $rowTypes): void
+function deleteSheetRows(string $firmId, string $sheetName, string $mrrNumber, array $rowTypes, ?string $geNo = null): void
 {
     $pdo = db();
     $placeholders = implode(',', array_fill(0, count($rowTypes), '?'));
     $sql = "DELETE FROM app_records WHERE firm_id = ? AND sheet_name = ? AND mrr_number = ? AND row_type IN ($placeholders)";
-    $params = array_merge([$firmId, $sheetName, $mrrNumber], $rowTypes);
+    $params = [$firmId, $sheetName, $mrrNumber];
+    if ($geNo !== null && trim($geNo) !== '') {
+        $sql .= " AND ge_no = ?";
+        $params[] = $geNo;
+    }
+    $params = array_merge($params, $rowTypes);
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 }
 
-function fetchRecordRows(string $firmId, string $sheetName, ?string $mrrNumber = null): array
+function fetchRecordRows(string $firmId, string $sheetName, ?string $mrrNumber = null, ?string $geNo = null): array
 {
     $pdo = db();
     $sql = "SELECT * FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet_name";
@@ -300,6 +318,10 @@ function fetchRecordRows(string $firmId, string $sheetName, ?string $mrrNumber =
     if ($mrrNumber !== null && $mrrNumber !== '') {
         $sql .= " AND mrr_number = :mrr_number";
         $params['mrr_number'] = $mrrNumber;
+    }
+    if ($geNo !== null && $geNo !== '') {
+        $sql .= " AND ge_no = :ge_no";
+        $params['ge_no'] = $geNo;
     }
     $sql .= " ORDER BY mrr_number DESC, row_sort ASC, id ASC";
     $stmt = $pdo->prepare($sql);
@@ -521,15 +543,22 @@ function getAction(): string
     return strtolower(trim((string)($_GET['action'] ?? $_POST['action'] ?? '')));
 }
 
-function fetchParentByMrr(string $firmId, string $sheetName, string $mrrNumber): ?array
+function fetchParentByMrr(string $firmId, string $sheetName, string $mrrNumber, ?string $geNo = null): ?array
 {
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT * FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet_name AND mrr_number = :mrr_number AND row_type = 'parent' ORDER BY id DESC LIMIT 1");
-    $stmt->execute([
+    $sql = "SELECT * FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet_name AND mrr_number = :mrr_number AND row_type = 'parent'";
+    $params = [
         'firm_id' => $firmId,
         'sheet_name' => $sheetName,
         'mrr_number' => $mrrNumber,
-    ]);
+    ];
+    if ($geNo !== null && trim($geNo) !== '') {
+        $sql .= " AND ge_no = :ge_no";
+        $params['ge_no'] = $geNo;
+    }
+    $sql .= " ORDER BY id DESC LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -555,11 +584,18 @@ function writeApprovalLog(string $firmId, string $mrrNumber, string $stage, stri
 function updateApprovalDataForMrr(string $firmId, string $mrrNumber, string $stage, string $decision, array $params): array
 {
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT * FROM app_records WHERE firm_id = :firm_id AND mrr_number = :mrr_number");
-    $stmt->execute([
+    $geNo = trim((string)($params['ge_no'] ?? ''));
+    $sql = "SELECT * FROM app_records WHERE firm_id = :firm_id AND mrr_number = :mrr_number";
+    $queryParams = [
         'firm_id' => $firmId,
         'mrr_number' => $mrrNumber,
-    ]);
+    ];
+    if ($geNo !== '') {
+        $sql .= " AND ge_no = :ge_no";
+        $queryParams['ge_no'] = $geNo;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($queryParams);
     $rows = $stmt->fetchAll();
     if (!$rows) {
         throw new RuntimeException('MRR not found for approval.');
@@ -647,7 +683,12 @@ function updateApprovalDataForMrr(string $firmId, string $mrrNumber, string $sta
 
     writeApprovalLog($firmId, $mrrNumber, $stage, $decision, $userEmail, $remark, $params);
 
-    $parent = fetchParentByMrr($firmId, value(decodeData($rows[0]), 'sheet_name') ?: ($rows[0]['sheet_name'] ?? 'MRR FORM'), $mrrNumber);
+    $parent = fetchParentByMrr(
+        $firmId,
+        value(decodeData($rows[0]), 'sheet_name') ?: ($rows[0]['sheet_name'] ?? 'MRR FORM'),
+        $mrrNumber,
+        $geNo !== '' ? $geNo : (($rows[0]['ge_no'] ?? '') ?: null)
+    );
     $payload = $parent ? decodeData($parent) : [];
 
     return [
@@ -751,6 +792,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
     $mrrFormRecord = is_array($derived['mrrFormRecord'] ?? null) ? $derived['mrrFormRecord'] : [];
     $helperRows = is_array($derived['helperRows'] ?? null) ? $derived['helperRows'] : [];
     $invoiceGoods = is_array($invoice['goods'] ?? null) ? $invoice['goods'] : [];
+    $recordGroupId = makeRecordGroupId($mrrNumber, $geNo);
 
     $parentData = array_merge($mrrFormRecord, [
         'mrr_form_id' => value($mrrFormRecord, 'mrr_form_id') ?: ('MRR-' . $mrrNumber),
@@ -767,7 +809,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         'md_approval' => value($mrrFormRecord, 'md_approval'),
     ]);
 
-    $existingParent = fetchParentByMrr($firmId, $sheetName, $mrrNumber);
+    $existingParent = fetchParentByMrr($firmId, $sheetName, $mrrNumber, $geNo !== '' ? $geNo : null);
     if ($existingParent) {
         $existingData = decodeData($existingParent);
         foreach ([
@@ -785,15 +827,15 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
     }
 
     $parentPendingStage = determinePendingStage($parentData);
-    deleteSheetRows($firmId, $sheetName, $mrrNumber, ['parent', 'mrr_item']);
-    deleteSheetRows($firmId, $helperSheetName, $mrrNumber, ['helper_item']);
+    deleteSheetRows($firmId, $sheetName, $mrrNumber, ['parent', 'mrr_item'], $geNo !== '' ? $geNo : null);
+    deleteSheetRows($firmId, $helperSheetName, $mrrNumber, ['helper_item'], $geNo !== '' ? $geNo : null);
 
     upsertRecord([
         'firm_id' => $firmId,
         'sheet_name' => $sheetName,
         'row_type' => 'parent',
         'row_sort' => 0,
-        'record_group_id' => $mrrNumber,
+        'record_group_id' => $recordGroupId,
         'mrr_number' => $mrrNumber,
         'ge_no' => $geNo,
         'invoice_no' => value($parentData, 'sup_doc_no'),
@@ -835,7 +877,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'sheet_name' => $sheetName,
             'row_type' => 'mrr_item',
             'row_sort' => $index + 1,
-            'record_group_id' => $mrrNumber,
+            'record_group_id' => $recordGroupId,
             'mrr_number' => $mrrNumber,
             'ge_no' => $geNo,
             'invoice_no' => value($parentData, 'sup_doc_no'),
@@ -866,7 +908,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'sheet_name' => $helperSheetName,
             'row_type' => 'helper_item',
             'row_sort' => $index + 1,
-            'record_group_id' => $mrrNumber,
+            'record_group_id' => $recordGroupId,
             'mrr_number' => $mrrNumber,
             'ge_no' => $geNo,
             'invoice_no' => value($parentData, 'sup_doc_no'),
@@ -959,7 +1001,8 @@ try {
     if ($action === 'get_rows') {
         $sheetName = trim((string)($_GET['sheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $mrrNumber = trim((string)($_GET['mrr_number'] ?? ''));
-        $rows = fetchRecordRows($firmId, $sheetName, $mrrNumber !== '' ? $mrrNumber : null);
+        $geNo = trim((string)($_GET['ge_no'] ?? ''));
+        $rows = fetchRecordRows($firmId, $sheetName, $mrrNumber !== '' ? $mrrNumber : null, $geNo !== '' ? $geNo : null);
         jsonOut([
             'ok' => true,
             'count' => $mrrNumber !== '' ? count($rows) : max(0, count($rows)),
@@ -1038,8 +1081,8 @@ try {
                 'invoice_no' => value($data, 'invoice_no'),
                 'truck_no' => value($data, 'truck_no'),
                 'total_value' => value($data, 'total_value'),
-                'mrr_no' => '',
-                'mrr_number' => '',
+                'mrr_no' => value($data, 'mrr_no', 'mrr_number'),
+                'mrr_number' => value($data, 'mrr_number', 'mrr_no'),
             ];
         }
 
@@ -1105,8 +1148,9 @@ try {
         $mrrSheetName = trim((string)($_GET['mrrSheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $helperSheetName = trim((string)($_GET['helperSheet'] ?? 'HELPER SHEET')) ?: 'HELPER SHEET';
         $mrrNumber = trim((string)($_GET['mrr_number'] ?? ''));
-        $mrrRows = $mrrNumber !== '' ? fetchRecordRows($firmId, $mrrSheetName, $mrrNumber) : [];
-        $helperRows = $mrrNumber !== '' ? fetchRecordRows($firmId, $helperSheetName, $mrrNumber) : [];
+        $geNo = trim((string)($_GET['ge_no'] ?? ''));
+        $mrrRows = $mrrNumber !== '' ? fetchRecordRows($firmId, $mrrSheetName, $mrrNumber, $geNo !== '' ? $geNo : null) : [];
+        $helperRows = $mrrNumber !== '' ? fetchRecordRows($firmId, $helperSheetName, $mrrNumber, $geNo !== '' ? $geNo : null) : [];
         jsonOut([
             'ok' => true,
             'mrrSheet' => ['exists' => true, 'keyColumnFound' => true],
