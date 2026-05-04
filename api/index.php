@@ -730,9 +730,11 @@ function fetchSheetDataRows(string $firmId, string $sheetName, ?string $mrrNumbe
     $parentSql = "SELECT * FROM {$parentTable} WHERE firm_id = :firm_id";
     if ($mrrNumber !== null && $mrrNumber !== '') {
         $parentSql .= " AND mrr_no = :mrr_no";
+        $params['mrr_no'] = $mrrNumber;
     }
     if ($geNo !== null && $geNo !== '') {
         $parentSql .= " AND ge_no = :ge_no";
+        $params['ge_no'] = $geNo;
     }
     $parentSql .= " ORDER BY mrr_no DESC, id ASC";
     $parentStmt = $pdo->prepare($parentSql);
