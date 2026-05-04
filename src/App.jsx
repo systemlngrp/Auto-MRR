@@ -2832,6 +2832,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   useEffect(() => {
     if (isAuthenticated) return;
+    const currentPath = normalizeAppPath(getCurrentPathname());
+    if (currentPath === APP_ROUTES.geentry) {
+      setStep(4);
+      setTempFirm((prev) => prev || initialFirm || firms[0] || null);
+      setTempType((prev) => prev || initialType || 'reel');
+      return;
+    }
     setStep(1);
     setTempFirm(null);
     setPendingGEs([]);
@@ -2840,7 +2847,14 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     setLabelInitialMrr('');
     setPendingFilter('pending_mrr');
     setValidatedUsersByFirm({});
-  }, [isAuthenticated]);
+  }, [firms, initialFirm, initialType, isAuthenticated]);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    if (tempFirm) return;
+    setTempFirm(initialFirm || firms[0] || null);
+    setTempType((prev) => prev || initialType || 'reel');
+  }, [firms, initialFirm, initialType, step, tempFirm]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -2863,8 +2877,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 ? APP_ROUTES.approvals
                 : step === 7
                   ? APP_ROUTES.reports
-                  : APP_ROUTES.login;
-    onRouteChange(nextPath);
+                  : step === 11
+                    ? '/gate-entries'
+                    : step === 12
+                      ? '/mrr-modes'
+                      : APP_ROUTES.login;    onRouteChange(nextPath);
   }, [onRouteChange, step]);
 
   const userBadge = <ProfileMenu currentUser={currentUser} onLogout={onLogout} zIndex={10001} />;
@@ -4054,6 +4071,67 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <ReelLabelPrintArea reels={directLabelPrintJob.reels} selectedFirm={directLabelPrintJob.firm} printMode={directLabelPrintJob.mode} />
           </section>
         ) : null}
+      </div>
+    );
+  }
+
+  if (step === 11) {
+    return (
+      <>
+        {userBadge}
+        <GateEntriesPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchSheetRange,
+            normalizeGeRow,
+            getSheetName
+          }}
+          onBack={() => setStep(3)}
+          onAdd={() => {
+            setEditData(null);
+            setStep(4);
+          }}
+          onEdit={(row) => {
+            setEditData(row);
+            setStep(4);
+          }}
+        />
+      </>
+    );
+  }
+
+  if (step === 12) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '500px', width: '90%', textAlign: 'center' }}>
+          <h2 style={{ marginBottom: '20px' }}>Select MRR Mode</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button
+              className="btn main"
+              style={{ padding: '16px', background: '#27ae60' }}
+              onClick={() => {
+                setTempType('reel');
+                setPendingFilter('pending_mrr');
+                setStep(6);
+              }}
+            >
+              REEL MRR
+            </button>
+            <button
+              className="btn main"
+              style={{ padding: '16px', background: '#27ae60' }}
+              onClick={() => {
+                setTempType('other');
+                setPendingFilter('pending_mrr');
+                setStep(6);
+              }}
+            >
+              OTHER MRR
+            </button>
+            <button className="btn" onClick={() => setStep(3)}>Back</button>
+          </div>
+        </div>
       </div>
     );
   }
