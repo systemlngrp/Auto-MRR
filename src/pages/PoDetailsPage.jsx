@@ -51,6 +51,8 @@ export default function PoDetailsPage({
   const [status, setStatus] = useState('');
   const [suppliers, setSuppliers] = useState([]);
   const [manualFields, setManualFields] = useState({ po_details: false, reel_details: false });
+  const [isAddingSupplier, setIsAddingSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
 
   const formatDisplayDate = (value) => {
     const text = String(value || '').trim();
@@ -212,6 +214,8 @@ export default function PoDetailsPage({
     setEditingIndex(-1);
     setFormData({ ...blankPoRow(), sno: String(rows.length + 1) });
     setManualFields({ po_details: false, reel_details: false });
+    setIsAddingSupplier(false);
+    setNewSupplierName('');
     setErrors({});
     setView('form');
   };
@@ -225,8 +229,23 @@ export default function PoDetailsPage({
       po_details: !!String(row.po_details || '').trim() && !isSameGeneratedValue(row.po_details, buildPoDetailsText(row)),
       reel_details: !!String(row.reel_details || '').trim() && !isSameGeneratedValue(row.reel_details, buildReelDetailsText(row))
     });
+    setIsAddingSupplier(false);
+    setNewSupplierName('');
     setErrors({});
     setView('form');
+  };
+
+  const addSupplierInline = () => {
+    const trimmed = String(newSupplierName || '').trim();
+    if (!trimmed) return;
+    const exists = suppliers.some((supplier) => supplier.toLowerCase() === trimmed.toLowerCase());
+    if (!exists) {
+      setSuppliers((prev) => [...new Set([...prev, trimmed])].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+    }
+    setFormData((prev) => ({ ...prev, supplier: trimmed }));
+    setErrors((prev) => ({ ...prev, supplier: '' }));
+    setNewSupplierName('');
+    setIsAddingSupplier(false);
   };
 
   const validate = () => {
@@ -412,18 +431,8 @@ export default function PoDetailsPage({
                         className="btn" 
                         type="button"
                         onClick={() => {
-                          const name = window.prompt('Enter New Supplier Name:');
-                          if (!name || !name.trim()) return;
-                          const trimmed = name.trim();
-                          const exists = suppliers.some(s => s.toLowerCase() === trimmed.toLowerCase());
-                          if (exists) {
-                            alert('This supplier already exists in the list.');
-                          } else {
-                            // Add to local state for immediate feedback
-                            setSuppliers(prev => [...new Set([...prev, trimmed])].sort());
-                          }
-                          setFormData({ ...formData, supplier: trimmed });
-                          setErrors({ ...errors, supplier: '' });
+                          setIsAddingSupplier((prev) => !prev);
+                          setNewSupplierName(formData.supplier || '');
                         }}
                         style={{ padding: '0 12px', fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '42px', minWidth: '42px' }}
                         title="Add New Supplier"
@@ -431,6 +440,25 @@ export default function PoDetailsPage({
                         +
                       </button>
                     </div>
+                    {isAddingSupplier ? (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <input
+                          value={newSupplierName}
+                          onChange={(e) => setNewSupplierName(e.target.value)}
+                          style={inputStyle('supplier')}
+                          placeholder="Enter new supplier name"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addSupplierInline();
+                            }
+                          }}
+                        />
+                        <button type="button" className="btn main" onClick={addSupplierInline} style={{ minWidth: '74px' }}>
+                          Add
+                        </button>
+                      </div>
+                    ) : null}
                     {errorMsg(errors.supplier)}
                   </div>
                   <div>

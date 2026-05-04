@@ -7,16 +7,30 @@ export const GE_SHEET_NAME = 'GE ENTRY';
 
 const DEFAULT_BACKEND_URL = String(import.meta.env.VITE_HOSTINGER_API_URL || '').trim();
 
+function normalizeBackendUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const resolved = typeof window !== 'undefined'
+      ? new URL(raw, window.location.origin)
+      : new URL(raw);
+    resolved.pathname = resolved.pathname.replace(/\/{2,}/g, '/');
+    return resolved.toString();
+  } catch {
+    return raw.replace(/([^:]\/)\/+/g, '$1');
+  }
+}
+
 function getBackendUrl(source) {
   if (typeof source === 'string') {
-    return String(source || '').trim() || DEFAULT_BACKEND_URL;
+    return normalizeBackendUrl(String(source || '').trim() || DEFAULT_BACKEND_URL);
   }
-  return String(
+  return normalizeBackendUrl(String(
     source?.backendUrl ||
     source?.scriptUrl ||
     source?.apiUrl ||
     DEFAULT_BACKEND_URL
-  ).trim();
+  ).trim());
 }
 
 function getFirmKey(source) {
