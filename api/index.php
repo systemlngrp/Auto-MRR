@@ -390,6 +390,17 @@ function poTableForSheet(string $sheetName): string
     return strcasecmp($sheetName, 'OTHER PO') === 0 ? 'other_po_rows' : 'reel_po_rows';
 }
 
+function tableColumns(string $tableName): array
+{
+    static $cache = [];
+    if (isset($cache[$tableName])) {
+        return $cache[$tableName];
+    }
+    $stmt = db()->query("DESCRIBE {$tableName}");
+    $cache[$tableName] = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    return $cache[$tableName];
+}
+
 function hydrateMrrParentRow(array $row): array
 {
     $data = decodeExtraJson($row);
@@ -711,9 +722,7 @@ function fetchSheetDataRows(string $firmId, string $sheetName, ?string $mrrNumbe
     $childTable = mrrChildTableForSheet($sheetName);
     $params = ['firm_id' => $firmId];
 
-    // Detect if child table has source_type column
-    $childCols = $pdo->query("DESCRIBE {$childTable}")->fetchAll(PDO::FETCH_COLUMN);
-    $hasSourceType = in_array('source_type', $childCols, true);
+    $hasSourceType = in_array('source_type', tableColumns($childTable), true);
 
     if (isHelperSheetName($sheetName)) {
         $sql = "SELECT * FROM {$childTable} WHERE firm_id = :firm_id";
@@ -1153,6 +1162,8 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
     $recordGroupId = makeRecordGroupId($mrrNumber, $geNo);
     $parentTable = mrrParentTableForSheet($sheetName);
     $childTable = mrrChildTableForSheet($sheetName);
+    $childColumns = tableColumns($childTable);
+    $hasSourceType = in_array('source_type', $childColumns, true);
 
     $parentData = array_merge($mrrFormRecord, [
         'mrr_form_id' => value($mrrFormRecord, 'mrr_form_id') ?: ('MRR-' . $mrrNumber),
@@ -1310,7 +1321,8 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'quantity' => value($item, 'quantity'),
             'po_quantity' => value($item, 'po_quantity'),
         ]);
-        $insertChild = $pdo->prepare("
+        $insertChildSql = $hasSourceType
+            ? "
             INSERT INTO {$childTable} (
                 firm_id, record_group_id, ge_no, mrr_no, parent_id, source_type, row_sort, s_no, description_text,
                 hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
@@ -1321,8 +1333,20 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
                 :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
                 :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
                 :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
-            )
-        ");
+            )"
+            : "
+            INSERT INTO {$childTable} (
+                firm_id, record_group_id, ge_no, mrr_no, parent_id, row_sort, s_no, description_text,
+                hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
+                unit_value, reels_value, weight_value, rate_value, amount_value, quantity_value, po_quantity,
+                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, extra_json
+            ) VALUES (
+                :firm_id, :record_group_id, :ge_no, :mrr_no, :parent_id, :row_sort, :s_no, :description_text,
+                :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
+                :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
+                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
+            )";
+        $insertChild = $pdo->prepare($insertChildSql);
         $insertChild->execute([
             'firm_id' => $firmId,
             'record_group_id' => $recordGroupId,
@@ -1367,7 +1391,8 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'date' => value($item, 'date') ?: value($parentData, 'date'),
             'sup_doc_no' => value($item, 'sup_doc_no') ?: value($parentData, 'sup_doc_no'),
         ]);
-        $insertHelper = $pdo->prepare("
+        $insertHelperSql = $hasSourceType
+            ? "
             INSERT INTO {$childTable} (
                 firm_id, record_group_id, ge_no, mrr_no, parent_id, source_type, row_sort, s_no, description_text,
                 hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
@@ -1378,8 +1403,20 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
                 :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
                 :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
                 :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
-            )
-        ");
+            )"
+            : "
+            INSERT INTO {$childTable} (
+                firm_id, record_group_id, ge_no, mrr_no, parent_id, row_sort, s_no, description_text,
+                hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
+                unit_value, reels_value, weight_value, rate_value, amount_value, quantity_value, po_quantity,
+                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, extra_json
+            ) VALUES (
+                :firm_id, :record_group_id, :ge_no, :mrr_no, :parent_id, :row_sort, :s_no, :description_text,
+                :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
+                :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
+                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
+            )";
+        $insertHelper = $pdo->prepare($insertHelperSql);
         $insertHelper->execute([
             'firm_id' => $firmId,
             'record_group_id' => $recordGroupId,

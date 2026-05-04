@@ -332,3 +332,15 @@ VALUES
   ('lnki', 'system', 'system@lngrp', 'System Test', 'admin', 'abcd', 1)
 ON DUPLICATE KEY UPDATE
   updated_at = CURRENT_TIMESTAMP;
+
+ALTER TABLE reel_mrr_children
+  ADD COLUMN IF NOT EXISTS source_type VARCHAR(40) NOT NULL DEFAULT 'mrr_item' AFTER parent_id;
+
+ALTER TABLE other_mrr_children
+  ADD COLUMN IF NOT EXISTS source_type VARCHAR(40) NOT NULL DEFAULT 'mrr_item' AFTER parent_id;
+
+ALTER TABLE reel_mrr_children
+  ADD KEY idx_reel_mrr_child_source (firm_id, ge_no, mrr_no, source_type, row_sort);
+
+ALTER TABLE other_mrr_children
+  ADD KEY idx_other_mrr_child_source (firm_id, ge_no, mrr_no, source_type, row_sort);
