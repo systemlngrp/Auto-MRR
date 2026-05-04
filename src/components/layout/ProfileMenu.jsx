@@ -32,20 +32,22 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          minWidth: '54px',
-          padding: '6px 10px 6px 6px',
+          justifyContent: 'center',
+          width: '46px',
+          height: '46px',
+          padding: '0',
           borderRadius: '999px',
           background: '#ffffff',
           border: '1px solid #b8b0a3',
-          boxShadow: '0 10px 24px rgba(0,0,0,0.14)'
+          boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
+          overflow: 'hidden'
         }}
         onClick={() => setOpen((v) => !v)}
       >
         <span
           style={{
-            width: '34px',
-            height: '34px',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #1f2937 0%, #475569 100%)',
             color: '#fff',
@@ -60,10 +62,6 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
         >
           {initials}
         </span>
-        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#111' }}>{displayName}</span>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280' }}>Profile</span>
-        </span>
       </button>
       {open ? (
         <div
@@ -74,14 +72,16 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
             border: '1px solid #c9c2b6',
             borderRadius: '14px',
             boxShadow: '0 16px 32px rgba(0,0,0,0.18)',
-            minWidth: '190px',
-            padding: '10px'
+            minWidth: '180px',
+            padding: '12px'
           }}
         >
-          <div style={{ padding: '4px 4px 10px', borderBottom: '1px solid #ece7de', marginBottom: '10px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 800, color: '#111' }}>{displayName}</div>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', marginTop: '2px' }}>
-              {currentUser?.email || 'Logged in user'}
+          <div style={{ padding: '0 2px 10px', borderBottom: '1px solid #ece7de', marginBottom: '12px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Logged In
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: 800, color: '#111', marginTop: '4px' }}>
+              {displayName}
             </div>
           </div>
           <button

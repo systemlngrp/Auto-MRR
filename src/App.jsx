@@ -2476,8 +2476,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     ]).then(([parentPayload, helperPayload]) => {
       entry.status = 'resolved';
       entry.data = {
-        parentRows: Array.isArray(parentPayload?.values) ? parentPayload.values : [],
-        helperRows: Array.isArray(helperPayload?.values) ? helperPayload.values : []
+        parentRows: Array.isArray(parentPayload?.data) ? parentPayload.data : [],
+        helperRows: Array.isArray(helperPayload?.data) ? helperPayload.data : []
       };
       setApprovalPrefetchTick((prev) => prev + 1);
       return entry.data;
@@ -5570,10 +5570,24 @@ function App() {
     const spreadsheetId = firmCtx.spreadsheetId;
     const prefetchedParentRows = Array.isArray(pendingItem?.prefetched_parent_rows) ? pendingItem.prefetched_parent_rows : null;
     const prefetchedHelperRows = Array.isArray(pendingItem?.prefetched_helper_rows) ? pendingItem.prefetched_helper_rows : null;
+    const normalizeFetchedRows = (rows = []) => {
+      if (!Array.isArray(rows) || !rows.length) return [];
+      if (!Array.isArray(rows[0])) return rows;
+      const [headerRow, ...bodyRows] = rows;
+      const headers = Array.isArray(headerRow) ? headerRow.map((cell) => String(cell || '').trim()) : [];
+      return bodyRows.map((cells = []) => {
+        const rowObj = {};
+        headers.forEach((header, index) => {
+          if (!header) return;
+          rowObj[header] = cells[index] ?? '';
+        });
+        return rowObj;
+      });
+    };
 
     try {
-      let parentRows = prefetchedParentRows || [];
-      let helperRows = prefetchedHelperRows || [];
+      let parentRows = normalizeFetchedRows(prefetchedParentRows || []);
+      let helperRows = normalizeFetchedRows(prefetchedHelperRows || []);
       if (!prefetchedParentRows && !prefetchedHelperRows) {
         const [parentPayload, helperPayload] = await Promise.all([
           fetchSheetRangeWithParams({
@@ -5588,8 +5602,8 @@ function App() {
           }, scriptUrl).catch(() => null)
         ]);
 
-        parentRows = Array.isArray(parentPayload?.values) ? parentPayload.values : [];
-        helperRows = Array.isArray(helperPayload?.values) ? helperPayload.values : [];
+        parentRows = normalizeFetchedRows(Array.isArray(parentPayload?.data) ? parentPayload.data : []);
+        helperRows = normalizeFetchedRows(Array.isArray(helperPayload?.data) ? helperPayload.data : []);
       }
       const readRowValue = (row, ...keys) => {
         for (const key of keys) {
