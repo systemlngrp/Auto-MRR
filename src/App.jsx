@@ -1801,6 +1801,14 @@ function normalizeGeRow(data = {}) {
       invoice_no: String(data[4] || '').trim(),
       total_value: String(data[5] || '').trim(),
       truck_no: String(data[6] || '').trim(),
+      pic1: String(data[7] || '').trim(),
+      pic2: String(data[8] || '').trim(),
+      pic3: String(data[9] || '').trim(),
+      pic4: String(data[10] || '').trim(),
+      pic5: String(data[11] || '').trim(),
+      pic6: String(data[12] || '').trim(),
+      pic7: String(data[13] || '').trim(),
+      pic8: String(data[14] || '').trim(),
       mrr: String(data[15] || '').trim(),
       mrr_complete: String(data[16] || '').trim()
     };
@@ -1832,6 +1840,14 @@ function normalizeGeRow(data = {}) {
     invoice_no: String(source.invoice_no || source['Invoice No'] || '').trim(),
     total_value: String(source.total_value || source.total_invocie_value || source['Total Invocie Value'] || '').trim(),
     truck_no: String(source.truck_no || source['Truck No'] || '').trim(),
+    pic1: String(source.pic1 || source.pic_1 || source['Pic 1'] || '').trim(),
+    pic2: String(source.pic2 || source.pic_2 || source['Pic 2'] || '').trim(),
+    pic3: String(source.pic3 || source.pic_3 || source['Pic 3'] || '').trim(),
+    pic4: String(source.pic4 || source.pic_4 || source['Pic 4'] || '').trim(),
+    pic5: String(source.pic5 || source.pic_5 || source['Pic 5'] || '').trim(),
+    pic6: String(source.pic6 || source.pic_6 || source['Pic 6'] || '').trim(),
+    pic7: String(source.pic7 || source.pic_7 || source['Pic 7'] || '').trim(),
+    pic8: String(source.pic8 || source.pic_8 || source['Pic 8'] || '').trim(),
     mrr: String(source.mrr || source.MRR || '').trim(),
     mrr_complete: String(source.mrr_complete || source['MRR COMPLETE'] || '').trim()
   };
@@ -4132,7 +4148,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchSheetRange,
             normalizeGeRow,
-            getSheetName
+            formatDecimal2,
+            downloadGateEntryPdfDirect
           }}
           onBack={() => setStep(3)}
           onAdd={() => {

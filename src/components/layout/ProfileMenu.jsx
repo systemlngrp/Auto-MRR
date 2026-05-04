@@ -66,8 +66,10 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
       {open ? (
         <div
           style={{
-            marginTop: '8px',
-            marginLeft: 'auto',
+            position: 'absolute',
+            top: '54px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             background: '#fff',
             border: '1px solid #c9c2b6',
             borderRadius: '14px',

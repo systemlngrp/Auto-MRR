@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import GateEntrySavedModal from '../components/modals/GateEntrySavedModal';
 
 export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onEdit }) {
-  const { fetchSheetRange, normalizeGeRow, getSheetName } = deps;
+  const { fetchSheetRange, normalizeGeRow, formatDecimal2, downloadGateEntryPdfDirect } = deps;
 
   const [rows, setRows] = useState([]);
   const [filterText, setFilterText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [previewEntry, setPreviewEntry] = useState(null);
 
   const activeSheetName = 'GE ENTRY';
 
@@ -36,6 +38,9 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
       String(v || '').toLowerCase().includes(filterText.toLowerCase())
     )
   );
+  const previewPics = previewEntry
+    ? [previewEntry.pic1, previewEntry.pic2, previewEntry.pic3, previewEntry.pic4, previewEntry.pic5, previewEntry.pic6, previewEntry.pic7, previewEntry.pic8].filter(Boolean)
+    : [];
 
   return (
     <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '24px' }}>
@@ -83,7 +88,7 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
                 <th style={{ width: '220px' }}>Supplier</th>
                 <th style={{ width: '150px' }}>Truck No</th>
                 <th style={{ width: '150px' }}>Invoice No</th>
-                <th style={{ width: '120px' }}>Actions</th>
+                <th style={{ width: '190px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +108,10 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
                   <td>{row.truck_no}</td>
                   <td>{row.invoice_no}</td>
                   <td className="c">
-                    <button className="btn small" onClick={() => onEdit(row)} style={{ padding: '6px 12px' }}>Edit</button>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <button className="btn small" onClick={() => setPreviewEntry(row)} style={{ padding: '6px 12px' }}>View</button>
+                      <button className="btn small" onClick={() => onEdit(row)} style={{ padding: '6px 12px' }}>Edit</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -111,6 +119,16 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
           </table>
         </div>
       </div>
+
+      <GateEntrySavedModal
+        isOpen={Boolean(previewEntry)}
+        firm={selectedFirm}
+        entry={previewEntry}
+        previewPics={previewPics}
+        formatAmount={formatDecimal2}
+        onDownload={downloadGateEntryPdfDirect}
+        onClose={() => setPreviewEntry(null)}
+      />
     </div>
   );
 }
