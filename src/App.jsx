@@ -280,6 +280,20 @@ const n = (v) => {
 const money = (v) => n(v).toFixed(2);
 const firstFilled = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') ?? '';
 const sanitizeNumericInput = (value) => String(value ?? '').replace(/[^0-9.]/g, '');
+const formatToleranceValue = (value) => {
+  if (!Number.isFinite(value)) return '';
+  return String(Number(value.toFixed(2)));
+};
+const getQuantityToleranceOptions = (value, tolerance = 15) => {
+  const base = n(value);
+  if (!Number.isFinite(base) || base <= 0) return [];
+  const min = Math.max(0, base - tolerance);
+  return uniqueText([
+    formatToleranceValue(min),
+    formatToleranceValue(base),
+    formatToleranceValue(base + tolerance)
+  ]).filter(Boolean);
+};
 const getTodayInputDate = () => {
   const now = new Date();
   const y = now.getFullYear();
@@ -2053,8 +2067,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
-  const [pendingGEs, setPendingGEs] = useState([]);
-  const [editMrrRows, setEditMrrRows] = useState([]);
+  const [tempView, setTempView] = useState('list');
+  const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
   const [isLoadingEditMrr, setIsLoadingEditMrr] = useState(false);
   const [approvingPendingKey, setApprovingPendingKey] = useState('');
@@ -2901,31 +2915,29 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     setStep(2);
                     return;
                   }
-                  const authResults = await Promise.all(
-                    firms.map(async (firm) => {
-                      try {
-                        const user = await authenticateUser(loginId, loginPassword, {
-                          spreadsheetId: firm?.spreadsheetId,
-                          scriptUrl: firm?.scriptUrl
-                        });
-                        return { firmId: firm.id, user };
-                      } catch {
-                        return null;
-                      }
-                    })
-                  );
-                  const valid = authResults.filter(Boolean);
-                  if (!valid.length) {
+                  
+                  // Authenticate against the first firm (Master) as users are now common
+                  const masterFirm = firms[0];
+                  const user = await authenticateUser(loginId, loginPassword, {
+                    spreadsheetId: masterFirm?.spreadsheetId,
+                    scriptUrl: masterFirm?.scriptUrl
+                  });
+
+                  if (!user) {
                     setValidatedUsersByFirm({});
                     setLoginError('Invalid user ID or password.');
                     return;
                   }
+
                   const map = {};
-                  valid.forEach((entry) => {
-                    map[entry.firmId] = entry.user;
+                  firms.forEach((firm) => {
+                    map[firm.id] = { ...user, firmId: firm.id };
                   });
                   setValidatedUsersByFirm(map);
                   setStep(2);
+                } catch (err) {
+                  setValidatedUsersByFirm({});
+                  setLoginError(err?.message || 'Invalid user ID or password.');
                 } finally {
                   setIsLoggingIn(false);
                 }
@@ -3175,9 +3187,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         <PoDetailsPage
           selectedFirm={tempFirm}
           initialType={tempType}
+          initialView={tempView}
           deps={{
             getSheetName,
             fetchSheetRange,
+            fetchUniqueSuppliers,
             normalizePoRow,
             sheetValuesToPoRows,
             savePoRowsToSheets
@@ -3193,7 +3207,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <UsersPage
-          selectedFirm={tempFirm}
+          selectedFirm={firms[0]}
+          initialView={tempView}
           deps={{
             fetchUsers,
             saveUsers
@@ -4693,9 +4708,22 @@ function App() {
     return withCurrentOption(options, row.po_no);
   };
   const getPoRateOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => String(po.rate || '').trim()).filter(Boolean)), row.po_rate);
-  const getPoQtyOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => String(firstFilled(po.quantity, po.quantity_received, '')).trim()).filter(Boolean)), row.po_quantity);
+  const getPoQtyOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).flatMap((po) => {
+    const exactQty = String(firstFilled(po.quantity, po.quantity_received, '')).trim();
+    return [
+      exactQty,
+      ...getQuantityToleranceOptions(exactQty)
+    ];
+  }).filter(Boolean)), row.po_quantity);
   const getDescriptionOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => po.reel_details).filter(Boolean)), row.item_name || row.reel_details);
   const getErpCodeOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).filter((po) => !(row.item_name || row.reel_details) || po.reel_details === (row.item_name || row.reel_details)).map((po) => po.erp_code).filter(Boolean)), row.erp_code);
+  const getPackingWeightOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).flatMap((po) => {
+    const exactQty = String(firstFilled(po.quantity_received, po.quantity, '')).trim();
+    return [
+      exactQty,
+      ...getQuantityToleranceOptions(exactQty)
+    ];
+  }).filter(Boolean)), row.net_wt);
   const fillPackRowFromPoRecord = (row, record, overrides = {}) => ({
     ...row,
     ...overrides,
@@ -6581,7 +6609,18 @@ function App() {
                           <td><input value={row.unit} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td>
                           <td><input value={row.rate || getParentRateForPackingRow(row) || ''} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td>
                           <td><input value={row.po_rate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
-                          <td><input value={row.net_wt} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'net_wt', e.target.value)} /></td>
+                          <td>
+                            <input
+                              list={`packing-weight-options-${i}`}
+                              value={row.net_wt}
+                              readOnly={isDataEntryLocked}
+                              onChange={(e) => setPackRow(i, 'net_wt', e.target.value)}
+                              placeholder="PO Qty or +/-15"
+                            />
+                            <datalist id={`packing-weight-options-${i}`}>
+                              {getPackingWeightOptions(row).map((option) => <option key={option} value={option} />)}
+                            </datalist>
+                          </td>
                           <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
                         </tr>
                       ))}
