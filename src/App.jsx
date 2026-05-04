@@ -3126,17 +3126,30 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <button 
               className="btn main" 
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#2c3e50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={() => {
+                setEditData(null);
+                setStep(4);
+              }}
+            >
+              1. NEW GE ENTRY
+            </button>
+            <button 
+              className="btn main" 
+              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#34495e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setStep(11); }}
             >
-              1. GATE ENTRIES
+              2. GE ENTRY DATA
             </button>
             <button 
               className="btn main" 
               disabled={isLoadingPending || isLoadingEditMrr}
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#27ae60', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(12); }}
+              onClick={() => {
+                if (!tempFirm) return;
+                onSelect(tempFirm, tempType || 'reel');
+              }}
             >
-              2. MRR ENTRIES {menuCountText(pendingCounts.pending_mrr + pendingCounts.edit_mrr)}
+              3. MRR ENTRIES {menuCountText(pendingCounts.pending_mrr + pendingCounts.edit_mrr)}
             </button>
             <button
               className="btn main"
@@ -3144,28 +3157,28 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#384152', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setReportFilter('pending'); loadPreviewAllMrr(); setStep(7); }}
             >
-              3. ALL APPROVALS {menuCountText(pendingCounts.all_approvals)}
+              4. ALL APPROVALS {menuCountText(pendingCounts.all_approvals)}
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setStep(8); }}
             >
-              4. PO DETAILS
+              5. PO DETAILS
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setStep(9); }}
             >
-              5. USERS
+              6. USERS
             </button>
             <button
               className="btn main"
               style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
               onClick={() => { setLabelInitialMrr(''); setStep(5); }}
             >
-              6. DOWNLOAD LABEL
+              7. DOWNLOAD LABEL
             </button>
             <button
               className="btn main"
@@ -3176,7 +3189,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 setStep(7);
               }}
             >
-              7. REVIEW ALL MRR
+              8. REVIEW ALL MRR
             </button>
             <button
               className="btn"

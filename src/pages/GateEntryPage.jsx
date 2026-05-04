@@ -75,11 +75,10 @@ export default function GateEntryPage({
         const mrrSheet = getSheetName(firm?.mrr, mrrType) || 'MRR FORM';
         const latest = await fetchLatestMrrGe(mrrSheet, firm, null, prefix, 'GE ENTRY');
         const nextGeNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.ge || 0) + 1);
-        const nextMrrNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.mrr || 0) + 1);
         setData((prev) => ({
           ...prev,
           ge_no: prev.ge_no || geNo || getGateEntryNo(initialData) || nextGeNo,
-          mrr_no: prev.mrr_no || nextMrrNo
+          mrr_no: prev.mrr_no || geNo || getGateEntryNo(initialData) || nextGeNo
         }));
       } catch (err) {
         console.error('Failed to load next GE/MRR No:', err);

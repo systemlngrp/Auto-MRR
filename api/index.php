@@ -1039,6 +1039,7 @@ function saveGeEntryAction(array $payload): array
 
     $data = array_merge($geEntry, [
         'ge_no' => $geNo,
+        'mrr_no' => value($geEntry, 'mrr_no', 'mrr_number') ?: $geNo,
         'timestamp' => nowText(),
         'mrr_complete' => value($geEntry, 'mrr_complete') ?: 'NO',
     ]);
@@ -1054,7 +1055,7 @@ function saveGeEntryAction(array $payload): array
     $params = [
         'firm_id' => $firmId,
         'ge_no' => $geNo,
-        'mrr_no' => value($data, 'mrr_no', 'mrr_number') ?: null,
+        'mrr_no' => value($data, 'mrr_no', 'mrr_number') ?: $geNo,
         'entry_date' => value($data, 'date') ?: null,
         'supplier_name' => value($data, 'supplier') ?: null,
         'invoice_no' => value($data, 'invoice_no') ?: null,
