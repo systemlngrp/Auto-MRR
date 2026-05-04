@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 export default function ProfileMenu({ currentUser, onLogout, top = '12px', right = '14px', zIndex = 10002, fixed = true }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
-  const displayName = currentUser?.name || currentUser?.email || 'User';
+  const displayName = currentUser?.display_name || currentUser?.displayName || currentUser?.name || currentUser?.email || 'User';
   const initials = String(displayName)
     .trim()
     .split(/\s+/)
