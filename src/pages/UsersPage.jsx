@@ -344,16 +344,16 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
           <table className="table" style={{ minWidth: '900px' }}>
             <thead>
               <tr>
-                <th style={{ width: '150px' }}>Login ID</th>
-                <th style={{ width: '200px' }}>Name</th>
-                <th style={{ width: '220px' }}>Email</th>
-                <th style={{ width: '120px' }}>Role</th>
-                <th style={{ width: '100px' }}>Status</th>
-                <th style={{ width: '140px' }}>Actions</th>
+                <th style={{ width: '150px', fontSize: '12px' }}>Login ID</th>
+                <th style={{ width: '200px', fontSize: '12px' }}>Name</th>
+                <th style={{ width: '220px', fontSize: '12px' }}>Email</th>
+                <th style={{ width: '120px', fontSize: '12px' }}>Role</th>
+                <th style={{ width: '100px', fontSize: '12px' }}>Status</th>
+                <th style={{ width: '140px', fontSize: '12px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 && !isLoading && (
+              {false && (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
                     <div style={{ fontSize: '40px', marginBottom: '16px' }}>📁</div>

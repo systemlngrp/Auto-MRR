@@ -3186,7 +3186,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         <PoDetailsPage
           selectedFirm={tempFirm}
           initialType={tempType}
-          initialView={tempView}
           deps={{
             getSheetName,
             fetchSheetRange,
@@ -3207,7 +3206,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         <UsersPage
           selectedFirm={firms[0]}
-          initialView={tempView}
           deps={{
             fetchUsers,
             saveUsers

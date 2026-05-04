@@ -565,7 +565,7 @@ export default function PoDetailsPage({
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900' }}>PO DETAILS</h2>
+            <h2 style={{ margin: 0, fontSize: '42px', letterSpacing: '0.03em', fontWeight: '900' }}>PO DETAILS</h2>
             <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
               {selectedFirm?.name || ''} | {activeSheetName}
             </p>
@@ -622,9 +622,9 @@ export default function PoDetailsPage({
             <thead>
               <tr>
                 {activeColumns.map(([key, label, width]) => (
-                  <th key={key} style={{ width }}>{label}</th>
+                  <th key={key} style={{ width, fontSize: '12px' }}>{label}</th>
                 ))}
-                <th style={{ width: '150px' }}>Actions</th>
+                <th style={{ width: '150px', fontSize: '12px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
