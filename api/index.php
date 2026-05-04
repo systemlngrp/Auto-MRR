@@ -566,13 +566,17 @@ function fetchParentByMrr(string $firmId, string $sheetName, string $mrrNumber, 
 function writeApprovalLog(string $firmId, string $mrrNumber, string $stage, string $decision, string $userEmail, string $remark, array $extra = []): void
 {
     $pdo = db();
+    $geNo = trim((string)($extra['ge_no'] ?? ''));
+    $recordGroupId = makeRecordGroupId($mrrNumber, $geNo);
     $stmt = $pdo->prepare("
-        INSERT INTO approval_logs (firm_id, mrr_number, stage_name, decision_value, user_email, remark_text, extra_json)
-        VALUES (:firm_id, :mrr_number, :stage_name, :decision_value, :user_email, :remark_text, :extra_json)
+        INSERT INTO approval_logs (firm_id, ge_no, mrr_number, record_group_id, stage_name, decision_value, user_email, remark_text, extra_json)
+        VALUES (:firm_id, :ge_no, :mrr_number, :record_group_id, :stage_name, :decision_value, :user_email, :remark_text, :extra_json)
     ");
     $stmt->execute([
         'firm_id' => $firmId,
+        'ge_no' => $geNo !== '' ? $geNo : null,
         'mrr_number' => $mrrNumber,
+        'record_group_id' => $recordGroupId !== '' ? $recordGroupId : null,
         'stage_name' => $stage,
         'decision_value' => $decision,
         'user_email' => $userEmail,
