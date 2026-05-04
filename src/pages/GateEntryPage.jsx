@@ -118,18 +118,24 @@ export default function GateEntryPage({
   useEffect(() => {
     async function loadNextGeNo() {
       if (!firm?.backendUrl && !firm?.scriptUrl) return;
-      if (getGateEntryNo(initialData) || geNo || data.ge_no) return;
+      if ((getGateEntryNo(initialData) || geNo || data.ge_no) && data.mrr_no) return;
       try {
         const prefix = `${getFirmCode(firm)}/${getFinancialYearLabel(data.date || defaultDate)}/`;
-        const latest = await fetchLatestMrrGe('GE ENTRY', firm, null, prefix);
+        const mrrSheet = getSheetName(firm?.mrr, mrrType) || 'MRR FORM';
+        const latest = await fetchLatestMrrGe(mrrSheet, firm, null, prefix, 'GE ENTRY');
         const nextGeNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.ge || 0) + 1);
-        setData((prev) => prev.ge_no ? prev : { ...prev, ge_no: nextGeNo });
+        const nextMrrNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.mrr || 0) + 1);
+        setData((prev) => ({
+          ...prev,
+          ge_no: prev.ge_no || geNo || getGateEntryNo(initialData) || nextGeNo,
+          mrr_no: prev.mrr_no || nextMrrNo
+        }));
       } catch (err) {
-        console.error('Failed to load next GE No:', err);
+        console.error('Failed to load next GE/MRR No:', err);
       }
     }
     loadNextGeNo();
-  }, [data.date, data.ge_no, defaultDate, fetchLatestMrrGe, firm, formatGateEntryNumber, geNo, getFinancialYearLabel, getFirmCode, getGateEntryNo, initialData]);
+  }, [data.date, data.ge_no, data.mrr_no, defaultDate, fetchLatestMrrGe, firm, formatGateEntryNumber, geNo, getFinancialYearLabel, getFirmCode, getGateEntryNo, getSheetName, initialData, mrrType]);
 
   useEffect(() => {
     const isOther = String(mrrType || '').trim().toLowerCase() === 'other';
