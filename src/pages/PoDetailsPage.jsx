@@ -570,7 +570,7 @@ export default function PoDetailsPage({
               {selectedFirm?.name || ''} | {activeSheetName}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn" onClick={onBack} disabled={isLoading || isSaving} style={{ padding: '10px 20px' }}>{'← Back'}</button>
             <div style={{ display: 'flex', border: '2px solid #111', borderRadius: '6px', padding: '2px', background: '#fff', overflow: 'hidden' }}>
                <button 
@@ -590,7 +590,15 @@ export default function PoDetailsPage({
                  OTHER PO
                </button>
             </div>
-            <button className="btn main" onClick={handleAddNew} disabled={isLoading || isSaving} style={{ padding: '10px 24px', fontWeight: '700' }}>+ Add New PO</button>
+            <button 
+              className="btn main" 
+              onClick={handleAddNew} 
+              disabled={isLoading || isSaving} 
+              style={{ width: '42px', height: '42px', padding: 0, fontSize: '24px', fontWeight: '900', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Add New PO"
+            >
+              +
+            </button>
           </div>
         </div>
 

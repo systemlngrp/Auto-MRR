@@ -324,9 +324,17 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
             <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900' }}>GLOBAL USERS</h2>
             <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shared across all firms</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn" onClick={onBack} disabled={isLoading || isSaving} style={{ padding: '10px 20px' }}>{'← Back'}</button>
-            <button className="btn main" onClick={handleAddNew} disabled={isLoading || isSaving} style={{ padding: '10px 24px', fontWeight: '700' }}>+ Add New User</button>
+            <button 
+              className="btn main" 
+              onClick={handleAddNew} 
+              disabled={isLoading || isSaving} 
+              style={{ width: '42px', height: '42px', padding: 0, fontSize: '24px', fontWeight: '900', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Add New User"
+            >
+              +
+            </button>
           </div>
         </div>
 
