@@ -13,13 +13,15 @@ export default function ProfileMenu({
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
   const displayName = currentUser?.display_name || currentUser?.displayName || currentUser?.name || currentUser?.email || 'User';
-  const shortLabel = shortChars > 0 ? String(displayName).trim().slice(0, shortChars) : String(displayName).trim();
+  const loginHandle = currentUser?.login_id || currentUser?.loginId || '';
+  const finalDisplay = loginHandle && loginHandle !== displayName ? `${displayName} (${loginHandle})` : displayName;
+  const shortLabel = shortChars > 0 ? String(loginHandle || displayName).trim().slice(0, shortChars) : String(loginHandle || displayName).trim();
   const initials = String(displayName)
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
-    .join('') || 'U';
+    .join('') || (loginHandle ? loginHandle.charAt(0).toUpperCase() : 'U');
 
   useEffect(() => {
     if (!open) return;
@@ -113,7 +115,7 @@ export default function ProfileMenu({
               Logged In
             </div>
             <div style={{ fontSize: '12px', fontWeight: 800, color: '#111', marginTop: '4px' }}>
-              {displayName}
+              {finalDisplay}
             </div>
           </div>
           <button

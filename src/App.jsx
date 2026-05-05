@@ -3079,9 +3079,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 try {
                   if (isDefaultMasterLogin(loginId, loginPassword)) {
                     const masterUser = {
-                      login_id: 'system',
+                      login_id: loginId.trim().toLowerCase(),
                       user_email: 'system@lngrp',
-                      display_name: 'System Master',
+                      display_name: loginId.trim(),
                       role: 'admin',
                       master_login: true
                     };
