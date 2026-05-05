@@ -456,7 +456,7 @@ function parseModelJson(text) {
 function isMeaningful(value) {
   if (Array.isArray(value)) return value.some(isMeaningful);
   if (value && typeof value === 'object') return Object.values(value).some(isMeaningful);
-  return String(value ?? '').trim() !== '' && String(value ?? '').trim() !== '0';
+  return String(value ?? '').trim() !== '';
 }
 
 function ensureRows(rows) {
@@ -742,15 +742,15 @@ function packingItemsToInvoiceRows(items = []) {
   return ensureRows(items).filter((row) => !isTotalLikePackingRow(row)).map((row) => ({
     description: row.reel_details || row.item_name || '',
     hsn: '48043100',
-    sort_no: row.sort_no || '',
+    sort_no: row.sort_no ?? '',
     party_order: row.po_no || row.party_order || '',
-    gsm: row.gsm || '',
-    size: row.size || '',
-    size_unit: row.unit || 'CM',
+    gsm: row.gsm ?? '',
+    size: row.size ?? '',
+    size_unit: row.unit ?? 'CM',
     reels: '',
-    weight: row.net_wt || '',
+    weight: row.net_wt ?? '',
     weight_unit: 'KGS',
-    rate: row.rate || '',
+    rate: row.rate ?? '',
     amount: ''
   }));
 }
@@ -3094,122 +3094,183 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   }
 
   if (step === 3) {
-    const useGridMenu = ['lnki', 'unit_1', 'unit_2'].includes(String(tempFirm?.id || '').toLowerCase());
     const isMenuCountsLoading = isLoadingPending || isLoadingEditMrr || isLoadingAllApprovals;
     const menuCountText = (value) => (isMenuCountsLoading ? '(Loading...)' : `(${value})`);
-    const menuContainerStyle = useGridMenu
-      ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', alignItems: 'stretch' }
-      : { display: 'flex', flexDirection: 'column', gap: '12px' };
-    const menuButtonBaseStyle = useGridMenu ? { minHeight: '72px' } : {};
-    const backButtonStyle = useGridMenu
-      ? { gridColumn: '1 / -1', padding: '10px', marginTop: '10px', fontSize: '11px', fontWeight: 700 }
-      : { padding: '10px', marginTop: '10px', fontSize: '11px', fontWeight: 700 };
+    const shellStyle = {
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(216, 209, 196, 0.98)',
+      backdropFilter: 'blur(12px)'
+    };
+
+    const headerStyle = {
+      height: '64px',
+      background: '#fff',
+      borderBottom: '1px solid var(--line)',
+      display: 'grid',
+      gridTemplateColumns: '1fr auto 1fr',
+      alignItems: 'center',
+      padding: '0 18px',
+      gap: '12px'
+    };
+
+    const pillStyle = {
+      padding: '7px 10px',
+      border: '1px solid #d1d5db',
+      background: '#f9fafb',
+      fontSize: '11px',
+      fontWeight: 800,
+      letterSpacing: '0.02em',
+      textTransform: 'uppercase',
+      borderRadius: '999px',
+      whiteSpace: 'nowrap'
+    };
+
+    const bodyStyle = { display: 'flex', flex: 1, minHeight: 0 };
+
+    const sidebarStyle = {
+      width: '260px',
+      background: '#fff',
+      borderRight: '1px solid var(--line)',
+      padding: '16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      overflowY: 'auto'
+    };
+
+    const sideButtonStyle = {
+      width: '100%',
+      padding: '12px 12px',
+      fontSize: '12px',
+      fontWeight: 900,
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
+      border: '1px solid #d1d5db',
+      background: '#fff',
+      textAlign: 'left',
+      cursor: 'pointer'
+    };
+
+    const mainStyle = {
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: '22px',
+      overflowY: 'auto'
+    };
+
+    const cardStyle = {
+      width: 'min(920px, 100%)',
+      background: '#fff',
+      border: '1px solid var(--line)',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
+      padding: '22px'
+    };
 
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
-        {userBadge}
-        <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
-          <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px', marginBottom: '10px' }} alt="Logo" />
-          <p style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, marginBottom: '20px' }}>{tempFirm?.name || ''}</p>
-          <div style={{ position: 'relative' }}>
-            {isMenuCountsLoading ? (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  zIndex: 8,
-                  background: 'rgba(255,255,255,0.42)',
-                  backdropFilter: 'blur(6px)',
-                  WebkitBackdropFilter: 'blur(6px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'auto'
-                }}
-              >
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.78)', border: '1px solid #d1d5db', padding: '14px', minWidth: '88px', minHeight: '88px' }}>
-                  <span className="spinner" />
-                </div>
-              </div>
-            ) : null}
-            <div style={menuContainerStyle}>
-            <button 
-              className="btn main" 
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#2c3e50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+      <div style={shellStyle}>
+        <div style={headerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.06em', color: 'var(--muted)' }}>MRR &amp; REEL MANAGEMENT SYSTEM</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '40px' }} alt="Logo" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <div style={pillStyle}>{tempFirm?.name || 'FIRM'}</div>
+          </div>
+        </div>
+
+        <div style={bodyStyle}>
+          <div style={sidebarStyle}>
+            <button
+              type="button"
+              style={sideButtonStyle}
               onClick={() => {
                 setEditData(null);
                 setStep(4);
               }}
             >
-              1. NEW GE ENTRY
+              NEW GE ENTRY
             </button>
-            <button 
-              className="btn main" 
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#34495e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(11); }}
-            >
-              2. GE ENTRY DATA
+            <button type="button" style={sideButtonStyle} onClick={() => { setStep(11); }}>
+              GE ENTRY DATA
             </button>
-            <button 
-              className="btn main" 
-              disabled={isLoadingPending || isLoadingEditMrr}
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#27ae60', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+            <button
+              type="button"
+              disabled={isLoadingPending}
+              style={{ ...sideButtonStyle, opacity: isLoadingPending ? 0.6 : 1 }}
               onClick={() => {
-                if (!tempFirm) return;
-                onSelect(tempFirm, tempType || 'reel');
+                setPendingFilter('pending_mrr');
+                setStep(6);
               }}
             >
-              3. MRR ENTRIES {menuCountText(pendingCounts.pending_mrr + pendingCounts.edit_mrr)}
+              PENDING MRR {menuCountText(pendingCounts.pending_mrr)}
             </button>
             <button
-              className="btn main"
+              type="button"
+              disabled={isLoadingEditMrr}
+              style={{ ...sideButtonStyle, opacity: isLoadingEditMrr ? 0.6 : 1 }}
+              onClick={() => {
+                setPendingFilter('edit_mrr');
+                setStep(6);
+              }}
+            >
+              EDIT MRR {menuCountText(pendingCounts.edit_mrr)}
+            </button>
+            <button
+              type="button"
               disabled={isLoadingAllApprovals}
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#384152', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setReportFilter('pending'); loadPreviewAllMrr(); setStep(7); }}
+              style={{ ...sideButtonStyle, opacity: isLoadingAllApprovals ? 0.6 : 1 }}
+              onClick={() => {
+                setPendingFilter('all_approvals');
+                setStep(6);
+              }}
             >
-              4. ALL APPROVALS {menuCountText(pendingCounts.all_approvals)}
+              APPROVALS {menuCountText(pendingCounts.all_approvals)}
             </button>
             <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#5f2a7c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(8); }}
-            >
-              5. PO DETAILS
-            </button>
-            <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setStep(9); }}
-            >
-              6. USERS
-            </button>
-            <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#e67e22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-              onClick={() => { setLabelInitialMrr(''); setStep(5); }}
-            >
-              7. DOWNLOAD LABEL
-            </button>
-            <button
-              className="btn main"
-              style={{ ...menuButtonBaseStyle, padding: '18px', fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#a95f14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              type="button"
+              style={sideButtonStyle}
               onClick={async () => {
                 setReportFilter('all');
                 await loadPreviewAllMrr();
                 setStep(7);
               }}
             >
-              8. REVIEW ALL MRR
+              REVIEW
             </button>
+            <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
+              PO DETAILS
+            </button>
+            <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
+              USERS
+            </button>
+
+            <div style={{ marginTop: '6px', height: 1, background: '#e5e7eb' }} />
+
+            <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
+              DOWNLOAD LABEL
+            </button>
+
+            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
+              <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} />
+            </div>
             <button
-              className="btn"
-              style={backButtonStyle}
+              type="button"
+              style={{ ...sideButtonStyle, color: '#111827', background: '#f9fafb' }}
               onClick={() => { setStep(2); }}
             >
-              ← Back to Firms
+              ← BACK TO FIRMS
             </button>
-            </div>
           </div>
+
+          {/* Intentionally no main dashboard panel (sidebar-only layout). */}
         </div>
       </div>
     );
@@ -4977,7 +5038,7 @@ function App() {
   };
   const updatePackRowFromSource = (index, updater) => setPacking((p) => ({ ...p, items: p.items.map((row, idx) => idx === index ? updater(row) : row) }));
   const handlePoNoSelect = (index, poNo) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
+    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
     const matches = getPoRowsForPo(poNo);
     if (matches.length === 1) return fillPackRowFromPoRecord(row, matches[0], { po_no: poNo, rate: lockedRate });
     const keepDescription = matches.some((po) => po.reel_details === (row.item_name || row.reel_details)) ? (row.item_name || row.reel_details) : '';
@@ -4994,13 +5055,13 @@ function App() {
     };
   });
   const handlePoDetailsSelect = (index, poDetails) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
+    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.po_details === poDetails);
     const match = matches.find((po) => (!row.item_name || po.reel_details === (row.item_name || row.reel_details)) && (!row.erp_code || po.erp_code === row.erp_code)) || matches[0];
     return fillPackRowFromPoRecord(row, match, { po_details: poDetails, po_no: match?.po_no || row.po_no, rate: lockedRate });
   });
   const handleDescriptionSelect = (index, description) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String(row.rate || getParentRateForPackingRow(row) || '').trim();
+    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.reel_details === description);
     const match = matches.find((po) => po.erp_code === row.erp_code) || matches[0];
     return fillPackRowFromPoRecord(row, match, { item_name: description, reel_details: description, po_no: match?.po_no || row.po_no, rate: lockedRate });
@@ -5014,7 +5075,7 @@ function App() {
       const targetSupplier = normalizeSupplierKey(selectedGateSupplier || row.supplier);
       const match = matches.find((m) => normalizeSupplierKey(m.supplier) === targetSupplier) || matches[0];
       const nextUnit = String(match.unit || '').trim() || row.size_unit || row.unit || '';
-      const nextRate = String(row.rate || '').trim() ? row.rate : match.rate;
+      const nextRate = String(row.rate ?? '').trim() !== '' ? row.rate : match.rate;
       const nextPoQty = firstFilled(match.quantity, match.quantity_received);
       const nextQty = String(row.quantity || '').trim() ? row.quantity : nextPoQty;
       const nextAmount = isOtherMrr ? money(n(nextQty) * n(nextRate)) : row.amount;
@@ -5503,7 +5564,7 @@ function App() {
           ...packing,
           items: (packing.items || []).map((row) => ({
             ...row,
-            rate: String(row.rate || getParentRateForPackingRow(row) || '').trim()
+            rate: String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim()
           }))
         }
       : packing;

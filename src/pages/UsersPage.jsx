@@ -69,10 +69,11 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
     
     if (!trimmedLoginId) {
       newErrors.login_id = 'Login ID is required';
-    } else if (!/^\d{8}$/.test(trimmedLoginId)) {
-      newErrors.login_id = 'Must be exactly 8 numeric digits';
+    } else if (!/^[a-z0-9]{7,}$/i.test(trimmedLoginId)) {
+      newErrors.login_id = 'Must be alpha-numeric and at least 7 characters';
     } else if (editingIndex === -1) {
-      const isDuplicate = users.some(u => String(u.login_id).trim() === trimmedLoginId);
+      const normalizedLoginId = trimmedLoginId.toLowerCase();
+      const isDuplicate = users.some(u => String(u.login_id).trim().toLowerCase() === normalizedLoginId);
       if (isDuplicate) newErrors.login_id = 'Login ID already exists';
     }
 
@@ -206,13 +207,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                 <div>
-                  <label style={labelStyle}>Login ID (Numeric 8-digits) <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <label style={labelStyle}>Login ID (Alpha-numeric, min 7 chars) <span style={{ color: '#b91c1c' }}>*</span></label>
                   <input 
                     value={formData.login_id} 
                     onChange={(e) => { setFormData({ ...formData, login_id: e.target.value }); setErrors({ ...errors, login_id: '' }); }} 
                     disabled={editingIndex >= 0}
                     style={{ ...inputStyle('login_id'), background: editingIndex >= 0 ? '#f3f4f6' : '#fff', cursor: editingIndex >= 0 ? 'not-allowed' : 'text' }}
-                    placeholder="e.g. 10002001"
+                    placeholder="e.g. SMITH01"
                     autoFocus
                   />
                   {errorMsg(errors.login_id)}

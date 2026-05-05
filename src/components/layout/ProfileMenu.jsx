@@ -1,9 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function ProfileMenu({ currentUser, onLogout, top = '12px', right = '14px', zIndex = 10002, fixed = true }) {
+export default function ProfileMenu({
+  currentUser,
+  onLogout,
+  top = '12px',
+  right = '14px',
+  zIndex = 10002,
+  fixed = true,
+  variant = 'circle',
+  shortChars = 0
+}) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
   const displayName = currentUser?.display_name || currentUser?.displayName || currentUser?.name || currentUser?.email || 'User';
+  const shortLabel = shortChars > 0 ? String(displayName).trim().slice(0, shortChars) : String(displayName).trim();
   const initials = String(displayName)
     .trim()
     .split(/\s+/)
@@ -33,21 +43,23 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '46px',
-          height: '46px',
-          padding: '0',
+          width: variant === 'pill' ? '100%' : '46px',
+          height: variant === 'pill' ? '38px' : '46px',
+          padding: variant === 'pill' ? '2px 10px' : '0',
           borderRadius: '999px',
           background: '#ffffff',
           border: '1px solid #b8b0a3',
           boxShadow: '0 10px 24px rgba(0,0,0,0.14)',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          gap: variant === 'pill' ? '8px' : 0,
+          justifyContent: variant === 'pill' ? 'flex-start' : 'center'
         }}
         onClick={() => setOpen((v) => !v)}
       >
         <span
           style={{
-            width: '36px',
-            height: '36px',
+            width: variant === 'pill' ? '28px' : '36px',
+            height: variant === 'pill' ? '28px' : '36px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #1f2937 0%, #475569 100%)',
             color: '#fff',
@@ -62,6 +74,24 @@ export default function ProfileMenu({ currentUser, onLogout, top = '12px', right
         >
           {initials}
         </span>
+        {variant === 'pill' ? (
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 900,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: '#111827',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}
+            title={displayName}
+          >
+            {shortLabel || 'USER'}
+          </span>
+        ) : null}
       </button>
       {open ? (
         <div

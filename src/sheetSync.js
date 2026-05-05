@@ -197,7 +197,7 @@ function buildHelperRows(invoice = {}, packing = {}) {
   const items = Array.isArray(packing?.items) ? packing.items : [];
 
   return items
-    .filter((row) => row && Object.values(row).some((value) => String(value || '').trim()))
+    .filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim()))
     .map((row, index) => {
       const weight = toNumericText(row?.net_wt || row?.weight);
       const rate = toNumericText(row?.rate);
