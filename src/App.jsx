@@ -3999,7 +3999,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? <th style={pendingHeaderCellStyle}>Invoice Weight</th> : null}
                   <th style={pendingHeaderCellStyle}>Invoice Value</th>
                   <th style={pendingHeaderCellStyle}>Truck No</th>
-                  {pendingFilter !== 'edit_mrr' ? <th style={pendingHeaderCellStyle}>Remark</th> : null}
+                  {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? <th style={pendingHeaderCellStyle}>Remark</th> : null}
                   <th style={pendingHeaderCellStyle}>Action</th>
                 </tr>
               </thead>
@@ -4029,7 +4029,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     ) : null}
                     <td style={pendingBodyCellStyle}>{formatDecimal2(ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || '')}</td>
                     <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
-                    {pendingFilter !== 'edit_mrr' ? <td style={pendingBodyCellStyle}>{getApprovalRemarkText(ge)}</td> : null}
+                    {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? <td style={pendingBodyCellStyle}>{getApprovalRemarkText(ge)}</td> : null}
                     <td className="c" style={{ ...pendingBodyCellStyle }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
@@ -4209,8 +4209,24 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         supplier: supplierValue,
         totalQty: qtyValues.length ? String(qtyValues.reduce((sum, value) => sum + value, 0)) : readReportCell(firstRow, 'required reel', 'rows added'),
         items: String(itemLines.length || rows.length || 0),
-        mrrWeight: formatDecimal2(readReportCell(firstRow, 'actual mrr ttl weight (kgs)', 'actual_mrr_ttl_weight_kgs', 'mrr weight')),
-        invoiceWeight: formatDecimal2(readReportCell(firstRow, 'invoice ttl weight (kgs)', 'invoice_ttl_weight_kgs', 'invoice weight')),
+        mrrWeight: formatDecimal2(readReportCell(
+          firstRow,
+          'actual mrr total weight (kg)',
+          'actual mrr total weight (kgs)',
+          'actual mrr ttl weight (kgs)',
+          'actual_mrr_ttl_weight_kgs',
+          'actual_mrr_weight',
+          'mrr weight'
+        )),
+        invoiceWeight: formatDecimal2(readReportCell(
+          firstRow,
+          'invoice total weight (kg)',
+          'invoice total weight (kgs)',
+          'invoice ttl weight (kgs)',
+          'invoice_ttl_weight_kgs',
+          'actual_weight',
+          'invoice weight'
+        )),
         invoiceRate: invoiceRates.join(', '),
         basicValue: formatDecimal2(readReportCell(firstRow, 'mrr basic value', 'invoice basic value', 'invoice basic amount', 'amount'))
       };
@@ -5300,7 +5316,8 @@ function App() {
   };
   const updatePackRowFromSource = (index, updater) => setPacking((p) => ({ ...p, items: p.items.map((row, idx) => idx === index ? updater(row) : row) }));
   const handlePoNoSelect = (index, poNo) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
+    const currentRate = String(row?.rate ?? '').trim();
+    const lockedRate = currentRate !== '' ? currentRate : String(getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(poNo);
     if (matches.length === 1) return fillPackRowFromPoRecord(row, matches[0], { po_no: poNo, rate: lockedRate });
     const keepDescription = matches.some((po) => po.reel_details === (row.item_name || row.reel_details)) ? (row.item_name || row.reel_details) : '';
@@ -5308,6 +5325,7 @@ function App() {
     return {
       ...row,
       po_no: poNo,
+      party_order: row.party_order || poNo,
       po_details: matches[0]?.po_details || row.po_details,
       item_name: keepDescription,
       reel_details: keepDescription,
@@ -5317,13 +5335,15 @@ function App() {
     };
   });
   const handlePoDetailsSelect = (index, poDetails) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
+    const currentRate = String(row?.rate ?? '').trim();
+    const lockedRate = currentRate !== '' ? currentRate : String(getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.po_details === poDetails);
     const match = matches.find((po) => (!row.item_name || po.reel_details === (row.item_name || row.reel_details)) && (!row.erp_code || po.erp_code === row.erp_code)) || matches[0];
     return fillPackRowFromPoRecord(row, match, { po_details: poDetails, po_no: match?.po_no || row.po_no, rate: lockedRate });
   });
   const handleDescriptionSelect = (index, description) => updatePackRowFromSource(index, (row) => {
-    const lockedRate = String((row.rate ?? getParentRateForPackingRow(row)) ?? '').trim();
+    const currentRate = String(row?.rate ?? '').trim();
+    const lockedRate = currentRate !== '' ? currentRate : String(getParentRateForPackingRow(row) || '').trim();
     const matches = getPoRowsForPo(row.po_no).filter((po) => po.reel_details === description);
     const match = matches.find((po) => po.erp_code === row.erp_code) || matches[0];
     return fillPackRowFromPoRecord(row, match, { item_name: description, reel_details: description, po_no: match?.po_no || row.po_no, rate: lockedRate });
@@ -7181,7 +7201,7 @@ function App() {
                       <col style={{ width: "7%" }} />
                       <col style={{ width: "7%" }} />
                       <col style={{ width: "8%" }} />
-                      <col style={{ width: "5%" }} />
+                      <col style={{ width: "8%" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -7204,7 +7224,7 @@ function App() {
                         <th>PO Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Net Wt(Kgs.)<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Pending Qty</th>
-                        <th>Action</th>
+                        <th style={{ minWidth: '78px', whiteSpace: 'nowrap' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -7256,7 +7276,7 @@ function App() {
                               return formatToleranceValue(info.remainingTarget);
                             })()}
                           </td>
-                          <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
+                          <td className="c" style={{ minWidth: '78px' }}><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
                         </tr>
                       ))}
                     </tbody>

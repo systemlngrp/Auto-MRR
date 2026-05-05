@@ -42,6 +42,20 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
     ? [previewEntry.pic1, previewEntry.pic2, previewEntry.pic3, previewEntry.pic4, previewEntry.pic5, previewEntry.pic6, previewEntry.pic7, previewEntry.pic8].filter(Boolean)
     : [];
 
+  const headerCellStyle = {
+    fontSize: '12px',
+    background: '#e5e7eb',
+    color: '#111',
+    fontWeight: 900,
+    padding: '10px 10px',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    whiteSpace: 'nowrap'
+  };
+  const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'middle' };
+
   return (
     <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '24px' }}>
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
@@ -83,18 +97,18 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
           <table className="table" style={{ minWidth: '1000px' }}>
             <thead>
               <tr>
-                <th style={{ width: '180px' }}>GE No</th>
-                <th style={{ width: '120px' }}>Date</th>
-                <th style={{ width: '220px' }}>Supplier</th>
-                <th style={{ width: '150px' }}>Truck No</th>
-                <th style={{ width: '150px' }}>Invoice No</th>
-                <th style={{ width: '190px' }}>Actions</th>
+                <th style={{ ...headerCellStyle, width: '180px' }}>GE No</th>
+                <th style={{ ...headerCellStyle, width: '120px' }}>Date</th>
+                <th style={{ ...headerCellStyle, width: '220px' }}>Supplier</th>
+                <th style={{ ...headerCellStyle, width: '150px' }}>Truck No</th>
+                <th style={{ ...headerCellStyle, width: '150px' }}>Invoice No</th>
+                <th style={{ ...headerCellStyle, width: '190px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 && !isLoading ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
+                  <td colSpan="6" style={{ ...bodyCellStyle, textAlign: 'center', padding: '60px', color: '#6b7280' }}>
                     <div style={{ fontSize: '40px', marginBottom: '16px' }}>🚛</div>
                     <div style={{ fontWeight: '700' }}>No gate entries found.</div>
                   </td>
@@ -102,12 +116,12 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
               ) : null}
               {filteredRows.map((row, index) => (
                 <tr key={index}>
-                  <td style={{ fontWeight: '700' }}>{row.ge_no}</td>
-                  <td>{row.date}</td>
-                  <td>{row.supplier}</td>
-                  <td>{row.truck_no}</td>
-                  <td>{row.invoice_no}</td>
-                  <td className="c">
+                  <td style={{ ...bodyCellStyle, fontWeight: 800 }}>{row.ge_no}</td>
+                  <td style={bodyCellStyle}>{row.date}</td>
+                  <td style={bodyCellStyle}>{row.supplier}</td>
+                  <td style={bodyCellStyle}>{row.truck_no}</td>
+                  <td style={bodyCellStyle}>{row.invoice_no}</td>
+                  <td className="c" style={bodyCellStyle}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                       <button className="btn small" onClick={() => setPreviewEntry(row)} style={{ padding: '6px 12px' }}>View</button>
                       <button className="btn small" onClick={() => onEdit(row)} style={{ padding: '6px 12px' }}>Edit</button>

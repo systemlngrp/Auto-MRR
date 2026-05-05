@@ -158,7 +158,9 @@ export default function ReelLabelsPage({
               setPrintMode('a4');
               const prev = document.title;
               document.title = `MRR_${searchMrr.trim()}_A4`;
-              setTimeout(() => { window.print(); setTimeout(() => { document.title = prev; }, 1000); }, 100);
+              withPrintPageOverride('@page { size: A4; margin: 10mm; }', () => {
+                setTimeout(() => { window.print(); setTimeout(() => { document.title = prev; }, 1000); }, 100);
+              });
             }}>
               Print A4 (1 Per Page)
             </button>

@@ -34,7 +34,8 @@ const HELPER_HEADERS = [
     'Plant Head Reject usermail', 'Accounts Approval', 'Accounts Approval Timestamp', 'Accounts Approval User Email',
     'Accounts Remark', 'Accounts Reject Timestamp', 'Acounts Reject usermail', 'Debit Note', 'Debit Note Date',
     'Debit Note Amount', 'MD Approval', 'MD Approval Timestamp', 'MD Approval User Email', 'MD Approval Remark',
-    'Md Reject Usermail', 'Md Reject Timestamp', 'Pending Tally Posting Timestamp', 'Pending Tally Posting User Email'
+    'Md Reject Usermail', 'Md Reject Timestamp', 'Pending Tally Posting Timestamp', 'Pending Tally Posting User Email',
+    'GE Entry'
 ];
 
 const GE_HEADERS = [
@@ -640,6 +641,7 @@ function toHelperRowArray(array $data): array
         value($data, 'md_reject_timestamp'),
         value($data, 'pending_tally_posting_timestamp'),
         value($data, 'pending_tally_posting_useremail'),
+        value($data, 'ge_no', 'ge_entry', 'ge_entry_no'),
     ];
 }
 

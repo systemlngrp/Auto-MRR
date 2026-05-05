@@ -44,14 +44,14 @@ export const labelStyles = `
   .no-print { display: none !important; }
 
   .labels-grid.mode-a4 { display: block !important; gap: 0; margin: 0; padding: 0; }
-  .mode-a4 .print-label { page-break-inside: avoid !important; page-break-after: always !important; border: none; margin: 0; padding: 40px; width: 100vw; height: 100vh; max-width: none; max-height: none; justify-content: center; }
+  /* A4: keep real-world sizing to avoid browser/viewport scaling issues */
+  .mode-a4 .print-label { page-break-inside: avoid !important; page-break-after: always !important; border: none; margin: 0; padding: 10mm; width: 190mm; min-height: 277mm; max-width: none; max-height: none; justify-content: center; }
 
   .labels-grid.mode-label { display: block !important; gap: 0; margin: 0; padding: 0; }
   .mode-label .print-label { page-break-inside: avoid !important; page-break-after: always !important; margin: 0; }
 
   body, .app { background: #fff !important; padding: 0; margin: 0; max-width: 100%; height: auto; }
   .sheet { border: 0 !important; box-shadow: none !important; max-width: 100% !important; padding: 0 !important; }
-  @page { margin: 10px; size: A4 landscape; }
 }
 `;
 

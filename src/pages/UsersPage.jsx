@@ -300,22 +300,54 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
                 </div>
                 <div>
                   <label style={labelStyle}>Menu Access</label>
-                  <select
-                    multiple
-                    value={Array.isArray(formData.menu_access) ? formData.menu_access : []}
-                    onChange={(e) => {
-                      const next = Array.from(e.target.selectedOptions).map((opt) => opt.value).filter(Boolean);
-                      setFormData({ ...formData, menu_access: next });
-                    }}
-                    style={{ ...inputStyle('menu_access'), height: '130px', padding: '8px 10px' }}
-                    title="Select which menus this user can see (Ctrl/Shift to select multiple). Leave empty to allow all menus."
-                  >
-                    {MENU_OPTIONS.map((opt) => (
-                      <option key={opt.key} value={opt.key}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 700, color: '#6b7280' }}>
-                    Leave empty = show all menus. Use Ctrl/Shift to select multiple.
+                  <div style={{ border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px 12px', background: '#fff' }}>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn small"
+                        style={{ padding: '6px 10px', fontSize: '11px' }}
+                        onClick={() => setFormData({ ...formData, menu_access: MENU_OPTIONS.map((opt) => opt.key) })}
+                        disabled={isSaving}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        className="btn small"
+                        style={{ padding: '6px 10px', fontSize: '11px' }}
+                        onClick={() => setFormData({ ...formData, menu_access: [] })}
+                        disabled={isSaving}
+                      >
+                        Clear
+                      </button>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', display: 'flex', alignItems: 'center' }}>
+                        Leave all unchecked = show all menus
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
+                      {MENU_OPTIONS.map((opt) => {
+                        const selected = Array.isArray(formData.menu_access) && formData.menu_access.includes(opt.key);
+                        return (
+                          <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#111827' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!selected}
+                              disabled={isSaving}
+                              onChange={(e) => {
+                                const checked = !!e.target.checked;
+                                const current = Array.isArray(formData.menu_access) ? formData.menu_access : [];
+                                const next = checked
+                                  ? Array.from(new Set([...current, opt.key]))
+                                  : current.filter((key) => key !== opt.key);
+                                setFormData({ ...formData, menu_access: next });
+                              }}
+                            />
+                            {opt.label}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
                 <div>
