@@ -2163,6 +2163,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [isLoadingPreviewAll, setIsLoadingPreviewAll] = useState(false);
   const [isPreparingLabels, setIsPreparingLabels] = useState(false);
   const [directLabelPrintJob, setDirectLabelPrintJob] = useState(null);
+  const [reviewPreview, setReviewPreview] = useState(null);
+  const [isLoadingReviewPreview, setIsLoadingReviewPreview] = useState(false);
   const [labelInitialMrr, setLabelInitialMrr] = useState('');
   const [allApprovalRows, setAllApprovalRows] = useState([]);
   const [isLoadingAllApprovals, setIsLoadingAllApprovals] = useState(false);
@@ -2255,6 +2257,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const getGroupedApprovalInvoiceWeight = (row) => firstFilled(
     row?.actual_weight,
     row?.invoice_ttl_weight_kgs,
+    row?.invoice_total_weight,
     row?.invoice_weight,
     row?.inv_weight,
     ''
@@ -2262,8 +2265,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const getGroupedApprovalActualWeight = (row) => firstFilled(
     row?.actual_mrr_weight,
     row?.actual_mrr_ttl_weight_kgs,
+    row?.actual_mrr_total_weight,
     row?.packing_weight,
     row?.actual_total,
+    row?.total_weight,
     ''
   );
   const getGroupedApprovalWeightDifference = (row) => Math.abs(n(getGroupedApprovalInvoiceWeight(row)) - n(getGroupedApprovalActualWeight(row)));
@@ -2324,42 +2329,62 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const getGroupedApprovalItems = (row) => {
     const rowType = String(row?.mrr_type || '').trim().toLowerCase();
     const mrrNumber = String(row?.mrr_number || row?.mrr_no || '').trim().toUpperCase();
+    const geKey = String(row?.ge_no || row?.ge_entry || '').trim().toUpperCase();
     const cacheKey = buildApprovalPrefetchKey(row, row?.firm_id || '', rowType || 'reel');
     const cached = approvalPrefetchCacheRef.current.get(cacheKey)?.data;
     const helperRows = Array.isArray(cached?.helperRows) ? cached.helperRows : [];
-    const helperItems = rowType === 'reel'
-      ? uniqueText(
-          helperRows
-            .filter((helperRow) => {
-              const helperMrr = String(
-                helperRow?.mrr_number ||
-                helperRow?.mrr_no ||
-                helperRow?.['MRR No'] ||
-                helperRow?.['mrr_no.'] ||
-                ''
-              ).trim().toUpperCase();
-              if (mrrNumber && helperMrr && helperMrr !== mrrNumber) return false;
-              const itemText = firstFilled(
-                helperRow?.item_name,
-                helperRow?.reel_details,
-                helperRow?.po_details,
-                helperRow?.description,
-                ''
-              );
-              return itemText && !isTotalLikeText(itemText);
-            })
-            .map((helperRow) => firstFilled(
-              helperRow?.item_name,
-              helperRow?.reel_details,
-              helperRow?.po_details,
-              helperRow?.description,
-              ''
-            ))
-            .filter(Boolean)
-        )
-      : [];
 
-    if (helperItems.length) return helperItems.map((item, index) => `${index + 1}. ${item}`).join('\n');
+    if (rowType === 'reel') {
+      const helperItems = helperRows
+        .filter((helperRow) => {
+          const helperMrr = String(
+            helperRow?.mrr_number ||
+            helperRow?.mrr_no ||
+            helperRow?.['MRR No'] ||
+            helperRow?.['mrr_no.'] ||
+            ''
+          ).trim().toUpperCase();
+          if (mrrNumber && helperMrr && helperMrr !== mrrNumber) return false;
+
+          const helperGe = String(
+            helperRow?.ge_no ||
+            helperRow?.ge_entry ||
+            helperRow?.['GE No'] ||
+            helperRow?.['GE No.'] ||
+            ''
+          ).trim().toUpperCase();
+          if (geKey && helperGe && helperGe !== geKey) return false;
+
+          const itemText = firstFilled(
+            helperRow?.item_name,
+            helperRow?.reel_details,
+            helperRow?.description,
+            helperRow?.po_details,
+            ''
+          );
+          return itemText && !isTotalLikeText(itemText);
+        })
+        .map((helperRow) => {
+          const baseText = firstFilled(
+            helperRow?.item_name,
+            helperRow?.reel_details,
+            helperRow?.description,
+            helperRow?.po_details,
+            ''
+          );
+          const extras = [
+            String(helperRow?.erp_code || '').trim() ? `ERP:${String(helperRow?.erp_code || '').trim()}` : '',
+            String(helperRow?.size || '').trim() ? `Size:${String(helperRow?.size || '').trim()}` : '',
+            String(helperRow?.gsm || '').trim() ? `GSM:${String(helperRow?.gsm || '').trim()}` : '',
+            String(helperRow?.bf || '').trim() ? `BF:${String(helperRow?.bf || '').trim()}` : '',
+            String(firstFilled(helperRow?.weight, helperRow?.net_wt, '') || '').trim() ? `Wt:${String(firstFilled(helperRow?.weight, helperRow?.net_wt, '')).trim()}` : ''
+          ].filter(Boolean);
+          return extras.length ? `${baseText} (${extras.join(' | ')})` : baseText;
+        })
+        .filter(Boolean);
+
+      if (helperItems.length) return helperItems.map((item, index) => `${index + 1}. ${item}`).join('\n');
+    }
 
     return firstFilled(
       rowType === 'reel' ? row?.helper_item_name : '',
@@ -2958,7 +2983,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                       : APP_ROUTES.login;    onRouteChange(nextPath);
   }, [onRouteChange, step]);
 
-  const userBadge = <ProfileMenu currentUser={currentUser} onLogout={onLogout} zIndex={10001} />;
+  const userBadge = step === 3 ? <ProfileMenu currentUser={currentUser} onLogout={onLogout} zIndex={10001} /> : null;
   const loginSpinnerOverlay = isLoggingIn ? (
     <div className="loading-overlay">
       <div className="spinner" />
@@ -3406,7 +3431,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                >
                  {'< Back'}
                </button>
-               <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} zIndex={10002} />
+               {/* Profile menu shown only on dashboard (step 3). */}
              </div>
           </div>
           {pendingFilter === 'all_approvals' ? (
@@ -3824,7 +3849,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   <th style={pendingHeaderCellStyle}>Invoice</th>
                   <th style={pendingHeaderCellStyle}>Invoice Value</th>
                   <th style={pendingHeaderCellStyle}>Truck No</th>
-                  <th style={pendingHeaderCellStyle}>Remark</th>
+                  {pendingFilter !== 'edit_mrr' ? <th style={pendingHeaderCellStyle}>Remark</th> : null}
                   <th style={pendingHeaderCellStyle}>Action</th>
                 </tr>
               </thead>
@@ -3848,7 +3873,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
                     <td style={pendingBodyCellStyle}>{formatDecimal2(ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || '')}</td>
                     <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
-                    <td style={pendingBodyCellStyle}>{getApprovalRemarkText(ge)}</td>
+                    {pendingFilter !== 'edit_mrr' ? <td style={pendingBodyCellStyle}>{getApprovalRemarkText(ge)}</td> : null}
                     <td className="c" style={{ ...pendingBodyCellStyle }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
@@ -4035,44 +4060,45 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       };
     });
 
-    const downloadRowLabel = async (summary) => {
+    const openPreviewRow = async (summary) => {
       const mrrNumber = String(summary?.mrrNo || '').trim();
+      if (!mrrNumber) return;
+      const geNo = String(summary?.geNo || '').trim();
       const targetFirm = firms.find((firm) => String(firm.id || '').trim() === String(summary?.firmId || '').trim()) || tempFirm;
-      if (!targetFirm || !mrrNumber) {
-        alert('MRR No. missing for label print.');
-        return;
-      }
+      if (!targetFirm) return;
+      const targetType = summary?.mrrType || tempType;
       try {
-        setIsPreparingLabels(true);
-        const targetType = summary?.mrrType || tempType;
-        const helperSheetName = getSheetName(targetFirm.helper, targetType);
-        const payload = await fetchSheetRangeWithParams({
-          sheet: helperSheetName,
-          mrr_number: mrrNumber,
-          spreadsheetId: targetFirm.spreadsheetId
-        }, targetFirm.scriptUrl);
-        const reels = Array.isArray(payload?.values) ? payload.values : [];
-        if (!reels.length) {
-          throw new Error(`No label rows found for MRR ${mrrNumber}.`);
-        }
-        setDirectLabelPrintJob({ reels, mrrNumber, firm: targetFirm, mode: 'a4' });
-        const previousTitle = document.title;
-        document.body.classList.add('print-labels-only');
-        document.title = `MRR_${mrrNumber}_Labels`;
-        setTimeout(() => {
-          window.print();
-          setTimeout(() => {
-            document.title = previousTitle;
-            document.body.classList.remove('print-labels-only');
-            setDirectLabelPrintJob(null);
-          }, 1000);
-        }, 150);
+        setIsLoadingReviewPreview(true);
+        const parentSheetName = getSheetName(targetFirm.mrr, targetType);
+        const childSheetName = getSheetName(targetFirm.helper, targetType);
+        const [parentPayload, childPayload] = await Promise.all([
+          fetchSheetRangeWithParams({
+            sheet: parentSheetName,
+            mrr_number: mrrNumber,
+            ge_no: geNo,
+            spreadsheetId: targetFirm.spreadsheetId
+          }, targetFirm.scriptUrl),
+          fetchSheetRangeWithParams({
+            sheet: childSheetName,
+            mrr_number: mrrNumber,
+            ge_no: geNo,
+            spreadsheetId: targetFirm.spreadsheetId
+          }, targetFirm.scriptUrl).catch(() => null)
+        ]);
+        setReviewPreview({
+          mrrNumber,
+          geNo,
+          firmName: targetFirm?.name || '',
+          mrrType: targetType,
+          parentSheetName,
+          childSheetName,
+          parentRows: Array.isArray(parentPayload?.data) ? parentPayload.data : [],
+          childRows: Array.isArray(childPayload?.data) ? childPayload.data : []
+        });
       } catch (err) {
-        document.body.classList.remove('print-labels-only');
-        setDirectLabelPrintJob(null);
-        alert(err?.message || 'Could not prepare labels.');
+        alert(err?.message || 'Could not load preview.');
       } finally {
-        setIsPreparingLabels(false);
+        setIsLoadingReviewPreview(false);
       }
     };
 
@@ -4127,13 +4153,45 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
-        {isPreparingLabels && (
+        {isLoadingReviewPreview ? (
           <div className="loading-overlay" style={{ zIndex: 10005 }}>
             <div className="spinner" />
-            <p style={{ marginTop: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>Preparing labels...</p>
+            <p style={{ marginTop: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>Loading preview...</p>
           </div>
-        )}
+        ) : null}
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          {reviewPreview ? (
+            <div
+              className="loading-overlay"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 10006,
+                background: 'rgba(17, 24, 39, 0.55)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '18px'
+              }}
+            >
+              <div style={{ width: 'min(1200px, 96vw)', maxHeight: '92vh', background: '#fff', border: '1px solid #d1d5db', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '12px 14px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 900 }}>
+                    Preview: {reviewPreview.firmName} | {String(reviewPreview.mrrType || '').toUpperCase()} | MRR {reviewPreview.mrrNumber}{reviewPreview.geNo ? ` | GE ${reviewPreview.geNo}` : ''}
+                  </div>
+                  <button className="btn small" onClick={() => setReviewPreview(null)} style={{ padding: '6px 10px' }}>Close</button>
+                </div>
+                <div style={{ padding: '12px 14px', display: 'grid', gap: '12px', overflow: 'auto' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#111' }}>Parent ({reviewPreview.parentSheetName})</div>
+                  <pre style={{ margin: 0, padding: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '11px', overflow: 'auto' }}>{JSON.stringify(reviewPreview.parentRows, null, 2)}</pre>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#111' }}>Child ({reviewPreview.childSheetName})</div>
+                  <pre style={{ margin: 0, padding: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '11px', overflow: 'auto' }}>{JSON.stringify(reviewPreview.childRows, null, 2)}</pre>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '12px', marginBottom: '20px', width: '100%' }}>
             <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>Review MRR</h2>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '20px', marginLeft: 'auto', marginRight: '50px' }}>
@@ -4160,7 +4218,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               >
                 {'< Back'}
               </button>
-              <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} zIndex={10002} />
+              {/* Profile menu shown only on dashboard (step 3). */}
             </div>
           </div>
           {isLoadingPreviewAll ? <p>Loading...</p> : null}
@@ -4201,9 +4259,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                       <td className="r" style={{ fontSize: '10px', whiteSpace: 'pre-line' }}>{summary.invoiceRate || '-'}</td>
                       <td className="r" style={{ fontSize: '10px' }}>{summary.basicValue || '-'}</td>
                       <td style={{ whiteSpace: 'nowrap', display: 'flex', gap: '4px' }}>
-                        <button className="btn small" onClick={() => openReviewRow(summary)}>Open to Review</button>
-                        <button className="btn small" onClick={() => printRowPdf(summary)}>Print</button>
-                        <button className="btn small" onClick={() => downloadRowLabel(summary)}>Download Label</button>
+                        <button className="btn small" onClick={() => openPreviewRow(summary)}>Open Preview</button>
                       </td>
                     </tr>
                   ))}
@@ -4212,11 +4268,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             </div>
           ) : null}
         </div>
-        {directLabelPrintJob?.reels?.length ? (
-          <section className="direct-label-print-sheet">
-            <ReelLabelPrintArea reels={directLabelPrintJob.reels} selectedFirm={directLabelPrintJob.firm} printMode={directLabelPrintJob.mode} />
-          </section>
-        ) : null}
       </div>
     );
   }
@@ -5004,7 +5055,7 @@ function App() {
     size: overrides.size ?? record?.size ?? row.size,
     rate: overrides.rate ?? row.rate,
     po_rate: overrides.po_rate ?? record?.rate ?? row.po_rate,
-    net_wt: overrides.net_wt ?? (record?.quantity_received || record?.quantity || row.net_wt)
+    net_wt: overrides.net_wt ?? (String(row?.net_wt ?? '').trim() !== '' ? row.net_wt : (record?.quantity_received ?? record?.quantity ?? row.net_wt))
   });
   const enrichPackingWithPoRows = (packingDoc, sourceRows = poRows) => {
     if (!sourceRows.length) return packingDoc;
@@ -5028,7 +5079,7 @@ function App() {
             size: row.size || match.size,
             rate: row.rate,
             po_rate: row.po_rate || match.rate,
-            net_wt: row.net_wt || match.quantity_received || match.quantity
+            net_wt: String(row?.net_wt ?? '').trim() !== '' ? row.net_wt : (match.quantity_received ?? match.quantity ?? row.net_wt)
           }),
           reel_no: row.reel_no || '',
           party_order: row.party_order || row.po_no || match.po_no
@@ -6314,7 +6365,7 @@ function App() {
       <style>{styles}</style>
       <style>{labelStyles}</style>
       <style>{printGridStyles}</style>
-      <ProfileMenu currentUser={currentUser} onLogout={handleUserLogout} zIndex={10002} />
+      {/* Profile menu shown only on dashboard (step 3). */}
       {popupMessage ? <div className={`toast ${popupTone}`}>{popupMessage}</div> : null}
 
       {(isScanning || isSaving || isApprovingFromForm || isPreparingLabels) && (
@@ -6871,7 +6922,7 @@ function App() {
                   ]} />
                   <MetaTable rows={[
                     ['Truck No.', packing.truck_no, (v) => setPack('truck_no', v), 'text', isDataEntryLocked],
-                    ['Actual Total', packing.actual_total, undefined],
+                    ['Actual Total', (packing.actual_total ?? '') || (packing.total_weight ?? '') || packingWeight, undefined],
                     ['Total Reel', packing.total_reels || packingReels, undefined],
                     ['Total Weight', packing.total_weight || packingWeight, undefined]
                   ]} />
@@ -6919,6 +6970,7 @@ function App() {
                         <th>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>PO Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Net Wt(Kgs.)<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Pending Qty</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -6945,7 +6997,7 @@ function App() {
                           <td><input value={row.gsm} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'gsm', e.target.value)} /></td>
                           <td><input value={row.size} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'size', e.target.value)} /></td>
                           <td><input value={row.unit} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'unit', e.target.value)} /></td>
-                          <td><input value={row.rate || getParentRateForPackingRow(row) || ''} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td>
+                          <td><input value={String((row.rate ?? getParentRateForPackingRow(row)) ?? '')} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'rate', e.target.value)} /></td>
                           <td><input value={row.po_rate} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
                           <td>
                             <input
@@ -6964,20 +7016,27 @@ function App() {
                               {getPackingWeightOptions(row, i).map((option) => <option key={option} value={option} />)}
                             </datalist>
                           </td>
+                          <td className="r" style={{ minWidth: '110px' }}>
+                            {(() => {
+                              const info = getPackingRemainingQuantityInfo(row, i);
+                              if (!info) return '-';
+                              return formatToleranceValue(info.remainingTarget);
+                            })()}
+                          </td>
                           <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan="15" className="r"><b>Grand Total</b></td>
+                        <td colSpan="16" className="r"><b>Grand Total</b></td>
                         <td className="c">{packing.total_reels || packingReels} Reels</td>
                         <td></td>
                         <td className="r">{money(packing.total_weight || packingWeight)}</td>
                         <td></td>
                       </tr>
                       {!isDataEntryLocked && <tr className="no-print">
-                        <td colSpan={19} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
+                        <td colSpan={20} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
                           <button className="btn main" onClick={addPackingRow} style={{ borderRadius: '50%', width: '30px', height: '30px', padding: 0, fontSize: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #111', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title="Add New Row">+</button>
                         </td>
                       </tr>}

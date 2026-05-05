@@ -846,21 +846,37 @@ function writeApprovalLog(string $firmId, string $mrrNumber, string $stage, stri
     $pdo = db();
     $geNo = trim((string)($extra['ge_no'] ?? ''));
     $recordGroupId = makeRecordGroupId($mrrNumber, $geNo);
-    $stmt = $pdo->prepare("
-        INSERT INTO approval_logs (firm_id, ge_no, mrr_number, record_group_id, stage_name, decision_value, user_email, remark_text, extra_json)
-        VALUES (:firm_id, :ge_no, :mrr_number, :record_group_id, :stage_name, :decision_value, :user_email, :remark_text, :extra_json)
-    ");
-    $stmt->execute([
+
+    $columns = tableColumns('approval_logs');
+    $fields = ['firm_id', 'mrr_number', 'stage_name', 'decision_value', 'user_email', 'remark_text', 'extra_json'];
+    if (in_array('ge_no', $columns, true)) {
+        $fields[] = 'ge_no';
+    }
+    if (in_array('record_group_id', $columns, true)) {
+        $fields[] = 'record_group_id';
+    }
+
+    $fieldList = implode(', ', $fields);
+    $placeholders = implode(', ', array_map(static fn($f) => ':' . $f, $fields));
+    $stmt = $pdo->prepare("INSERT INTO approval_logs ({$fieldList}) VALUES ({$placeholders})");
+
+    $params = [
         'firm_id' => $firmId,
-        'ge_no' => $geNo !== '' ? $geNo : null,
         'mrr_number' => $mrrNumber,
-        'record_group_id' => $recordGroupId !== '' ? $recordGroupId : null,
         'stage_name' => $stage,
         'decision_value' => $decision,
         'user_email' => $userEmail,
         'remark_text' => $remark,
         'extra_json' => json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-    ]);
+    ];
+    if (in_array('ge_no', $fields, true)) {
+        $params['ge_no'] = $geNo !== '' ? $geNo : null;
+    }
+    if (in_array('record_group_id', $fields, true)) {
+        $params['record_group_id'] = $recordGroupId !== '' ? $recordGroupId : null;
+    }
+
+    $stmt->execute($params);
 }
 
 function updateApprovalDataForMrr(string $firmId, string $mrrNumber, string $stage, string $decision, array $params): array

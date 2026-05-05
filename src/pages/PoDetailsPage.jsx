@@ -669,7 +669,7 @@ export default function PoDetailsPage({
                 return (
                   <tr key={index}>
                     {activeColumns.map(([key]) => (
-                      <td key={key} style={key === 'po_no' || key === 'supplier' ? { fontWeight: '700' } : {}}>
+                      <td key={key} style={key === 'po_no' || key === 'supplier' ? { fontWeight: '700', fontSize: '12px' } : { fontSize: '12px' }}>
                         {row[key] || '-'}
                       </td>
                     ))}

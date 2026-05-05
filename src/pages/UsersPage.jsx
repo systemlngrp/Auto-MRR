@@ -341,16 +341,21 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
 
         {status ? <div className="status" style={{ marginBottom: '16px', padding: '12px' }}>{status}</div> : null}
 
+        {(() => {
+          const headerCellStyle = { fontSize: '12px', background: '#e5e7eb', color: '#111', fontWeight: 900, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' };
+          const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'middle' };
+
+          return (
         <div className="wrap" style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: '4px' }}>
-          <table className="table" style={{ minWidth: '900px' }}>
+          <table className="table" style={{ minWidth: '980px' }}>
             <thead>
               <tr>
-                <th style={{ width: '150px', fontSize: '12px' }}>Login ID</th>
-                <th style={{ width: '200px', fontSize: '12px' }}>Name</th>
-                <th style={{ width: '220px', fontSize: '12px' }}>Email</th>
-                <th style={{ width: '120px', fontSize: '12px' }}>Role</th>
-                <th style={{ width: '100px', fontSize: '12px' }}>Status</th>
-                <th style={{ width: '140px', fontSize: '12px' }}>Actions</th>
+                <th style={{ ...headerCellStyle, width: '160px' }}>Login ID</th>
+                <th style={{ ...headerCellStyle, width: '220px' }}>Name</th>
+                <th style={{ ...headerCellStyle, width: '260px' }}>Email</th>
+                <th style={{ ...headerCellStyle, width: '140px' }}>Role</th>
+                <th style={{ ...headerCellStyle, width: '120px' }}>Status</th>
+                <th style={{ ...headerCellStyle, width: '160px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -364,23 +369,23 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
                 </tr>
               )}
               {users.map((user, index) => (
-                <tr key={user.login_id || index}>
-                  <td style={{ fontWeight: '700', color: '#111827' }}>{user.login_id}</td>
-                  <td>{user.display_name}</td>
-                  <td style={{ color: '#4b5563' }}>{user.user_email}</td>
-                  <td>
-                    <span style={{ padding: '4px 10px', background: '#f3f4f6', borderRadius: '50px', fontSize: '11px', fontWeight: '700', color: '#374151', textTransform: 'uppercase' }}>
+                <tr key={user.login_id || index} style={{ background: index % 2 === 1 ? '#fbfbfb' : '#fff' }}>
+                  <td style={{ ...bodyCellStyle, fontWeight: 900 }}>{user.login_id}</td>
+                  <td style={{ ...bodyCellStyle, fontWeight: 800 }}>{user.display_name}</td>
+                  <td style={{ ...bodyCellStyle, color: '#374151' }}>{user.user_email}</td>
+                  <td style={{ ...bodyCellStyle, textAlign: 'center' }}>
+                    <span style={{ padding: '4px 10px', background: '#f3f4f6', borderRadius: '50px', fontSize: '12px', fontWeight: '800', color: '#374151', textTransform: 'uppercase' }}>
                       {user.role}
                     </span>
                   </td>
-                  <td className="c">
+                  <td className="c" style={{ ...bodyCellStyle, textAlign: 'center' }}>
                     {String(user.active) === '1' ? (
                       <span style={{ color: '#059669', fontWeight: '800', fontSize: '12px' }}>● ACTIVE</span>
                     ) : (
                       <span style={{ color: '#dc2626', fontWeight: '800', fontSize: '12px' }}>● INACTIVE</span>
                     )}
                   </td>
-                  <td className="c">
+                  <td className="c" style={{ ...bodyCellStyle, textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       <button className="btn small" onClick={() => handleEdit(index)} style={{ padding: '6px 12px' }}>Edit</button>
                       <button 
@@ -398,6 +403,8 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
             </tbody>
           </table>
         </div>
+          );
+        })()}
       </div>
     </div>
   );
