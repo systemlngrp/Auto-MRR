@@ -7123,7 +7123,16 @@ function App() {
                           <td><input value={row.weight_unit} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'weight_unit', e.target.value)} /></td>
                           <td><input value={row.rate} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td>
                           <td><input value={row.amount} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
-                          <td className="c"><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removeInvoiceRow(i)}>Del</button></td>
+                          <td className="c" style={{ minWidth: '64px' }}>
+                            <button
+                              className="btn small"
+                              disabled={isDataEntryLocked}
+                              style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff', minWidth: '52px', whiteSpace: 'nowrap', padding: '6px 10px' }}
+                              onClick={() => removeInvoiceRow(i)}
+                            >
+                              Del
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -7201,7 +7210,7 @@ function App() {
                       <col style={{ width: "7%" }} />
                       <col style={{ width: "7%" }} />
                       <col style={{ width: "8%" }} />
-                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "80px" }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -7224,7 +7233,7 @@ function App() {
                         <th>PO Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Net Wt(Kgs.)<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th>Pending Qty</th>
-                        <th style={{ minWidth: '78px', whiteSpace: 'nowrap' }}>Action</th>
+                        <th style={{ minWidth: '80px', width: '80px', whiteSpace: 'nowrap' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -7276,7 +7285,16 @@ function App() {
                               return formatToleranceValue(info.remainingTarget);
                             })()}
                           </td>
-                          <td className="c" style={{ minWidth: '78px' }}><button className="btn small" disabled={isDataEntryLocked} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => removePackingRow(i)}>Del</button></td>
+                          <td className="c" style={{ minWidth: '80px', width: '80px' }}>
+                            <button
+                              className="btn small"
+                              disabled={isDataEntryLocked}
+                              style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff', minWidth: '52px', whiteSpace: 'nowrap', padding: '6px 10px' }}
+                              onClick={() => removePackingRow(i)}
+                            >
+                              Del
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
