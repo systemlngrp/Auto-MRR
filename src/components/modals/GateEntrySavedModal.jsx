@@ -16,7 +16,7 @@ export default function GateEntrySavedModal({ isOpen, firm, entry, previewPics, 
 
         <div style={{ border: '2px solid #111', padding: '32px', background: '#fff', position: 'relative' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '1px solid #ddd', paddingBottom: '20px' }}>
-            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '60px' }} alt="Logo" />
+            <img src={firm?.logo || 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png'} style={{ height: '60px' }} alt="Logo" />
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#444', marginTop: '8px', textTransform: 'uppercase' }}>{firm?.name || ''}</div>
             <h3 style={{ margin: '12px 0 0', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '3px', fontSize: '12px' }}>Gate Entry</h3>
           </div>

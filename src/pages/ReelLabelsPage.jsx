@@ -18,6 +18,27 @@ export default function ReelLabelsPage({
   const [printMode, setPrintMode] = useState('a4');
   const autoLoadedInitialMrrRef = useRef('');
 
+  const withPrintPageOverride = (cssText, runPrint) => {
+    const existing = document.getElementById('print-page-size-override');
+    if (existing) existing.remove();
+
+    const style = document.createElement('style');
+    style.id = 'print-page-size-override';
+    style.type = 'text/css';
+    style.textContent = cssText || '';
+    document.head.appendChild(style);
+
+    const cleanup = () => {
+      try { style.remove(); } catch (_) {}
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+    runPrint?.();
+    // Fallback cleanup in case afterprint does not fire (some browsers).
+    setTimeout(cleanup, 5000);
+  };
+
   useEffect(() => {
     if (initialMrr && !searchMrr) {
       setSearchMrr(initialMrr);
@@ -79,11 +100,11 @@ export default function ReelLabelsPage({
         firmKey: selectedFirm.firmKey,
         backendUrl: selectedFirm.backendUrl
       });
-      const data = payload?.values || [];
-      if (data.length) {
-        setReels(data);
+      const rows = Array.isArray(payload?.data) ? payload.data : [];
+      if (rows.length) {
+        setReels(rows);
         setSearchMrr(targetMrr);
-        setStatus(`Found ${data.length} reels for MRR ${targetMrr}.`);
+        setStatus(`Found ${rows.length} reels for MRR ${targetMrr}.`);
       } else {
         setReels([]);
         setSearchMrr(targetMrr);
@@ -145,7 +166,12 @@ export default function ReelLabelsPage({
               setPrintMode('label');
               const prev = document.title;
               document.title = `MRR_${searchMrr.trim()}`;
-              setTimeout(() => { window.print(); setTimeout(() => { document.title = prev; }, 1000); }, 100);
+              withPrintPageOverride('@page { size: 250px 255px; margin: 11px; }', () => {
+                setTimeout(() => {
+                  window.print();
+                  setTimeout(() => { document.title = prev; }, 1000);
+                }, 100);
+              });
             }}>
               Print Small Labels
             </button>

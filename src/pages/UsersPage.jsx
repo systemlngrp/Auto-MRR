@@ -21,6 +21,14 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
 
+  const handleSetView = (nextView) => {
+    if (nextView === 'form') {
+      handleAddNew();
+      return;
+    }
+    setView('list');
+  };
+
   useEffect(() => {
     if (initialView === 'form') {
       setEditingIndex(-1);
@@ -326,6 +334,16 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
             <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shared across all firms</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              value={view === 'form' ? 'form' : 'list'}
+              onChange={(e) => handleSetView(e.target.value)}
+              disabled={isLoading || isSaving}
+              style={{ border: '1px solid #d1d5db', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, background: '#fff' }}
+              title="Switch Users view"
+            >
+              <option value="list">List View</option>
+              <option value="form">Add User</option>
+            </select>
             <button className="btn" onClick={onBack} disabled={isLoading || isSaving} style={{ padding: '10px 20px' }}>{'← Back'}</button>
             <button 
               className="btn main" 

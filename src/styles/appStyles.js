@@ -1,11 +1,21 @@
 export const labelStyles = `
 .labels-grid { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-top: 10px; }
 .print-label { border: 1px solid #111; padding: 12px; background: #fff; color: #111; font-family: Arial, sans-serif; text-align: center; margin: 0 auto; display: flex; flex-direction: column; box-sizing: border-box; }
-.mode-label .print-label { width: 380px; height: 550px; }
+.mode-label .print-label { width: 228px; height: 233px; padding: 8px; text-align: left; }
 .mode-a4 .print-label { width: 100%; height: 100%; padding: 30px; font-size: 1.5em; max-width: 800px; }
 .print-label .brand-logo { margin: 0 auto; display: block; object-fit: contain; }
 .mode-a4 .print-label .brand-logo { height: 160px; max-width: 100%; margin-bottom: 20px; }
 .mode-label .print-label .brand-logo { height: 80px; max-width: 100%; margin-bottom: 12px; }
+
+.mode-label .print-label .sl-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mode-label .print-label .sl-logo { width: 50px; height: auto; display: block; object-fit: contain; }
+.mode-label .print-label .sl-company-name { font-size: 12px; font-weight: 700; text-transform: uppercase; line-height: 1.1; }
+.mode-label .print-label .sl-row { display: flex; justify-content: space-between; font-size: 7px; margin-top: 2px; }
+.mode-label .print-label .sl-supplier { font-size: 9px; font-weight: 700; margin-top: 4px; }
+.mode-label .print-label .sl-specs { font-size: 9px; margin-bottom: 6px; }
+.mode-label .print-label .sl-details { display: flex; justify-content: space-between; align-items: flex-start; font-size: 10px; margin-top: auto; }
+.mode-label .print-label .sl-qrbox { border: 1px solid #000; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.mode-label .print-label .sl-qrbox svg { width: 106px; height: 106px; display: block; }
 
 .mode-a4 .print-label .sub-info { font-size: 14px; margin-bottom: 8px; }
 .mode-label .print-label .sub-info { font-size: 10px; margin-bottom: 4px; }
@@ -36,8 +46,8 @@ export const labelStyles = `
   .labels-grid.mode-a4 { display: block !important; gap: 0; margin: 0; padding: 0; }
   .mode-a4 .print-label { page-break-inside: avoid !important; page-break-after: always !important; border: none; margin: 0; padding: 40px; width: 100vw; height: 100vh; max-width: none; max-height: none; justify-content: center; }
 
-  .labels-grid.mode-label { display: flex !important; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 0; }
-  .mode-label .print-label { page-break-inside: avoid !important; margin-bottom: 20px; }
+  .labels-grid.mode-label { display: block !important; gap: 0; margin: 0; padding: 0; }
+  .mode-label .print-label { page-break-inside: avoid !important; page-break-after: always !important; margin: 0; }
 
   body, .app { background: #fff !important; padding: 0; margin: 0; max-width: 100%; height: auto; }
   .sheet { border: 0 !important; box-shadow: none !important; max-width: 100% !important; padding: 0 !important; }

@@ -83,6 +83,7 @@ const FIRMS = [
   { 
     id: 'lnki', 
     name: 'LNKI', 
+    logo: 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png',
     backendUrl: HOSTINGER_API_URL,
     firmKey: 'lnki',
     get scriptUrl() { return this.backendUrl; },
@@ -104,8 +105,10 @@ const FIRMS = [
   { 
     id: 'unit_1', 
     name: 'UNIT-1', 
+    logo: 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png',
     backendUrl: HOSTINGER_API_URL,
-    firmKey: 'unit_1',
+    // Use LNKI data + behavior for UNIT-1 (same UI + functionality across firms).
+    firmKey: 'lnki',
     get scriptUrl() { return this.backendUrl; },
     get spreadsheetId() { return this.firmKey; },
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -113,11 +116,11 @@ const FIRMS = [
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
     header: {
       brand_box: '',
-      title: 'LAXMI NARAYAN CORRUGATED BOARDS LLP UNIT I (DR)',
-      works: '3RD FLOOR, ADAMS PLAZA, CHRISTIANBASTI, G.S. ROAD, GUWAHATI, PIN NO-781005',
-      meta: 'State :ASSAM Pin:781005 Code :18',
+      title: 'LAXMI NARAYAN KRAFT INDUSTRIES',
+      works: '1COM 2, 3RD FLOOR ADMAS PLAZA G.S ROAD, CHRISTIAN BASTI, GUWAHATI Pin 781101',
+      meta: 'State :ASSAM Pin:781101 Code :18',
       contact: 'Contact - / M:- T:-',
-      gstin: 'GSTIN :18AAIFL7383D2Z1 PAN : AAIFL7383D',
+      gstin: 'GSTIN : 18AADFL5037B1ZO PAN : AADFL5037B',
       extra_lines: [],
       note: ''
     }
@@ -125,8 +128,10 @@ const FIRMS = [
   { 
     id: 'unit_2', 
     name: 'UNIT-2', 
+    logo: 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png',
     backendUrl: HOSTINGER_API_URL, 
-    firmKey: 'unit_2',
+    // Use LNKI data + behavior for UNIT-2 (same UI + functionality across firms).
+    firmKey: 'lnki',
     get scriptUrl() { return this.backendUrl; }, 
     get spreadsheetId() { return this.firmKey; },
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -134,11 +139,11 @@ const FIRMS = [
     helper: { reel: 'HELPER SHEET', sheet: 'HELPER SHEET', other: 'OTHER ITEMS' },
     header: {
       brand_box: '',
-      title: 'LAXMI NARAYAN CORRUGATED BOARDS LLP UNIT II (DR)',
-      works: 'INDUSTRIAL GROWTH CENTER, CHOWKIGATE, CHANGSARI, KAMRUP Pin 781101',
+      title: 'LAXMI NARAYAN KRAFT INDUSTRIES',
+      works: '1COM 2, 3RD FLOOR ADMAS PLAZA G.S ROAD, CHRISTIAN BASTI, GUWAHATI Pin 781101',
       meta: 'State :ASSAM Pin:781101 Code :18',
       contact: 'Contact - / M:- T:-',
-      gstin: 'GSTIN :18AAIFL7383D1Z2 PAN : AAIFL7383D',
+      gstin: 'GSTIN : 18AADFL5037B1ZO PAN : AADFL5037B',
       extra_lines: [],
       note: ''
     }
@@ -311,6 +316,16 @@ const getTodayInputDate = () => {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+};
+const compareInputDates = (a, b) => {
+  const left = String(a || '').trim();
+  const right = String(b || '').trim();
+  if (!left || !right) return null;
+  const leftDate = new Date(`${left}T00:00:00`);
+  const rightDate = new Date(`${right}T00:00:00`);
+  if (Number.isNaN(leftDate.getTime()) || Number.isNaN(rightDate.getTime())) return null;
+  if (leftDate.getTime() === rightDate.getTime()) return 0;
+  return leftDate.getTime() > rightDate.getTime() ? 1 : -1;
 };
 const merge = (base, patch) => Array.isArray(base) ? (Array.isArray(patch) && patch.length ? patch : base) : (base && typeof base === 'object' ? Object.keys({ ...base, ...(patch || {}) }).reduce((out, key) => ({ ...out, [key]: merge(base[key], patch?.[key]) }), {}) : (patch === undefined || patch === null || patch === '' ? base : patch));
 
@@ -1878,13 +1893,26 @@ function normalizeGateEntryInitialData(initialData, geNo, defaultDate) {
 }
 
 function combineUniqueRows(rows = [], makeBlankRow) {
-  const seen = new Set();
-  return ensureRows(rows)
+  const mergedByKey = new Map();
+  const order = [];
+
+  const mergeMissingFields = (baseRow, nextRow) => {
+    const base = baseRow || {};
+    const next = nextRow || {};
+    const merged = { ...base };
+    for (const key of Object.keys(next)) {
+      if (!isMeaningful(merged[key]) && isMeaningful(next[key])) merged[key] = next[key];
+    }
+    return merged;
+  };
+
+  ensureRows(rows)
     .map((row) => merge(typeof makeBlankRow === 'function' ? makeBlankRow() : {}, row || {}))
     .filter((row) => Object.values(row || {}).some((value) => isMeaningful(value)))
-    .filter((row) => {
+    .forEach((row) => {
       // Create a more robust key using only meaningful, identifying fields
-      // to allow merging rows that are slightly different but represent the same physical item
+      // to allow merging rows that are slightly different but represent the same physical item.
+      // If we see the same key again, merge missing fields (e.g., Rate/Amount) instead of dropping it.
       const identifyingValues = [
         String(row.description || row.item_name || '').trim().toLowerCase(),
         String(row.reel_no || row.supplier_reel_no || '').trim().toLowerCase(),
@@ -1895,10 +1923,11 @@ function combineUniqueRows(rows = [], makeBlankRow) {
         String(row.weight || row.net_wt || '').trim().toLowerCase()
       ];
       const key = identifyingValues.join('|');
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+      if (!mergedByKey.has(key)) order.push(key);
+      mergedByKey.set(key, mergeMissingFields(mergedByKey.get(key), row));
     });
+
+  return order.map((key) => mergedByKey.get(key)).filter(Boolean);
 }
 
 function combineInvoiceScanResults(results = []) {
@@ -3009,7 +3038,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {loginSpinnerOverlay}
         <div style={{ margin: 'auto', background: '#fff', padding: '34px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '520px', width: '90%' }}>
           <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '72px' }} alt="Logo" />
+            <img src={firms[0].logo} style={{ height: '72px' }} alt="Logo" />
           </div>
           <h2 style={{ marginTop: 0, marginBottom: '8px' }}>Login</h2>
           <div style={{ display: 'grid', gap: '10px' }}>
@@ -3090,7 +3119,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         {loginSpinnerOverlay}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
-          <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '80px', marginBottom: '20px' }} alt="Logo" />
+          <img src={firms[0].logo} style={{ height: '80px', marginBottom: '20px' }} alt="Logo" />
           <h2 style={{ color: 'var(--ink)', fontSize: '24px', marginBottom: '12px', letterSpacing: '0.02em' }}>SELECT FIRM</h2>
           {loginError ? <div style={{ marginTop: '10px', color: '#9b1c1c', fontSize: '12px', fontWeight: 700 }}>{loginError}</div> : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -3216,7 +3245,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.06em', color: 'var(--muted)' }}>MRR &amp; REEL MANAGEMENT SYSTEM</div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <img src="https://i.ibb.co/Dgv0KwQ4/lnkilogo.png" style={{ height: '40px' }} alt="Logo" />
+            <img src={selectedFirm?.logo} style={{ height: '40px' }} alt="Logo" />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <div style={pillStyle}>{tempFirm?.name || 'FIRM'}</div>
@@ -3616,6 +3645,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                         setGroupedApprovalError(ge, `Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
                                         return;
                                       }
+                                      const mrrDate = firstFilled(ge?.date, ge?.entry_date, '');
+                                      const cmp = compareInputDates(approvalDraft.debit_note_date, mrrDate);
+                                      if (cmp !== null && cmp <= 0) {
+                                        setGroupedApprovalError(ge, 'Debit Note Date must be greater than MRR Date.');
+                                        return;
+                                      }
                                     }
                                     if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
                                       setGroupedApprovalError(ge, `MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
@@ -3766,6 +3801,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)]}
                                   </div>
                                 ) : null}
+                                {(getGroupedApprovalDraft(ge).debit_note || getGroupedApprovalDraft(ge).debit_note_date || getGroupedApprovalDraft(ge).debit_note_amount) ? (
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(140px, 1fr))', gap: '8px' }}>
+                                    <div>
+                                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note</div>
+                                      <input value={getGroupedApprovalDraft(ge).debit_note} readOnly style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Date</div>
+                                      <input value={getGroupedApprovalDraft(ge).debit_note_date} readOnly style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Amount</div>
+                                      <input value={getGroupedApprovalDraft(ge).debit_note_amount} readOnly style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                                    </div>
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                             </div>
@@ -3831,6 +3882,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
                                 missingErrors.push(ge);
                                 setGroupedApprovalError(ge, `Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'selected MRR'}.`);
+                                continue;
+                              }
+                              const mrrDate = firstFilled(ge?.date, ge?.entry_date, '');
+                              const cmp = compareInputDates(approvalDraft.debit_note_date, mrrDate);
+                              if (cmp !== null && cmp <= 0) {
+                                missingErrors.push(ge);
+                                setGroupedApprovalError(ge, 'Debit Note Date must be greater than MRR Date.');
                                 continue;
                               }
                             }
@@ -5554,6 +5612,12 @@ function App() {
         );
         return;
       }
+      const mrrDate = firstFilled(geData?.date, invoice.date, packing.date, '');
+      const cmp = compareInputDates(accountsDebitNoteDate, mrrDate);
+      if (cmp !== null && cmp <= 0) {
+        showPopup('Debit Note Date must be greater than MRR Date.', 'error');
+        return;
+      }
     }
     if (approvalStage === 'pending_plant_head_approval' && decision === 'reject' && !String(plantHeadRemark || '').trim()) {
       showPopup('Plant Head Remark is required for rejection.', 'error');
@@ -6585,6 +6649,22 @@ function App() {
                   placeholder="Enter MD Approval Remark"
                   style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#fff' }}
                 />
+                {(String(geData?.debit_note || '').trim() || String(geData?.debit_note_date || '').trim() || String(geData?.debit_note_amount || '').trim()) ? (
+                  <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note</div>
+                      <input value={String(geData?.debit_note || '').trim()} readOnly style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Date</div>
+                      <input value={String(geData?.debit_note_date || '').trim()} readOnly style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 900, marginBottom: '4px' }}>Debit Note Amount</div>
+                      <input value={String(geData?.debit_note_amount || '').trim()} readOnly style={{ width: '100%', border: '1px solid #a8a8a8', padding: '6px 8px', fontSize: '11px', background: '#f3f4f6' }} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
