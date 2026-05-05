@@ -2780,11 +2780,27 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       });
 
       const byMrr = new Map();
+      const mdApprovedKeys = new Set();
       rows.forEach((rowObj) => {
         const mrrNo = readValue(rowObj, ['MRR No', 'MRR Number', 'mrr_no', 'mrr_number']);
         const geNo = readValue(rowObj, ['GE Entry', 'GE No', 'ge_no', 'ge_entry']);
         if (!mrrNo) return;
         const recordKey = [String(geNo).trim(), String(mrrNo).trim()].join('|');
+
+        const mdApproval = readValue(rowObj, ['MD Approval', 'md_approval']);
+        const mdApprovalTimestamp = readValue(rowObj, ['MD Approval Timestamp', 'MD Approval TimeStamp', 'md_approval_timestamp']);
+        const mdRejectTimestamp = readValue(rowObj, ['MD Reject Timestamp', 'Md Reject Timestamp', 'md_reject_timestamp']);
+        const isRejected = /^rejected$/i.test(String(mdApproval || '').trim()) || !!mdRejectTimestamp;
+        const isApproved = !isRejected && (
+          /^approved$/i.test(String(mdApproval || '').trim()) || !!mdApprovalTimestamp
+        );
+        if (isApproved) {
+          mdApprovedKeys.add(recordKey);
+          byMrr.delete(recordKey);
+          return;
+        }
+        if (mdApprovedKeys.has(recordKey)) return;
+
         byMrr.set(recordKey, {
           pending_stage: 'completed_mrr',
           force_load_saved: true,
@@ -3162,6 +3178,24 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   if (step === 3) {
     const isMenuCountsLoading = isLoadingPending || isLoadingEditMrr || isLoadingAllApprovals;
     const menuCountText = (value) => (isMenuCountsLoading ? '(Loading...)' : `(${value})`);
+    const parseMenuAccess = (value) => {
+      if (Array.isArray(value)) return value.map((v) => String(v || '').trim()).filter(Boolean);
+      const text = String(value || '').trim();
+      if (!text) return [];
+      try {
+        const decoded = JSON.parse(text);
+        return Array.isArray(decoded) ? decoded.map((v) => String(v || '').trim()).filter(Boolean) : [];
+      } catch {
+        return text.split(',').map((v) => String(v || '').trim()).filter(Boolean);
+      }
+    };
+    const currentMenuAccess = (() => {
+      const fromTop = parseMenuAccess(currentUser?.menu_access);
+      if (fromTop.length) return fromTop;
+      const fromNested = parseMenuAccess(currentUser?.user?.menu_access);
+      return fromNested;
+    })();
+    const canSeeMenu = (key) => currentMenuAccess.length === 0 || currentMenuAccess.includes(key);
     const shellStyle = {
       display: 'flex',
       flexDirection: 'column',
@@ -3254,75 +3288,93 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
         <div style={bodyStyle}>
           <div style={sidebarStyle}>
-            <button
-              type="button"
-              style={sideButtonStyle}
-              onClick={() => {
-                setEditData(null);
-                setStep(4);
-              }}
-            >
-              NEW GE ENTRY
-            </button>
-            <button type="button" style={sideButtonStyle} onClick={() => { setStep(11); }}>
-              GE ENTRY DATA
-            </button>
-            <button
-              type="button"
-              disabled={isLoadingPending}
-              style={{ ...sideButtonStyle, opacity: isLoadingPending ? 0.6 : 1 }}
-              onClick={() => {
-                setPendingFilter('pending_mrr');
-                setStep(6);
-              }}
-            >
-              PENDING MRR {menuCountText(pendingCounts.pending_mrr)}
-            </button>
-            <button
-              type="button"
-              disabled={isLoadingEditMrr}
-              style={{ ...sideButtonStyle, opacity: isLoadingEditMrr ? 0.6 : 1 }}
-              onClick={() => {
-                setPendingFilter('edit_mrr');
-                setStep(6);
-              }}
-            >
-              EDIT MRR {menuCountText(pendingCounts.edit_mrr)}
-            </button>
-            <button
-              type="button"
-              disabled={isLoadingAllApprovals}
-              style={{ ...sideButtonStyle, opacity: isLoadingAllApprovals ? 0.6 : 1 }}
-              onClick={() => {
-                setPendingFilter('all_approvals');
-                setStep(6);
-              }}
-            >
-              APPROVALS {menuCountText(pendingCounts.all_approvals)}
-            </button>
-            <button
-              type="button"
-              style={sideButtonStyle}
-              onClick={async () => {
-                setReportFilter('all');
-                await loadPreviewAllMrr();
-                setStep(7);
-              }}
-            >
-              REVIEW
-            </button>
-            <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
-              PO DETAILS
-            </button>
-            <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
-              USERS
-            </button>
+            {canSeeMenu('new_ge') ? (
+              <button
+                type="button"
+                style={sideButtonStyle}
+                onClick={() => {
+                  setEditData(null);
+                  setStep(4);
+                }}
+              >
+                NEW GE ENTRY
+              </button>
+            ) : null}
+            {canSeeMenu('ge_data') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(11); }}>
+                GE ENTRY DATA
+              </button>
+            ) : null}
+            {canSeeMenu('pending_mrr') ? (
+              <button
+                type="button"
+                disabled={isLoadingPending}
+                style={{ ...sideButtonStyle, opacity: isLoadingPending ? 0.6 : 1 }}
+                onClick={() => {
+                  setPendingFilter('pending_mrr');
+                  setStep(6);
+                }}
+              >
+                PENDING MRR {menuCountText(pendingCounts.pending_mrr)}
+              </button>
+            ) : null}
+            {canSeeMenu('edit_mrr') ? (
+              <button
+                type="button"
+                disabled={isLoadingEditMrr}
+                style={{ ...sideButtonStyle, opacity: isLoadingEditMrr ? 0.6 : 1 }}
+                onClick={() => {
+                  setPendingFilter('edit_mrr');
+                  setStep(6);
+                }}
+              >
+                EDIT MRR {menuCountText(pendingCounts.edit_mrr)}
+              </button>
+            ) : null}
+            {canSeeMenu('approvals') ? (
+              <button
+                type="button"
+                disabled={isLoadingAllApprovals}
+                style={{ ...sideButtonStyle, opacity: isLoadingAllApprovals ? 0.6 : 1 }}
+                onClick={() => {
+                  setPendingFilter('all_approvals');
+                  setStep(6);
+                }}
+              >
+                APPROVALS {menuCountText(pendingCounts.all_approvals)}
+              </button>
+            ) : null}
+            {canSeeMenu('review') ? (
+              <button
+                type="button"
+                style={sideButtonStyle}
+                onClick={async () => {
+                  setReportFilter('all');
+                  await loadPreviewAllMrr();
+                  setStep(7);
+                }}
+              >
+                REVIEW
+              </button>
+            ) : null}
+            {canSeeMenu('po_details') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
+                PO DETAILS
+              </button>
+            ) : null}
+            {canSeeMenu('users') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
+                USERS
+              </button>
+            ) : null}
 
             <div style={{ marginTop: '6px', height: 1, background: '#e5e7eb' }} />
 
-            <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
-              DOWNLOAD LABEL
-            </button>
+            {canSeeMenu('download_label') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
+                DOWNLOAD LABEL
+              </button>
+            ) : null}
 
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
               <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} />
@@ -3943,6 +3995,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   <th style={pendingHeaderCellStyle}>MRR No</th>
                   <th style={pendingHeaderCellStyle}>Supplier</th>
                   <th style={pendingHeaderCellStyle}>Invoice</th>
+                  {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? <th style={pendingHeaderCellStyle}>MRR Weight</th> : null}
+                  {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? <th style={pendingHeaderCellStyle}>Invoice Weight</th> : null}
                   <th style={pendingHeaderCellStyle}>Invoice Value</th>
                   <th style={pendingHeaderCellStyle}>Truck No</th>
                   {pendingFilter !== 'edit_mrr' ? <th style={pendingHeaderCellStyle}>Remark</th> : null}
@@ -3967,6 +4021,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <td className="c" style={pendingBodyCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
                     <td style={pendingBodyCellStyle}>{ge.supplier || ge.supplier_name}</td>
                     <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
+                    {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? (
+                      <td className="r" style={pendingBodyCellStyle}>{formatDecimal2(firstFilled(ge?.actual_mrr_weight, ge?.actual_mrr_ttl_weight_kgs, ge?.actual_total, '')) || '-'}</td>
+                    ) : null}
+                    {pendingFilter !== 'edit_mrr' && pendingFilter !== 'pending_mrr' ? (
+                      <td className="r" style={pendingBodyCellStyle}>{formatDecimal2(firstFilled(ge?.invoice_ttl_weight_kgs, ge?.invoice_weight, ge?.actual_weight, '')) || '-'}</td>
+                    ) : null}
                     <td style={pendingBodyCellStyle}>{formatDecimal2(ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || '')}</td>
                     <td style={pendingBodyCellStyle}>{ge.truck_no}</td>
                     {pendingFilter !== 'edit_mrr' ? <td style={pendingBodyCellStyle}>{getApprovalRemarkText(ge)}</td> : null}

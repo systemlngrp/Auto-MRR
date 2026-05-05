@@ -3,11 +3,24 @@ import React, { useEffect, useState } from 'react';
 export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'list' }) {
   const { fetchUsers, saveUsers } = deps;
 
+  const MENU_OPTIONS = [
+    { key: 'new_ge', label: 'New GE Entry' },
+    { key: 'ge_data', label: 'GE Entry Data' },
+    { key: 'pending_mrr', label: 'Pending MRR' },
+    { key: 'edit_mrr', label: 'Edit MRR' },
+    { key: 'approvals', label: 'Approvals' },
+    { key: 'review', label: 'Review' },
+    { key: 'po_details', label: 'PO Details' },
+    { key: 'users', label: 'Users' },
+    { key: 'download_label', label: 'Download Label' }
+  ];
+
   const blankUser = () => ({
     login_id: '',
     display_name: '',
     user_email: '',
     role: '',
+    menu_access: [],
     password: '',
     active: '1'
   });
@@ -46,7 +59,10 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
           firmKey: selectedFirm.firmKey,
           backendUrl: selectedFirm.backendUrl
         });
-        setUsers(data || []);
+        setUsers((data || []).map((user) => ({
+          ...user,
+          menu_access: Array.isArray(user?.menu_access) ? user.menu_access : []
+        })));
         setStatus('');
       } catch (err) {
         setStatus(err?.message || 'Could not load users.');
@@ -59,7 +75,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
 
   const handleEdit = (index) => {
     setEditingIndex(index);
-    setFormData({ ...blankUser(), ...users[index], password: '' });
+    const row = users[index] || {};
+    setFormData({
+      ...blankUser(),
+      ...row,
+      menu_access: Array.isArray(row?.menu_access) ? row.menu_access : [],
+      password: ''
+    });
     setErrors({});
     setView('form');
   };
@@ -107,6 +129,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
         display_name: String(formData.display_name).trim(),
         user_email: String(formData.user_email).trim(),
         role: String(formData.role).trim(),
+        menu_access: Array.isArray(formData.menu_access) ? formData.menu_access : [],
         password: String(formData.password).trim(),
         active: String(formData.active).trim() === '0' ? '0' : '1'
       };
@@ -120,7 +143,10 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
         firmKey: selectedFirm.firmKey,
         backendUrl: selectedFirm.backendUrl
       });
-      setUsers(data || []);
+      setUsers((data || []).map((user) => ({
+        ...user,
+        menu_access: Array.isArray(user?.menu_access) ? user.menu_access : []
+      })));
       
       setStatus('User saved successfully.');
       setView('list');
@@ -146,7 +172,10 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
         firmKey: selectedFirm.firmKey,
         backendUrl: selectedFirm.backendUrl
       });
-      setUsers(data || []);
+      setUsers((data || []).map((user) => ({
+        ...user,
+        menu_access: Array.isArray(user?.menu_access) ? user.menu_access : []
+      })));
       setStatus('User deactivated.');
     } catch (err) {
       setStatus(err?.message || 'Could not deactivate user.');
@@ -268,6 +297,26 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
                     <option value="Plant MRR">Plant MRR</option>
                   </select>
                   {errorMsg(errors.role)}
+                </div>
+                <div>
+                  <label style={labelStyle}>Menu Access</label>
+                  <select
+                    multiple
+                    value={Array.isArray(formData.menu_access) ? formData.menu_access : []}
+                    onChange={(e) => {
+                      const next = Array.from(e.target.selectedOptions).map((opt) => opt.value).filter(Boolean);
+                      setFormData({ ...formData, menu_access: next });
+                    }}
+                    style={{ ...inputStyle('menu_access'), height: '130px', padding: '8px 10px' }}
+                    title="Select which menus this user can see (Ctrl/Shift to select multiple). Leave empty to allow all menus."
+                  >
+                    {MENU_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 700, color: '#6b7280' }}>
+                    Leave empty = show all menus. Use Ctrl/Shift to select multiple.
+                  </div>
                 </div>
                 <div>
                   <label style={labelStyle}>Password {editingIndex === -1 && <span style={{ color: '#b91c1c' }}>*</span>}</label>

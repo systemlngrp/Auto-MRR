@@ -1504,6 +1504,65 @@ try {
     $action = getAction();
     $firmId = getFirmId();
 
+    $normalizeMenuAccess = static function ($value): ?string {
+        if ($value === null) return null;
+        if (is_array($value)) {
+            $keys = [];
+            foreach ($value as $entry) {
+                $key = trim((string)$entry);
+                if ($key !== '') $keys[$key] = true;
+            }
+            return $keys ? json_encode(array_keys($keys), JSON_UNESCAPED_UNICODE) : null;
+        }
+        $text = trim((string)$value);
+        if ($text === '') return null;
+        $decoded = json_decode($text, true);
+        if (is_array($decoded)) {
+            $keys = [];
+            foreach ($decoded as $entry) {
+                $key = trim((string)$entry);
+                if ($key !== '') $keys[$key] = true;
+            }
+            return $keys ? json_encode(array_keys($keys), JSON_UNESCAPED_UNICODE) : null;
+        }
+        $parts = preg_split('/[,\n]+/', $text) ?: [];
+        $keys = [];
+        foreach ($parts as $part) {
+            $key = trim((string)$part);
+            if ($key !== '') $keys[$key] = true;
+        }
+        return $keys ? json_encode(array_keys($keys), JSON_UNESCAPED_UNICODE) : null;
+    };
+
+    $decodeMenuAccess = static function ($value): array {
+        $text = trim((string)($value ?? ''));
+        if ($text === '') return [];
+        $decoded = json_decode($text, true);
+        if (!is_array($decoded)) return [];
+        $keys = [];
+        foreach ($decoded as $entry) {
+            $key = trim((string)$entry);
+            if ($key !== '') $keys[$key] = true;
+        }
+        return array_keys($keys);
+    };
+
+    $hasMenuAccessColumn = false;
+    try {
+        $colStmt = db()->prepare("
+            SELECT 1
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'app_users'
+              AND COLUMN_NAME = 'menu_access'
+            LIMIT 1
+        ");
+        $colStmt->execute();
+        $hasMenuAccessColumn = (bool)$colStmt->fetchColumn();
+    } catch (Throwable $e) {
+        $hasMenuAccessColumn = false;
+    }
+
     if ($action === 'authenticate_user') {
         $loginId = trim((string)($_GET['login_id'] ?? $_POST['login_id'] ?? ''));
         $password = trim((string)($_GET['password'] ?? $_POST['password'] ?? ''));
@@ -1526,14 +1585,23 @@ try {
         if (!$valid) {
             jsonOut(['ok' => false, 'error' => 'Invalid user ID or password.'], 401);
         }
+        $menuAccess = $hasMenuAccessColumn ? $decodeMenuAccess($user['menu_access'] ?? null) : [];
         jsonOut([
             'ok' => true,
+            // Keep these top-level fields for backward compatibility with older frontends.
+            'login_id' => $user['login_id'],
+            'user_email' => $user['user_email'],
+            'display_name' => $user['display_name'],
+            'role' => $user['role'],
+            'firm_id' => $user['firm_id'],
+            'menu_access' => $menuAccess,
             'user' => [
                 'login_id' => $user['login_id'],
                 'user_email' => $user['user_email'],
                 'display_name' => $user['display_name'],
                 'role' => $user['role'],
                 'firm_id' => $user['firm_id'],
+                'menu_access' => $menuAccess,
                 'master_login' => true,
             ],
         ]);
@@ -1604,11 +1672,26 @@ try {
     }
 
     if ($action === 'get_users') {
-        $stmt = db()->prepare("SELECT login_id, display_name, user_email, role, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC");
+        $stmt = db()->prepare($hasMenuAccessColumn
+            ? "SELECT login_id, display_name, user_email, role, menu_access, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC"
+            : "SELECT login_id, display_name, user_email, role, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC"
+        );
         $stmt->execute(['firm_id' => $firmId]);
+        $users = $stmt->fetchAll();
+        if ($hasMenuAccessColumn) {
+            $users = array_map(static function (array $row) use ($decodeMenuAccess): array {
+                $row['menu_access'] = $decodeMenuAccess($row['menu_access'] ?? null);
+                return $row;
+            }, $users);
+        } else {
+            $users = array_map(static function (array $row): array {
+                $row['menu_access'] = [];
+                return $row;
+            }, $users);
+        }
         jsonOut([
             'ok' => true,
-            'users' => $stmt->fetchAll(),
+            'users' => $users,
         ]);
     }
 
@@ -1811,6 +1894,7 @@ try {
             $displayName = trim((string)($user['display_name'] ?? ''));
             $userEmail = trim((string)($user['user_email'] ?? ''));
             $role = trim((string)($user['role'] ?? ''));
+            $menuAccessJson = $hasMenuAccessColumn ? $normalizeMenuAccess($user['menu_access'] ?? null) : null;
             $password = trim((string)($user['password'] ?? ''));
             $active = trim((string)($user['active'] ?? '1')) === '0' ? 0 : 1;
 
@@ -1823,62 +1907,129 @@ try {
 
             if ($exists) {
                 if ($password !== '') {
-                    $update = db()->prepare("
-                        UPDATE app_users
-                        SET display_name = :display_name,
-                            user_email = :user_email,
-                            role = :role,
-                            password_hash = :password_hash,
-                            password_plain = NULL,
-                            active = :active,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE firm_id = :firm_id AND login_id = :login_id
-                    ");
-                    $update->execute([
-                        'display_name' => $displayName,
-                        'user_email' => $userEmail,
-                        'role' => $role,
-                        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                        'active' => $active,
-                        'firm_id' => $firmId,
-                        'login_id' => $loginId,
-                    ]);
+                    if ($hasMenuAccessColumn) {
+                        $update = db()->prepare("
+                            UPDATE app_users
+                            SET display_name = :display_name,
+                                user_email = :user_email,
+                                role = :role,
+                                menu_access = :menu_access,
+                                password_hash = :password_hash,
+                                password_plain = NULL,
+                                active = :active,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE firm_id = :firm_id AND login_id = :login_id
+                        ");
+                        $update->execute([
+                            'display_name' => $displayName,
+                            'user_email' => $userEmail,
+                            'role' => $role,
+                            'menu_access' => $menuAccessJson,
+                            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                            'active' => $active,
+                            'firm_id' => $firmId,
+                            'login_id' => $loginId,
+                        ]);
+                    } else {
+                        $update = db()->prepare("
+                            UPDATE app_users
+                            SET display_name = :display_name,
+                                user_email = :user_email,
+                                role = :role,
+                                password_hash = :password_hash,
+                                password_plain = NULL,
+                                active = :active,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE firm_id = :firm_id AND login_id = :login_id
+                        ");
+                        $update->execute([
+                            'display_name' => $displayName,
+                            'user_email' => $userEmail,
+                            'role' => $role,
+                            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                            'active' => $active,
+                            'firm_id' => $firmId,
+                            'login_id' => $loginId,
+                        ]);
+                    }
                 } else {
-                    $update = db()->prepare("
-                        UPDATE app_users
-                        SET display_name = :display_name,
-                            user_email = :user_email,
-                            role = :role,
-                            active = :active,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE firm_id = :firm_id AND login_id = :login_id
-                    ");
-                    $update->execute([
-                        'display_name' => $displayName,
-                        'user_email' => $userEmail,
-                        'role' => $role,
-                        'active' => $active,
-                        'firm_id' => $firmId,
-                        'login_id' => $loginId,
-                    ]);
+                    if ($hasMenuAccessColumn) {
+                        $update = db()->prepare("
+                            UPDATE app_users
+                            SET display_name = :display_name,
+                                user_email = :user_email,
+                                role = :role,
+                                menu_access = :menu_access,
+                                active = :active,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE firm_id = :firm_id AND login_id = :login_id
+                        ");
+                        $update->execute([
+                            'display_name' => $displayName,
+                            'user_email' => $userEmail,
+                            'role' => $role,
+                            'menu_access' => $menuAccessJson,
+                            'active' => $active,
+                            'firm_id' => $firmId,
+                            'login_id' => $loginId,
+                        ]);
+                    } else {
+                        $update = db()->prepare("
+                            UPDATE app_users
+                            SET display_name = :display_name,
+                                user_email = :user_email,
+                                role = :role,
+                                active = :active,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE firm_id = :firm_id AND login_id = :login_id
+                        ");
+                        $update->execute([
+                            'display_name' => $displayName,
+                            'user_email' => $userEmail,
+                            'role' => $role,
+                            'active' => $active,
+                            'firm_id' => $firmId,
+                            'login_id' => $loginId,
+                        ]);
+                    }
                 }
             } else {
-                $insert = db()->prepare("
-                    INSERT INTO app_users (
-                        firm_id, login_id, user_email, display_name, role, password_hash, password_plain, active
-                    ) VALUES (
-                        :firm_id, :login_id, :user_email, :display_name, :role, :password_hash, NULL, :active
-                    )
-                ");
-                $insert->execute([
-                    'firm_id' => $firmId,
-                    'login_id' => $loginId,
-                    'user_email' => $userEmail,
-                    'display_name' => $displayName,
-                    'role' => $role,
-                    'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
-                    'active' => $active,
-                ]);
+                if ($hasMenuAccessColumn) {
+                    $insert = db()->prepare("
+                        INSERT INTO app_users (
+                            firm_id, login_id, user_email, display_name, role, menu_access, password_hash, password_plain, active
+                        ) VALUES (
+                            :firm_id, :login_id, :user_email, :display_name, :role, :menu_access, :password_hash, NULL, :active
+                        )
+                    ");
+                    $insert->execute([
+                        'firm_id' => $firmId,
+                        'login_id' => $loginId,
+                        'user_email' => $userEmail,
+                        'display_name' => $displayName,
+                        'role' => $role,
+                        'menu_access' => $menuAccessJson,
+                        'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
+                        'active' => $active,
+                    ]);
+                } else {
+                    $insert = db()->prepare("
+                        INSERT INTO app_users (
+                            firm_id, login_id, user_email, display_name, role, password_hash, password_plain, active
+                        ) VALUES (
+                            :firm_id, :login_id, :user_email, :display_name, :role, :password_hash, NULL, :active
+                        )
+                    ");
+                    $insert->execute([
+                        'firm_id' => $firmId,
+                        'login_id' => $loginId,
+                        'user_email' => $userEmail,
+                        'display_name' => $displayName,
+                        'role' => $role,
+                        'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
+                        'active' => $active,
+                    ]);
+                }
             }
         }
         writeBackendLog('save_users_success', [
