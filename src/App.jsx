@@ -107,8 +107,8 @@ const FIRMS = [
     name: 'UNIT-1', 
     logo: 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png',
     backendUrl: HOSTINGER_API_URL,
-    // Use LNKI data + behavior for UNIT-1 (same UI + functionality across firms).
-    firmKey: 'lnki',
+    // Separate storage scope from LNKI (prevents duplicate entries across units).
+    firmKey: 'unit_1',
     get scriptUrl() { return this.backendUrl; },
     get spreadsheetId() { return this.firmKey; },
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
@@ -130,8 +130,8 @@ const FIRMS = [
     name: 'UNIT-2', 
     logo: 'https://i.ibb.co/Dgv0KwQ4/lnkilogo.png',
     backendUrl: HOSTINGER_API_URL, 
-    // Use LNKI data + behavior for UNIT-2 (same UI + functionality across firms).
-    firmKey: 'lnki',
+    // Separate storage scope from LNKI (prevents duplicate entries across units).
+    firmKey: 'unit_2',
     get scriptUrl() { return this.backendUrl; }, 
     get spreadsheetId() { return this.firmKey; },
     po: { reel: 'PO DETAILS', sheet: 'PO DETAILS', other: 'OTHER PO' }, 
