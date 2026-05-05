@@ -2154,6 +2154,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [allApprovalsStage, setAllApprovalsStage] = useState('pending_plant_head_approval');  const [allApprovalsFirmFilter, setAllApprovalsFirmFilter] = useState('all');
   const [selectedGroupedApprovalKeys, setSelectedGroupedApprovalKeys] = useState({});
   const [groupedAccountsApprovalDrafts, setGroupedAccountsApprovalDrafts] = useState({});
+  const [groupedApprovalInlineErrors, setGroupedApprovalInlineErrors] = useState({});
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -2300,6 +2301,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   };
   const setGroupedApprovalDraftField = (row, field, value) => {
     const rowKey = getGroupedApprovalRowKey(row);
+    setGroupedApprovalInlineErrors((prev) => {
+      if (!prev[rowKey]) return prev;
+      const next = { ...prev };
+      delete next[rowKey];
+      return next;
+    });
     setGroupedAccountsApprovalDrafts((prev) => {
       const current = prev[rowKey] || {};
       return {
@@ -2315,6 +2322,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         }
       };
     });
+  };
+
+  const setGroupedApprovalError = (row, message) => {
+    const rowKey = getGroupedApprovalRowKey(row);
+    setGroupedApprovalInlineErrors((prev) => ({ ...prev, [rowKey]: String(message || '').trim() }));
   };
 
   const getGroupedApprovalTotalQty = (row) => firstFilled(
@@ -3596,15 +3608,18 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     if (!targetFirm) throw new Error('Firm context missing for approval.');
                                     const approvalDraft = getGroupedApprovalDraft(ge);
                                     if (String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' && !String(approvalDraft.plant_head_remark || '').trim()) {
-                                      throw new Error(`Plant Head Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      setGroupedApprovalError(ge, `Plant Head Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      return;
                                     }
                                     if (isGroupedApprovalDebitNoteRequired(ge)) {
                                       if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
-                                        throw new Error(`Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                        setGroupedApprovalError(ge, `Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                        return;
                                       }
                                     }
                                     if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
-                                      throw new Error(`MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      setGroupedApprovalError(ge, `MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                      return;
                                     }
                                     setApprovingPendingKey(rowKey);
                                     await approvePendingStage({
@@ -3626,7 +3641,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     });
                                     await refreshApprovalViews();
                                   } catch (err) {
-                                    alert(err?.message || 'Approval failed.');
+                                    showPopup(err?.message || 'Approval failed.', 'error');
                                   } finally {
                                     setApprovingPendingKey('');
                                   }
@@ -3692,6 +3707,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                   placeholder="Plant Head Remark *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
+                                {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)] ? (
+                                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#b91c1c' }}>
+                                    {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)]}
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                             {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' && isGroupedApprovalDebitNoteRequired(ge) ? (
@@ -3716,6 +3736,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                   placeholder="Debit Note Amount *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
+                                {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)] ? (
+                                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#b91c1c' }}>
+                                    {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)]}
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                             {String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval' ? (
@@ -3736,6 +3761,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                   placeholder="MD Approval Remark *"
                                   style={{ width: '100%', border: '1px solid #c7c9d1', borderRadius: '6px', padding: '7px 8px', fontSize: '11px', background: '#fff' }}
                                 />
+                                {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)] ? (
+                                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#b91c1c' }}>
+                                    {groupedApprovalInlineErrors[getGroupedApprovalRowKey(ge)]}
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                             </div>
@@ -3786,21 +3816,28 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                         try {
                           setIsBulkApprovingPending(true);
                           const selectedRows = activeRows.filter((row) => !!selectedGroupedApprovalKeys[getGroupedApprovalRowKey(row)]);
+                          const missingErrors = [];
                           for (const ge of selectedRows) {
                             const targetFirm = firms.find((firm) => firm.id === ge.firm_id) || tempFirm;
                             const targetType = ge.mrr_type || tempType;
                             if (!targetFirm) continue;
                             const approvalDraft = getGroupedApprovalDraft(ge);
                             if (String(ge.pending_stage || activeStage.key).trim() === 'pending_plant_head_approval' && !String(approvalDraft.plant_head_remark || '').trim()) {
-                              throw new Error(`Fill Plant Head Remark for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                              missingErrors.push(ge);
+                              setGroupedApprovalError(ge, `Plant Head Remark is required for ${ge.mrr_number || ge.mrr_no || 'selected MRR'}.`);
+                              continue;
                             }
                             if (isGroupedApprovalDebitNoteRequired(ge)) {
                               if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
-                                throw new Error(`Fill Debit Note, Debit Note Date, and Debit Note Amount for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                                missingErrors.push(ge);
+                                setGroupedApprovalError(ge, `Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'selected MRR'}.`);
+                                continue;
                               }
                             }
                             if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
-                              throw new Error(`Fill MD Approval Remark for ${ge.mrr_number || ge.mrr_no || 'selected MRR'} before bulk approve.`);
+                              missingErrors.push(ge);
+                              setGroupedApprovalError(ge, `MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'selected MRR'}.`);
+                              continue;
                             }
                             await approvePendingStage({
                               decision: 'approve',
@@ -3820,10 +3857,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               scriptUrl: targetFirm?.scriptUrl
                             });
                           }
+                          if (missingErrors.length) return;
                           setSelectedGroupedApprovalKeys({});
                           await refreshApprovalViews();
                         } catch (err) {
-                          alert(err?.message || 'Bulk approval failed.');
+                          showPopup(err?.message || 'Bulk approval failed.', 'error');
                         } finally {
                           setIsBulkApprovingPending(false);
                         }
@@ -3976,7 +4014,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     });
                                     await loadPendingList({ force: true });
                                   } catch (err) {
-                                    alert(err?.message || 'Rejection failed.');
+                                    showPopup(err?.message || 'Rejection failed.', 'error');
                                   } finally {
                                     setApprovingPendingKey('');
                                   }
@@ -4096,10 +4134,61 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           childRows: Array.isArray(childPayload?.data) ? childPayload.data : []
         });
       } catch (err) {
-        alert(err?.message || 'Could not load preview.');
+        showPopup(err?.message || 'Could not load preview.', 'error');
       } finally {
         setIsLoadingReviewPreview(false);
       }
+    };
+
+    const renderPreviewTable = (rows = [], options = {}) => {
+      const title = options.title || '';
+      const emptyText = options.emptyText || 'No rows found.';
+      const safeRows = Array.isArray(rows) ? rows.filter((r) => r && typeof r === 'object') : [];
+      const keySet = new Set();
+      safeRows.forEach((row) => Object.keys(row).forEach((key) => keySet.add(key)));
+      const allKeys = Array.from(keySet);
+      const preferredOrder = Array.isArray(options.preferredOrder) ? options.preferredOrder : [];
+      const orderedKeys = [
+        ...preferredOrder.filter((k) => allKeys.includes(k)),
+        ...allKeys.filter((k) => !preferredOrder.includes(k)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      ];
+
+      const headerCellStyle = { fontSize: '12px', background: '#e5e7eb', color: '#111', fontWeight: 900, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' };
+      const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'top' };
+      const cellText = (value) => {
+        const text = String(value ?? '').trim();
+        return text !== '' ? text : '-';
+      };
+
+      return (
+        <div style={{ display: 'grid', gap: '8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 900, color: '#111' }}>{title}</div>
+          {!safeRows.length ? (
+            <div style={{ padding: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '12px', color: '#6b7280' }}>{emptyText}</div>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', background: '#fff' }}>
+              <table className="table" style={{ minWidth: '1100px', width: '100%', tableLayout: 'auto' }}>
+                <thead>
+                  <tr>
+                    {orderedKeys.map((key) => (
+                      <th key={key} style={headerCellStyle}>{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {safeRows.map((row, index) => (
+                    <tr key={index} style={{ background: index % 2 === 1 ? '#fbfbfb' : '#fff' }}>
+                      {orderedKeys.map((key) => (
+                        <td key={key} style={{ ...bodyCellStyle, whiteSpace: 'nowrap' }}>{cellText(row?.[key])}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
     };
 
     const openReviewRow = (summary) => {
@@ -4183,11 +4272,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   </div>
                   <button className="btn small" onClick={() => setReviewPreview(null)} style={{ padding: '6px 10px' }}>Close</button>
                 </div>
-                <div style={{ padding: '12px 14px', display: 'grid', gap: '12px', overflow: 'auto' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#111' }}>Parent ({reviewPreview.parentSheetName})</div>
-                  <pre style={{ margin: 0, padding: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '11px', overflow: 'auto' }}>{JSON.stringify(reviewPreview.parentRows, null, 2)}</pre>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#111' }}>Child ({reviewPreview.childSheetName})</div>
-                  <pre style={{ margin: 0, padding: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '11px', overflow: 'auto' }}>{JSON.stringify(reviewPreview.childRows, null, 2)}</pre>
+                <div style={{ padding: '12px 14px', display: 'grid', gap: '14px', overflow: 'auto' }}>
+                  {renderPreviewTable(reviewPreview.parentRows, {
+                    title: `Parent (${reviewPreview.parentSheetName})`,
+                    preferredOrder: ['mrr_number', 'mrr_no', 'ge_no', 'date', 'dt_of_receipt', 'supplier', 'sup_doc_no', 'truck_number', 'invoice_ttl_weight_kgs', 'actual_mrr_ttl_weight_kgs', 'required_reel', 'rows_added', 'invoice_basic_value', 'mrr_basic_value', 'pending_stage']
+                  })}
+                  {renderPreviewTable(reviewPreview.childRows, {
+                    title: `Child (${reviewPreview.childSheetName})`,
+                    preferredOrder: ['mrr_number', 'mrr_no', 'ge_no', 's_no', 'po_no', 'po_details', 'item_name', 'reel_details', 'erp_code', 'supplier_reel_no', 'our_reel_number', 'our_reel_no', 'reel_no', 'gsm', 'size', 'bf', 'weight', 'net_wt', 'rate', 'po_rate', 'value', 'amount', 'unit', 'date']
+                  })}
                 </div>
               </div>
             </div>

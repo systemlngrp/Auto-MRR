@@ -170,5 +170,62 @@ export const printGridStyles = `
     background: #f5f5f5 !important;
     font-weight: 700 !important;
   }
+
+  /* Packing slip table: keep Pending Qty visible in PDF by tightening layout. */
+  .sheet .packingTable {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  .sheet .packingTable th,
+  .sheet .packingTable td {
+    font-size: 6px !important;
+    padding: 1px 2px !important;
+    line-height: 1.12 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* Column widths tuned for A4 landscape (Action column hidden by global print rule). */
+  .sheet .packingTable th:nth-child(1),
+  .sheet .packingTable td:nth-child(1) { width: 2.5% !important; }  /* Sr */
+  .sheet .packingTable th:nth-child(2),
+  .sheet .packingTable td:nth-child(2) { width: 5.5% !important; }  /* MRR No */
+  .sheet .packingTable th:nth-child(3),
+  .sheet .packingTable td:nth-child(3) { width: 5.5% !important; }  /* GE No */
+  .sheet .packingTable th:nth-child(4),
+  .sheet .packingTable td:nth-child(4) { width: 6% !important; }    /* Party Order */
+  .sheet .packingTable th:nth-child(5),
+  .sheet .packingTable td:nth-child(5) { width: 4% !important; }    /* PO No */
+  .sheet .packingTable th:nth-child(6),
+  .sheet .packingTable td:nth-child(6) { width: 7% !important; }    /* PO Details */
+  .sheet .packingTable th:nth-child(7),
+  .sheet .packingTable td:nth-child(7) { width: 13% !important; }   /* Description */
+  .sheet .packingTable th:nth-child(8),
+  .sheet .packingTable td:nth-child(8) { width: 6.5% !important; }  /* Supplier Reel */
+  .sheet .packingTable th:nth-child(9),
+  .sheet .packingTable td:nth-child(9) { width: 5.5% !important; }  /* ERP */
+  .sheet .packingTable th:nth-child(10),
+  .sheet .packingTable td:nth-child(10) { width: 4.5% !important; } /* Our Reel */
+  .sheet .packingTable th:nth-child(11),
+  .sheet .packingTable td:nth-child(11) { width: 4.5% !important; } /* Sort */
+  .sheet .packingTable th:nth-child(12),
+  .sheet .packingTable td:nth-child(12) { width: 3.2% !important; } /* BF */
+  .sheet .packingTable th:nth-child(13),
+  .sheet .packingTable td:nth-child(13) { width: 3.2% !important; } /* GSM */
+  .sheet .packingTable th:nth-child(14),
+  .sheet .packingTable td:nth-child(14) { width: 3.8% !important; } /* Size */
+  .sheet .packingTable th:nth-child(15),
+  .sheet .packingTable td:nth-child(15) { width: 3.2% !important; } /* Unit */
+  .sheet .packingTable th:nth-child(16),
+  .sheet .packingTable td:nth-child(16) { width: 4.5% !important; } /* Invoice Rate */
+  .sheet .packingTable th:nth-child(17),
+  .sheet .packingTable td:nth-child(17) { width: 4.5% !important; } /* PO Rate */
+  .sheet .packingTable th:nth-child(18),
+  .sheet .packingTable td:nth-child(18) { width: 5.2% !important; } /* Net Wt */
+  .sheet .packingTable th:nth-child(19),
+  .sheet .packingTable td:nth-child(19) { width: 5.2% !important; } /* Pending Qty */
 }
 `;
