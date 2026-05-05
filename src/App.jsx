@@ -3468,6 +3468,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   }
 
   if (step === 6) {
+    const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
+    const canViewAllFirmsApprovals = currentUserRoleText === 'admin';
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
@@ -3486,10 +3488,14 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                {pendingFilter === 'all_approvals' ? (
                  <select
                    value={allApprovalsFirmFilter}
-                   onChange={(e) => setAllApprovalsFirmFilter(e.target.value)}
+                   onChange={(e) => {
+                     const value = String(e.target.value || '').trim();
+                     if (value === 'all' && !canViewAllFirmsApprovals) return;
+                     setAllApprovalsFirmFilter(value);
+                   }}
                    style={{ border: '1px solid #a8a8a8', padding: '4px 8px', fontSize: '11px', fontWeight: 700, background: '#fff', minWidth: '140px' }}
                  >
-                   <option value="all">All Firms</option>
+                   {canViewAllFirmsApprovals ? <option value="all">All Firms</option> : null}
                    {groupedApprovalFirmOptions.map((firm) => (
                      <option key={firm.id} value={firm.id}>{firm.name}</option>
                    ))}
