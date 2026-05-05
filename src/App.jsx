@@ -2159,14 +2159,6 @@ function getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm = null)
   return isAuthenticated ? 2 : 1;
 }
 
-const DEFAULT_MASTER_LOGIN_IDS = new Set(['system', 'system@lngrp', 'system@lngrp.in']);
-const DEFAULT_MASTER_PASSWORD = 'abcd';
-
-function isDefaultMasterLogin(loginId, password) {
-  return DEFAULT_MASTER_LOGIN_IDS.has(String(loginId || '').trim().toLowerCase())
-    && String(password || '') === DEFAULT_MASTER_PASSWORD;
-}
-
 function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSelection, currentUser, firms, menuBootConfig, isAuthenticated, initialFirm = null, initialType = 'reel', onRouteChange }) {
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
   const [tempFirm, setTempFirm] = useState(initialFirm);
@@ -2920,6 +2912,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   useEffect(() => {
     if (step !== 6) return;
     if (pendingFilter === 'all_approvals') {
+      if (tempFirm && String(allApprovalsFirmFilter || '').trim() === 'all') {
+        setAllApprovalsFirmFilter(String(tempFirm.id || '').trim() || 'all');
+      }
       if (firms?.length) loadAllApprovalsList({ force: true });
       return;
     }
@@ -3077,23 +3072,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 }
                 setIsLoggingIn(true);
                 try {
-                  if (isDefaultMasterLogin(loginId, loginPassword)) {
-                    const masterUser = {
-                      login_id: loginId.trim().toLowerCase(),
-                      user_email: 'system@lngrp',
-                      display_name: loginId.trim(),
-                      role: 'admin',
-                      master_login: true
-                    };
-                    const map = {};
-                    firms.forEach((firm) => {
-                      map[firm.id] = { ...masterUser, firmId: firm.id };
-                    });
-                    setValidatedUsersByFirm(map);
-                    setStep(2);
-                    return;
-                  }
-                  
                   // Authenticate against the first firm (Master) as users are now common
                   const masterFirm = firms[0];
                   const user = await authenticateUser(loginId, loginPassword, {

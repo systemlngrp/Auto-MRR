@@ -320,20 +320,6 @@ CREATE TABLE IF NOT EXISTS other_mrr_children (
   KEY idx_other_mrr_child_source (firm_id, ge_no, mrr_no, source_type, row_sort)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO app_users (
-  firm_id,
-  login_id,
-  user_email,
-  display_name,
-  role,
-  password_plain,
-  active
-)
-VALUES
-  ('lnki', 'system', 'system@lngrp', 'System Test', 'admin', 'abcd', 1)
-ON DUPLICATE KEY UPDATE
-  updated_at = CURRENT_TIMESTAMP;
-
 ALTER TABLE reel_mrr_children
   ADD COLUMN IF NOT EXISTS source_type VARCHAR(40) NOT NULL DEFAULT 'mrr_item' AFTER parent_id;
 

@@ -1573,7 +1573,7 @@ try {
             FROM app_users
             WHERE active = 1
               AND (login_id = :login_id OR user_email = :login_id)
-            ORDER BY id ASC
+            ORDER BY CASE WHEN login_id = :login_id THEN 1 ELSE 0 END DESC, id ASC
             LIMIT 1
         ");
         $stmt->execute(['login_id' => $loginId]);
