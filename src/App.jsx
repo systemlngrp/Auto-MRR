@@ -3245,7 +3245,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.06em', color: 'var(--muted)' }}>MRR &amp; REEL MANAGEMENT SYSTEM</div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <img src={selectedFirm?.logo} style={{ height: '40px' }} alt="Logo" />
+            <img src={tempFirm?.logo} style={{ height: '40px' }} alt="Logo" />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <div style={pillStyle}>{tempFirm?.name || 'FIRM'}</div>
