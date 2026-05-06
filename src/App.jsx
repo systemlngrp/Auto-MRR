@@ -4821,7 +4821,7 @@ function App() {
     (approvalMrrType === 'other' && approvalEntryType === 'rejection')
   );
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
-  const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked && !geData;
+  const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked;
   const showBottomModeSwitch = true;
   const hasDraftContent = Boolean(
     invoicePhotoScanned ||
