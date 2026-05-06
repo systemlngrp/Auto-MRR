@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import GateEntrySavedModal from '../components/modals/GateEntrySavedModal';
-
+import React, { useEffect, useRef, useState } from 'react';
 export default function GateEntryPage({
   onSave,
   onBack,
@@ -24,8 +22,7 @@ export default function GateEntryPage({
     formatGateEntryNumber,
     fileToBase64,
     formatDecimal2,
-    saveGeEntryToSheets,
-    downloadGateEntryPdfDirect
+    saveGeEntryToSheets
   } = deps;
 
   const [pics, setPics] = useState(Array(8).fill(null));
@@ -36,7 +33,11 @@ export default function GateEntryPage({
   const [suppliers, setSuppliers] = useState([]);
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [savedEntry, setSavedEntry] = useState(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -134,12 +135,12 @@ export default function GateEntryPage({
       });
       const finalGeNo = String(res?.ge_no || data?.ge_no || geNo || '').trim();
       const finalEntry = { ...payload, ge_no: finalGeNo, mrr_no: String(res?.mrr_no || payload?.mrr_no || '').trim() };
-      setSavedEntry(finalEntry);
-      setStatus('Gate Entry saved successfully.');
+      if (isMountedRef.current) setStatus('Gate Entry saved successfully.');
+      onSave(finalGeNo, finalEntry);
     } catch (err) {
-      setStatus(err.message || 'Error saving gate entry');
+      if (isMountedRef.current) setStatus(err.message || 'Error saving gate entry');
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) setIsSaving(false);
     }
   };
 
@@ -252,15 +253,6 @@ export default function GateEntryPage({
         {status && <div className="status" style={{ marginTop: '20px', textAlign: 'center' }}>{status}</div>}
       </div>
 
-      <GateEntrySavedModal
-        isOpen={Boolean(savedEntry)}
-        firm={firm}
-        entry={savedEntry}
-        previewPics={pics}
-        formatAmount={formatDecimal2}
-        onDownload={downloadGateEntryPdfDirect}
-        onClose={() => { setSavedEntry(null); onSave(); }}
-      />
     </div>
   );
 }

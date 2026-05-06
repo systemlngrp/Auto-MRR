@@ -4822,6 +4822,7 @@ function App() {
   );
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked && !geData;
+  const showBottomModeSwitch = true;
   const hasDraftContent = Boolean(
     invoicePhotoScanned ||
     packingPhotoScanned ||
@@ -6582,7 +6583,7 @@ function App() {
   );
 
   return (
-    <div className="app">
+    <div className="app" style={showBottomModeSwitch ? { paddingBottom: 64 } : undefined}>
       <style>{styles}</style>
       <style>{labelStyles}</style>
       <style>{printGridStyles}</style>
@@ -7357,6 +7358,46 @@ function App() {
         </>
       )}
 
+      {showBottomModeSwitch && (
+        <div
+          className="no-print"
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: 'rgba(255,255,255,0.98)',
+            borderTop: '1px solid #d1d5db',
+            boxShadow: '0 -8px 18px rgba(0,0,0,0.06)',
+            padding: '8px 10px'
+          }}
+        >
+          <div style={{ maxWidth: 980, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted)' }}>Mode:</span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                className={mrrType === 'reel' ? 'btn main small' : 'btn small'}
+                disabled={!canChangePageMode}
+                title={canChangePageMode ? 'Switch to REEL MRR' : 'Mode can only be changed for a fresh editable MRR draft'}
+                onClick={() => handlePageModeChange('reel')}
+              >
+                REEL MRR
+              </button>
+              <button
+                type="button"
+                className={mrrType === 'other' ? 'btn main small' : 'btn small'}
+                disabled={!canChangePageMode}
+                title={canChangePageMode ? 'Switch to OTHER MRR' : 'Mode can only be changed for a fresh editable MRR draft'}
+                onClick={() => handlePageModeChange('other')}
+              >
+                OTHER MRR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
