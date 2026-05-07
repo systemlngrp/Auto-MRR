@@ -53,6 +53,21 @@ export default function PoDetailsPage({
   const [manualFields, setManualFields] = useState({ po_details: false, reel_details: false });
   const [isAddingSupplier, setIsAddingSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
+  const [units, setUnits] = useState(() => {
+    const defaults = ['Kgs', 'Psc', 'Ltr', 'GM'];
+    try {
+      const raw = localStorage.getItem('po_units_v1');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.map((u) => String(u || '').trim()).filter(Boolean);
+        return Array.from(new Set([...defaults, ...cleaned]));
+      }
+    } catch {
+    }
+    return defaults;
+  });
+  const [isAddingUnit, setIsAddingUnit] = useState(false);
+  const [newUnitValue, setNewUnitValue] = useState('');
 
   const formatDisplayDate = (value) => {
     const text = String(value || '').trim();
@@ -99,6 +114,13 @@ export default function PoDetailsPage({
       setManualFields({ po_details: false, reel_details: false });
     }
   }, [initialView]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('po_units_v1', JSON.stringify(units));
+    } catch {
+    }
+  }, [units]);
 
   const activeSheetName = getSheetName(selectedFirm?.po, poMode);
 
@@ -216,6 +238,8 @@ export default function PoDetailsPage({
     setManualFields({ po_details: false, reel_details: false });
     setIsAddingSupplier(false);
     setNewSupplierName('');
+    setIsAddingUnit(false);
+    setNewUnitValue('');
     setErrors({});
     setView('form');
   };
@@ -231,8 +255,22 @@ export default function PoDetailsPage({
     });
     setIsAddingSupplier(false);
     setNewSupplierName('');
+    setIsAddingUnit(false);
+    setNewUnitValue('');
     setErrors({});
     setView('form');
+  };
+
+  const addUnitOption = () => {
+    const text = String(newUnitValue || '').trim();
+    if (!text) return;
+    const exists = units.some((u) => String(u || '').trim().toLowerCase() === text.toLowerCase());
+    if (!exists) {
+      setUnits((prev) => [...prev, text]);
+    }
+    setFormData((prev) => ({ ...prev, unit: text }));
+    setIsAddingUnit(false);
+    setNewUnitValue('');
   };
 
   const addSupplierInline = () => {
@@ -529,15 +567,42 @@ export default function PoDetailsPage({
                  <div style={sectionHeaderStyle}>Pricing & Quantity</div>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div>
-                           <label style={labelStyle}>Unit</label>
-                           <select value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} style={inputStyle('unit')}>
-                              <option value="Kgs">Kgs</option>
-                              <option value="Psc">Psc</option>
-                              <option value="Ltr">Ltr</option>
-                              <option value="GM">GM</option>
-                           </select>
-                        </div>
+                         <div>
+                            <label style={labelStyle}>Unit</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 42px', gap: '8px', alignItems: 'center' }}>
+                              <select value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} style={inputStyle('unit')}>
+                                {units.map((u) => (
+                                  <option key={u} value={u}>{u}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                className="btn"
+                                title="Add Unit"
+                                onClick={() => { setIsAddingUnit(true); setNewUnitValue(''); }}
+                                disabled={isLoading || isSaving}
+                                style={{ width: '42px', height: '42px', padding: 0, fontSize: '22px', fontWeight: 900, borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            {isAddingUnit ? (
+                              <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                  value={newUnitValue}
+                                  onChange={(e) => setNewUnitValue(e.target.value)}
+                                  placeholder="Enter unit (e.g. Nos)"
+                                  style={inputStyle('unit')}
+                                />
+                                <button type="button" className="btn main" onClick={addUnitOption} disabled={!String(newUnitValue || '').trim()}>
+                                  Add
+                                </button>
+                                <button type="button" className="btn" onClick={() => { setIsAddingUnit(false); setNewUnitValue(''); }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : null}
+                         </div>
                        <div>
                           <label style={labelStyle}>Rate <span style={{ color: '#b91c1c' }}>*</span></label>
                           <input type="number" step="0.01" value={formData.rate} onChange={(e) => { setFormData({ ...formData, rate: e.target.value }); setErrors({ ...errors, rate: '' }); }} style={inputStyle('rate')} placeholder="0.00" />
