@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 export default function ProfileMenu({
   currentUser,
   onLogout,
+  onGeminiKeyUpdated,
   top = '12px',
   right = '14px',
   zIndex = 10002,
@@ -74,6 +75,25 @@ export default function ProfileMenu({
   }, [open, fixed, placement, variant]);
 
   if (!currentUser) return null;
+
+  const setGeminiKey = () => {
+    const existing = (() => {
+      try {
+        return String(localStorage.getItem('gemini_api_key') || '').trim();
+      } catch {
+        return '';
+      }
+    })();
+    const next = window.prompt('Enter Gemini API Key (Google AI Studio). This is saved in this browser only.', existing || '');
+    if (next === null) return;
+    const trimmed = String(next || '').trim();
+    try {
+      if (!trimmed) localStorage.removeItem('gemini_api_key');
+      else localStorage.setItem('gemini_api_key', trimmed);
+    } catch {
+    }
+    onGeminiKeyUpdated?.(trimmed);
+  };
 
   return (
     <div className="no-print" ref={wrapperRef} style={fixed ? { position: 'fixed', top, right, zIndex } : { position: 'relative', zIndex }}>
@@ -185,6 +205,27 @@ export default function ProfileMenu({
             }}
           >
             Logout
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{
+              width: '100%',
+              fontSize: '12px',
+              padding: '10px 12px',
+              borderRadius: '10px',
+              marginTop: '8px',
+              background: '#f9fafb',
+              color: '#111827',
+              borderColor: '#d1d5db',
+              fontWeight: 800
+            }}
+            onClick={() => {
+              setOpen(false);
+              setGeminiKey();
+            }}
+          >
+            Gemini API Key
           </button>
         </div>
       ) : null}

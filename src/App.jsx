@@ -13,7 +13,16 @@ import ReelLabelsPage from './pages/ReelLabelsPage';
 import UsersPage from './pages/UsersPage';
 import GateEntriesPage from './pages/GateEntriesPage';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+function getGeminiApiKey() {
+  const fromBuild = String(import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  if (fromBuild) return fromBuild;
+  try {
+    const fromStorage = String(localStorage.getItem('gemini_api_key') || '').trim();
+    if (fromStorage) return fromStorage;
+  } catch {
+  }
+  return String(window?.__RUNTIME_CONFIG__?.GEMINI_API_KEY || window?.__RUNTIME_CONFIG__?.VITE_GEMINI_API_KEY || '').trim();
+}
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
   .split(',')
@@ -1345,7 +1354,7 @@ function formatGeminiHttpError(status, payload, fallbackText) {
     return `Gemini quota exceeded.${retryText} Add billing in Google AI Studio or use another quota-enabled API key.`.trim();
   }
   if (status === 403 || /API key not valid|permission|forbidden/i.test(apiMessage)) {
-    return 'Gemini API key is invalid or restricted. Check the key and Gemini API permissions.';
+    return 'Gemini API key is invalid or restricted. On Hostinger/static deploys, set it via the profile menu (stores in browser) or rebuild with VITE_GEMINI_API_KEY. Also check key restrictions/permissions in Google AI Studio.';
   }
   if (status === 400) {
     if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(`${apiMessage} ${detailsText}`)) {
@@ -1413,6 +1422,13 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
     throw new Error(`Gemini is rate-limited right now. Please retry in about ${waitSeconds} seconds.`);
   }
 
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    const err = new Error('Missing Gemini API key. Open the profile menu and set the Gemini API Key, or rebuild with VITE_GEMINI_API_KEY.');
+    err.status = 401;
+    throw err;
+  }
+
   for (let baseIndex = 0; baseIndex < GEMINI_API_BASES.length; baseIndex += 1) {
     const baseUrl = GEMINI_API_BASES[baseIndex];
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -1420,7 +1436,7 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
       try {
         const controller = new AbortController();
         timeoutId = window.setTimeout(() => controller.abort(), GEMINI_REQUEST_TIMEOUT_MS);
-        const response = await fetch(`${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(API_KEY || '')}`, {
+        const response = await fetch(`${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody),
@@ -1666,8 +1682,9 @@ function mergeFocusedPackingData(data, focused = {}) {
 }
 
 async function fetchGeminiJson(filesInput, kind) {
-  if (!API_KEY) throw new Error('Missing Gemini API key');
-  if (!isLikelyGeminiApiKey(API_KEY)) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new Error('Missing Gemini API key. Open the profile menu and set the Gemini API Key, or rebuild with VITE_GEMINI_API_KEY.');
+  if (!isLikelyGeminiApiKey(apiKey)) {
     throw new Error('Gemini API key looks too short. Please check your .env key value.');
   }
 
