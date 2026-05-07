@@ -2176,6 +2176,8 @@ function getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm = null)
 }
 
 function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSelection, currentUser, firms, menuBootConfig, isAuthenticated, initialFirm = null, initialType = 'reel', onRouteChange }) {
+  const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
+  const isAdmin = currentUserRoleText === 'admin';
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
@@ -3183,21 +3185,25 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         return text.split(',').map((v) => String(v || '').trim()).filter(Boolean);
       }
     };
-    const currentMenuAccess = (() => {
-      const fromTop = parseMenuAccess(currentUser?.menu_access);
-      if (fromTop.length) return fromTop;
-      const fromNested = parseMenuAccess(currentUser?.user?.menu_access);
-      return fromNested;
-    })();
-    const canSeeMenu = (key) => currentMenuAccess.length === 0 || currentMenuAccess.includes(key);
-    const shellStyle = {
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(216, 209, 196, 0.98)',
-      backdropFilter: 'blur(12px)'
-    };
+      const currentMenuAccess = (() => {
+        const fromTop = parseMenuAccess(currentUser?.menu_access);
+        if (fromTop.length) return fromTop;
+        const fromNested = parseMenuAccess(currentUser?.user?.menu_access);
+        return fromNested;
+      })();
+      const canSeeMenu = (key) => {
+        if (key === 'users') return isAdmin;
+        if (isAdmin) return true;
+        return currentMenuAccess.length === 0 || currentMenuAccess.includes(key);
+      };
+      const shellStyle = {
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(216, 209, 196, 0.98)',
+        backdropFilter: 'blur(12px)'
+      };
 
     const headerStyle = {
       height: '64px',
@@ -3371,7 +3377,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             ) : null}
 
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
-              <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} />
+              <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} placement="top" />
             </div>
             <button
               type="button"
@@ -3471,21 +3477,43 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return (
       <>
         {userBadge}
-        <UsersPage
-          selectedFirm={tempFirm || firms[0]}
-          deps={{
-            fetchUsers,
-            saveUsers
-          }}
-          onBack={() => setStep(3)}
-        />
+        {(() => {
+          if (!isAdmin) {
+            return (
+              <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+                <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+                    <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Users</h2>
+                    <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+                  </div>
+                  <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#111827', maxWidth: '740px' }}>
+                    <div style={{ fontWeight: 900, marginBottom: '6px' }}>Access denied</div>
+                    <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
+                      Only <span style={{ fontWeight: 800 }}>Admin</span> can view or update users. Please contact Admin if you need access.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <UsersPage
+              selectedFirm={tempFirm || firms[0]}
+              currentUser={currentUser}
+              deps={{
+                fetchUsers,
+                saveUsers
+              }}
+              onBack={() => setStep(3)}
+            />
+          );
+        })()}
       </>
     );
   }
 
   if (step === 6) {
-    const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
-    const canViewAllFirmsApprovals = currentUserRoleText === 'admin';
+    const canViewAllFirmsApprovals = isAdmin;
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>

@@ -79,6 +79,7 @@ async function fetchJson(url, options = {}) {
     const response = await fetch(url, {
       ...options,
       signal,
+      credentials: 'include',
       headers: {
         Accept: 'application/json',
         ...(options.headers || {})

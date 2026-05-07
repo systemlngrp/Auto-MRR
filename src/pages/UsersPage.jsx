@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 
-export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'list' }) {
+export default function UsersPage({ selectedFirm, deps, onBack, currentUser, initialView = 'list' }) {
   const { fetchUsers, saveUsers } = deps;
+  const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
+  const isAdmin = currentUserRoleText === 'admin';
 
   const MENU_OPTIONS = [
     { key: 'new_ge', label: 'New GE Entry' },
@@ -48,6 +50,25 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
       setFormData(blankUser());
     }
   }, [initialView]);
+
+  if (!isAdmin) {
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <h2 style={{ margin: 0, fontSize: '26px', letterSpacing: '0.02em' }}>Users</h2>
+            <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 16px' }}>Back</button>
+          </div>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px', background: '#f9fafb', color: '#111827', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Access denied</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
+              Only <span style={{ fontWeight: 800 }}>Admin</span> can view or update users. Please contact Admin if you need access.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     async function loadUsers() {
@@ -98,8 +119,8 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
     
     if (!trimmedLoginId) {
       newErrors.login_id = 'Login ID is required';
-    } else if (!/^[a-z0-9]{7,}$/i.test(trimmedLoginId)) {
-      newErrors.login_id = 'Must be alpha-numeric and at least 7 characters';
+    } else if (!/^[a-z0-9]{7,16}$/i.test(trimmedLoginId)) {
+      newErrors.login_id = 'Must be alpha-numeric (7 to 16 characters)';
     } else if (editingIndex === -1) {
       const normalizedLoginId = trimmedLoginId.toLowerCase();
       const isDuplicate = users.some(u => String(u.login_id).trim().toLowerCase() === normalizedLoginId);
@@ -239,11 +260,16 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                 <div>
-                  <label style={labelStyle}>Login ID (Alpha-numeric, min 7 chars) <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <label style={labelStyle}>Login ID (Alpha-numeric, 7 to 16 chars) <span style={{ color: '#b91c1c' }}>*</span></label>
                   <input 
                     value={formData.login_id} 
                     onChange={(e) => { setFormData({ ...formData, login_id: e.target.value }); setErrors({ ...errors, login_id: '' }); }} 
                     disabled={editingIndex >= 0}
+                    minLength={7}
+                    maxLength={16}
+                    inputMode="text"
+                    pattern="[A-Za-z0-9]{7,16}"
+                    title="Alpha-numeric, 7 to 16 characters"
                     style={{ ...inputStyle('login_id'), background: editingIndex >= 0 ? '#f3f4f6' : '#fff', cursor: editingIndex >= 0 ? 'not-allowed' : 'text' }}
                     placeholder="e.g. SMITH01"
                     autoFocus

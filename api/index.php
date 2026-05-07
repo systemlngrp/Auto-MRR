@@ -12,6 +12,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+function ensureSessionStarted(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        // Use secure defaults suitable for shared hosting; session cookie is only sent to this origin.
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        @session_start();
+    }
+}
+
+function sessionAuth(): array
+{
+    ensureSessionStarted();
+    return is_array($_SESSION['auth'] ?? null) ? $_SESSION['auth'] : [];
+}
+
+function requireAdminForUsers(string $firmId): void
+{
+    $auth = sessionAuth();
+    $loginId = trim((string)($auth['login_id'] ?? ''));
+    $role = strtolower(trim((string)($auth['role'] ?? '')));
+    $authFirm = trim((string)($auth['firm_id'] ?? ''));
+
+    if ($loginId === '') {
+        jsonOut(['ok' => false, 'error' => 'Authentication required. Please login again.'], 401);
+    }
+    if ($role !== 'admin') {
+        jsonOut(['ok' => false, 'error' => 'Only Admin can view or update users.'], 403);
+    }
+    if ($authFirm !== '' && $authFirm !== $firmId) {
+        jsonOut(['ok' => false, 'error' => 'Access denied for this firm.'], 403);
+    }
+}
+
 const MRR_HEADERS = [
     'MRR Form ID', 'GE Entry', 'Date', 'MRR No', 'Dt. of Receipt', 'Sup Doc No', 'Truck Number',
     'Invoice Total Weight (kg)', 'Actual MRR Total Weight (kg)', 'Required Reels', 'Rows Added',
