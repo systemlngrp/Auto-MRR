@@ -1491,7 +1491,7 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
     }
   ];
 
-  const mainRequest = {
+  const structuredRequest = {
     contents,
     generationConfig: {
       responseMimeType: 'application/json',
@@ -1501,11 +1501,42 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
     }
   };
 
+  const plainJsonRequest = {
+    contents: [{
+      parts: [
+        { text: `${prompt}\n\nReturn ONLY valid JSON (no markdown, no commentary).` },
+        ...mediaItems.map((item) => ({
+          inline_data: { mime_type: item.mimeType, data: item.base64 }
+        }))
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
+    }
+  };
+
+  const isStructuredUnsupported = (err) => {
+    const msg = String(err?.message || '').toLowerCase();
+    return msg.includes('responsemimetype')
+      || msg.includes('responseschema')
+      || (msg.includes('cannot find field') && (msg.includes('response') || msg.includes('schema')));
+  };
+
   let lastError = null;
   for (let i = 0; i < GEMINI_MODELS.length; i += 1) {
     const model = GEMINI_MODELS[i];
     try {
-      const data = await postGeminiGenerateContent(model, mainRequest, 3);
+      let data;
+      try {
+        data = await postGeminiGenerateContent(model, structuredRequest, 3);
+      } catch (err) {
+        if (isStructuredUnsupported(err)) {
+          data = await postGeminiGenerateContent(model, plainJsonRequest, 3);
+        } else {
+          throw err;
+        }
+      }
       const candidateText = extractCandidateText(data);
       try {
         return parseModelJson(candidateText);
@@ -1518,8 +1549,6 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
             }]
           }],
           generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: schema,
             temperature: 0,
             maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
           }
