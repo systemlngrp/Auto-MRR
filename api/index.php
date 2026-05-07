@@ -34,6 +34,16 @@ function sessionAuth(): array
     return is_array($_SESSION['auth'] ?? null) ? $_SESSION['auth'] : [];
 }
 
+function requireAuthenticated(): array
+{
+    $auth = sessionAuth();
+    $loginId = trim((string)($auth['login_id'] ?? ''));
+    if ($loginId === '') {
+        jsonOut(['ok' => false, 'error' => 'Authentication required. Please login again.'], 401);
+    }
+    return $auth;
+}
+
 function requireAdminForUsers(string $firmId): void
 {
     $auth = sessionAuth();
@@ -1761,6 +1771,7 @@ try {
     }
 
     if ($action === 'authenticate_user') {
+        ensureSessionStarted();
         $loginId = trim((string)($_GET['login_id'] ?? $_POST['login_id'] ?? ''));
         $password = trim((string)($_GET['password'] ?? $_POST['password'] ?? ''));
         $stmt = db()->prepare("
@@ -1782,6 +1793,12 @@ try {
         if (!$valid) {
             jsonOut(['ok' => false, 'error' => 'Invalid user ID or password.'], 401);
         }
+        @session_regenerate_id(true);
+        $_SESSION['auth'] = [
+            'login_id' => (string)$user['login_id'],
+            'role' => (string)$user['role'],
+            'firm_id' => (string)$user['firm_id'],
+        ];
         $menuAccess = $hasMenuAccessColumn ? $decodeMenuAccess($user['menu_access'] ?? null) : [];
         jsonOut([
             'ok' => true,
@@ -1802,6 +1819,64 @@ try {
                 'master_login' => true,
             ],
         ]);
+    }
+
+    if ($action === 'gemini_generate') {
+        // Proxy Gemini requests so API keys remain server-side (not in frontend bundles).
+        $auth = requireAuthenticated();
+        $payload = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($payload)) {
+            jsonOut(['ok' => false, 'error' => 'Invalid JSON payload.'], 400);
+        }
+        $model = trim((string)($payload['model'] ?? ''));
+        $requestBody = $payload['requestBody'] ?? null;
+        if ($model === '' || !is_array($requestBody)) {
+            jsonOut(['ok' => false, 'error' => 'Missing model or requestBody.'], 400);
+        }
+
+        // Ensure firm scoping when present (frontend passes firm_id to authenticate).
+        $firmIdText = trim((string)($firmId ?? ''));
+        $authFirm = trim((string)($auth['firm_id'] ?? ''));
+        if ($firmIdText !== '' && $authFirm !== '' && $authFirm !== $firmIdText) {
+            jsonOut(['ok' => false, 'error' => 'Access denied for this firm.'], 403);
+        }
+
+        $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: getenv('GOOGLE_GEMINI_API_KEY') ?: getenv('GCP_GEMINI_API_KEY') ?: ''));
+        if ($apiKey === '') {
+            // Allow using the same name as the frontend build var in hosting panels (server-side env).
+            $apiKey = trim((string)(getenv('VITE_GEMINI_API_KEY') ?: ''));
+        }
+        if ($apiKey === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing GEMINI_API_KEY on server. Set it in your hosting environment variables.'], 500);
+        }
+
+        $url = 'https://generativelanguage.googleapis.com/v1/models/' . rawurlencode($model) . ':generateContent?key=' . rawurlencode($apiKey);
+        $options = [
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => json_encode($requestBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'timeout' => 120,
+            ],
+        ];
+        $context = stream_context_create($options);
+        $responseText = @file_get_contents($url, false, $context);
+        $statusLine = is_array($http_response_header ?? null) ? (string)($http_response_header[0] ?? '') : '';
+        $status = 0;
+        if (preg_match('/\s(\d{3})\s/', $statusLine, $m)) {
+            $status = (int)$m[1];
+        }
+        if ($responseText === false) {
+            jsonOut(['ok' => false, 'error' => 'Gemini request failed.'], 502);
+        }
+        $decoded = json_decode($responseText, true);
+        if ($status >= 400) {
+            jsonOut($decoded ?: ['ok' => false, 'error' => 'Gemini request failed.'], $status ?: 502);
+        }
+        if (!is_array($decoded)) {
+            jsonOut(['ok' => false, 'error' => 'Gemini returned invalid JSON.'], 502);
+        }
+        jsonOut($decoded, 200);
     }
 
     if ($action === 'get_rows') {

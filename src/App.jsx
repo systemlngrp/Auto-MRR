@@ -13,10 +13,6 @@ import ReelLabelsPage from './pages/ReelLabelsPage';
 import UsersPage from './pages/UsersPage';
 import GateEntriesPage from './pages/GateEntriesPage';
 
-function getGeminiApiKey() {
-  const fromBuild = String(import.meta.env.VITE_GEMINI_API_KEY || '').trim();
-  return fromBuild;
-}
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
   .split(',')
@@ -39,7 +35,9 @@ const GEMINI_MODELS = Array.from(new Set([
   ...GEMINI_FALLBACK_MODELS
 ].map(normalizeGeminiModelName).filter(Boolean)));
 const GEMINI_RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
-const GEMINI_API_BASES = ['https://generativelanguage.googleapis.com/v1beta', 'https://generativelanguage.googleapis.com/v1'];
+// When deployed, Gemini calls are proxied through the backend so API keys are not exposed in frontend bundles.
+// These bases remain for local/offline scenarios only.
+const GEMINI_API_BASES = ['https://generativelanguage.googleapis.com/v1', 'https://generativelanguage.googleapis.com/v1beta'];
 const GEMINI_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_GEMINI_TIMEOUT_MS || 120000);
 const GEMINI_IMAGE_MAX_DIM = Math.max(1400, Number(import.meta.env.VITE_GEMINI_IMAGE_MAX_DIM || 2600));
 const GEMINI_IMAGE_MIN_DIM = Math.max(1000, Math.min(GEMINI_IMAGE_MAX_DIM, Number(import.meta.env.VITE_GEMINI_IMAGE_MIN_DIM || 1600)));
@@ -1348,7 +1346,7 @@ function formatGeminiHttpError(status, payload, fallbackText) {
     return `Gemini quota exceeded.${retryText} Add billing in Google AI Studio or use another quota-enabled API key.`.trim();
   }
   if (status === 403 || /API key not valid|permission|forbidden/i.test(apiMessage)) {
-    return 'Gemini API key is invalid or restricted. Rebuild/redeploy with VITE_GEMINI_API_KEY and confirm key restrictions/permissions in Google AI Studio.';
+    return 'Gemini API key is invalid or restricted. Set GEMINI_API_KEY (or VITE_GEMINI_API_KEY) on the server environment variables and ensure key restrictions allow server-to-server access.';
   }
   if (status === 400) {
     if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(`${apiMessage} ${detailsText}`)) {
@@ -1416,80 +1414,35 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
     throw new Error(`Gemini is rate-limited right now. Please retry in about ${waitSeconds} seconds.`);
   }
 
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    const err = new Error('Missing Gemini API key. Rebuild/redeploy with VITE_GEMINI_API_KEY (Vite env var).');
-    err.status = 401;
-    throw err;
-  }
-
-  for (let baseIndex = 0; baseIndex < GEMINI_API_BASES.length; baseIndex += 1) {
-    const baseUrl = GEMINI_API_BASES[baseIndex];
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      let timeoutId = null;
-      try {
-        const controller = new AbortController();
-        timeoutId = window.setTimeout(() => controller.abort(), GEMINI_REQUEST_TIMEOUT_MS);
-        const response = await fetch(`${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        });
-        window.clearTimeout(timeoutId);
-
-        if (response.ok) return response.json();
-
-        const errorText = await response.text();
-        let payload = null;
-        try {
-          payload = JSON.parse(errorText);
-        } catch {
-          payload = null;
-        }
-
-        const err = new Error(formatGeminiHttpError(response.status, payload, errorText));
-        err.status = response.status;
-        err.payload = payload;
-        err.retryable = isRetryableGeminiError(response.status, payload, errorText);
-        err.baseUrl = baseUrl;
-        lastError = err;
-        if (response.status === 429 || response.status === 503) {
-          const retryDelayMs = getGeminiRetryDelayMs(payload, errorText) || (response.status === 429 ? 30000 : 10000);
-          GEMINI_COOLDOWN_UNTIL = Math.max(GEMINI_COOLDOWN_UNTIL, Date.now() + retryDelayMs);
-        }
-
-        const shouldSwitchBase = response.status === 404 || response.status === 400;
-        if (shouldSwitchBase || (!err.retryable && baseIndex < GEMINI_API_BASES.length - 1)) {
-          break;
-        }
-        if (!err.retryable || attempt === maxAttempts) throw err;
-        await waitMs(1000 * attempt);
-        continue;
-      } catch (networkErr) {
-        if (timeoutId) window.clearTimeout(timeoutId);
-        const err = networkErr instanceof Error ? networkErr : new Error('Gemini network request failed.');
-        if (err.name === 'AbortError') {
-          const timeoutErr = new Error('Gemini request timed out while reading the image. Please retry with a clearer or smaller image.');
-          timeoutErr.status = 408;
-          timeoutErr.retryable = true;
-          throw timeoutErr;
-        }
-        if (err.status) throw err;
-        err.retryable = true;
-        err.baseUrl = baseUrl;
-        lastError = err;
-        if (attempt === maxAttempts) break;
-        await waitMs(1000 * attempt);
-      }
+  // Production path: proxy through backend so the API key stays server-side.
+  if (HOSTINGER_API_URL) {
+    const response = await fetch(HOSTINGER_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        action: 'gemini_generate',
+        model,
+        requestBody
+      })
+    });
+    const text = await response.text();
+    let payload = null;
+    try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
+    if (!response.ok) {
+      const err = new Error(formatGeminiHttpError(response.status, payload, text));
+      err.status = response.status;
+      err.payload = payload;
+      err.retryable = isRetryableGeminiError(response.status, payload, text);
+      throw err;
     }
+    return payload;
   }
 
-  throw lastError || new Error('Gemini request failed.');
+  throw new Error('Gemini proxy is not configured. Set VITE_HOSTINGER_API_URL and deploy the backend with a server-side Gemini API key.');
 }
 
 async function fetchGeminiStructured(mediaItems, prompt, shape) {
-  const schema = inferJsonSchema(shape);
   const contents = [
     {
       parts: [
@@ -1500,16 +1453,6 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
       ]
     }
   ];
-
-  const structuredRequest = {
-    contents,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: schema,
-      temperature: 0.1,
-      maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
-    }
-  };
 
   const plainJsonRequest = {
     contents: [{
@@ -1526,27 +1469,11 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
     }
   };
 
-  const isStructuredUnsupported = (err) => {
-    const msg = String(err?.message || '').toLowerCase();
-    return msg.includes('responsemimetype')
-      || msg.includes('responseschema')
-      || (msg.includes('cannot find field') && (msg.includes('response') || msg.includes('schema')));
-  };
-
   let lastError = null;
   for (let i = 0; i < GEMINI_MODELS.length; i += 1) {
     const model = GEMINI_MODELS[i];
     try {
-      let data;
-      try {
-        data = await postGeminiGenerateContent(model, structuredRequest, 3);
-      } catch (err) {
-        if (isStructuredUnsupported(err)) {
-          data = await postGeminiGenerateContent(model, plainJsonRequest, 3);
-        } else {
-          throw err;
-        }
-      }
+      const data = await postGeminiGenerateContent(model, plainJsonRequest, 3);
       const candidateText = extractCandidateText(data);
       try {
         return parseModelJson(candidateText);
@@ -1555,7 +1482,7 @@ async function fetchGeminiStructured(mediaItems, prompt, shape) {
         const repairRequest = {
           contents: [{
             parts: [{
-              text: `Fix this invalid JSON and return ONLY valid JSON matching the schema. Do not add explanation.\n\n${candidateText}`
+              text: `Fix this invalid JSON and return ONLY valid JSON (no markdown, no commentary). Do not add explanation.\n\n${candidateText}`
             }]
           }],
           generationConfig: {
@@ -1676,10 +1603,8 @@ function mergeFocusedPackingData(data, focused = {}) {
 }
 
 async function fetchGeminiJson(filesInput, kind) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) throw new Error('Missing Gemini API key. Rebuild/redeploy with VITE_GEMINI_API_KEY set in the build environment.');
-  if (!isLikelyGeminiApiKey(apiKey)) {
-    throw new Error('Gemini API key looks too short. Please check your .env key value.');
+  if (!HOSTINGER_API_URL) {
+    throw new Error('Gemini proxy is not configured. Set VITE_HOSTINGER_API_URL and deploy the backend with GEMINI_API_KEY.');
   }
 
   const files = Array.isArray(filesInput) ? filesInput : [filesInput];
