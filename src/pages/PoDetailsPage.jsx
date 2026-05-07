@@ -29,7 +29,7 @@ export default function PoDetailsPage({
     reel_details: '',
     description: '',
     hsn: '',
-    unit: '',
+    unit: 'Kgs',
     rate: '',
     quantity: '',
     status: '',
@@ -529,10 +529,15 @@ export default function PoDetailsPage({
                  <div style={sectionHeaderStyle}>Pricing & Quantity</div>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                       <div>
-                          <label style={labelStyle}>Unit</label>
-                          <input value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} style={inputStyle('unit')} placeholder="KGS / NOS" />
-                       </div>
+                        <div>
+                           <label style={labelStyle}>Unit</label>
+                           <select value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} style={inputStyle('unit')}>
+                              <option value="Kgs">Kgs</option>
+                              <option value="Psc">Psc</option>
+                              <option value="Ltr">Ltr</option>
+                              <option value="GM">GM</option>
+                           </select>
+                        </div>
                        <div>
                           <label style={labelStyle}>Rate <span style={{ color: '#b91c1c' }}>*</span></label>
                           <input type="number" step="0.01" value={formData.rate} onChange={(e) => { setFormData({ ...formData, rate: e.target.value }); setErrors({ ...errors, rate: '' }); }} style={inputStyle('rate')} placeholder="0.00" />
