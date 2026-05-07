@@ -2230,8 +2230,27 @@ try {
         'file' => $e->getFile(),
         'line' => $e->getLine(),
     ]);
+    $message = $e->getMessage();
+    $extra = [];
+    if (stripos($message, 'SQLSTATE 1045') !== false || stripos($message, 'Access denied') !== false) {
+        try {
+            $cfg = getConfig();
+            $dbCfg = is_array($cfg['db'] ?? null) ? $cfg['db'] : [];
+            $meta = is_array($cfg['_meta'] ?? null) ? $cfg['_meta'] : [];
+            $extra['db_config'] = [
+                'host' => (string)($dbCfg['host'] ?? ''),
+                'port' => (int)($dbCfg['port'] ?? 3306),
+                'database' => (string)($dbCfg['database'] ?? ''),
+                'username' => (string)($dbCfg['username'] ?? ''),
+                'config_source' => (string)($meta['config_source'] ?? ''),
+                'used_env' => (bool)($meta['used_env'] ?? false),
+            ];
+        } catch {
+        }
+    }
     jsonOut([
         'ok' => false,
-        'error' => $e->getMessage(),
+        'error' => $message,
+        ...$extra,
     ], 500);
 }
