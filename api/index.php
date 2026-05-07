@@ -1571,7 +1571,7 @@ try {
                 $cfg = getConfig();
                 $dbCfg = $cfg['db'] ?? [];
                 $meta = is_array($cfg['_meta'] ?? null) ? $cfg['_meta'] : [];
-            } catch {
+            } catch (Throwable $e) {
             }
             jsonOut([
                 'ok' => false,
@@ -2245,7 +2245,7 @@ try {
                 'config_source' => (string)($meta['config_source'] ?? ''),
                 'used_env' => (bool)($meta['used_env'] ?? false),
             ];
-        } catch {
+        } catch (Throwable $e) {
         }
     }
     jsonOut([
