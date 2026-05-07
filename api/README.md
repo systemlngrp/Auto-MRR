@@ -5,7 +5,7 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 ## Files
 
 - `schema.sql`: database tables for users, suppliers, PO rows, GE Entry, MRR parent/child rows, and approval logs
-- `config.sample.php`: copy to `config.php` and fill with your real database credentials
+- `config.sample.php`: copy to `config.php` and fill with your real database credentials (do not commit `config.php`)
 - `index.php`: single API endpoint compatible with the current frontend action flow
 
 ## Setup
@@ -14,6 +14,9 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 2. Copy `config.sample.php` to `config.php`.
 3. Set your real DB password in `config.php`.
 4. For normal Hostinger web hosting, set MySQL host to `localhost` in `config.php`.
+
+Alternative: configure DB via environment variables (supported by `api/index.php`):
+`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_CHARSET`.
 5. Upload the `api` folder to your site, for example:
    - `public_html/api/index.php`
 6. Set the frontend env:

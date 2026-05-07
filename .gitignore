@@ -10,6 +10,13 @@ coverage
 dist/
 build/
 
+# Backend secrets
+api/config.php
+api/save-debug.log
+api/*.log
+api/*.sqlite
+api/*.sqlite3
+
 # Misc
 .DS_Store
 .env
