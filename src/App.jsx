@@ -3472,7 +3472,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <UsersPage
-          selectedFirm={firms[0]}
+          selectedFirm={tempFirm || firms[0]}
           deps={{
             fetchUsers,
             saveUsers

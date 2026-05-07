@@ -1548,6 +1548,17 @@ try {
         $hasMenuAccessColumn = false;
     }
 
+    // Auto-migrate: some deployments were created before menu_access existed.
+    if (!$hasMenuAccessColumn && in_array($action, ['save_users', 'get_users', 'authenticate_user'], true)) {
+        try {
+            db()->exec("ALTER TABLE app_users ADD COLUMN menu_access LONGTEXT DEFAULT NULL");
+            $hasMenuAccessColumn = true;
+        } catch (Throwable $e) {
+            // Ignore if permissions are missing; UI will fall back to "all menus".
+            $hasMenuAccessColumn = false;
+        }
+    }
+
     if ($action === 'authenticate_user') {
         $loginId = trim((string)($_GET['login_id'] ?? $_POST['login_id'] ?? ''));
         $password = trim((string)($_GET['password'] ?? $_POST['password'] ?? ''));
