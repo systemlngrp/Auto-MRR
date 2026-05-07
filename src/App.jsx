@@ -15,13 +15,7 @@ import GateEntriesPage from './pages/GateEntriesPage';
 
 function getGeminiApiKey() {
   const fromBuild = String(import.meta.env.VITE_GEMINI_API_KEY || '').trim();
-  if (fromBuild) return fromBuild;
-  try {
-    const fromStorage = String(localStorage.getItem('gemini_api_key') || '').trim();
-    if (fromStorage) return fromStorage;
-  } catch {
-  }
-  return String(window?.__RUNTIME_CONFIG__?.GEMINI_API_KEY || window?.__RUNTIME_CONFIG__?.VITE_GEMINI_API_KEY || '').trim();
+  return fromBuild;
 }
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -1354,7 +1348,7 @@ function formatGeminiHttpError(status, payload, fallbackText) {
     return `Gemini quota exceeded.${retryText} Add billing in Google AI Studio or use another quota-enabled API key.`.trim();
   }
   if (status === 403 || /API key not valid|permission|forbidden/i.test(apiMessage)) {
-    return 'Gemini API key is invalid or restricted. On Hostinger/static deploys, set it via the profile menu (stores in browser) or rebuild with VITE_GEMINI_API_KEY. Also check key restrictions/permissions in Google AI Studio.';
+    return 'Gemini API key is invalid or restricted. Rebuild/redeploy with VITE_GEMINI_API_KEY and confirm key restrictions/permissions in Google AI Studio.';
   }
   if (status === 400) {
     if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(`${apiMessage} ${detailsText}`)) {
@@ -1424,7 +1418,7 @@ async function postGeminiGenerateContent(model, requestBody, maxAttempts = 2) {
 
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    const err = new Error('Missing Gemini API key. Open the profile menu and set the Gemini API Key, or rebuild with VITE_GEMINI_API_KEY.');
+    const err = new Error('Missing Gemini API key. Rebuild/redeploy with VITE_GEMINI_API_KEY (Vite env var).');
     err.status = 401;
     throw err;
   }
@@ -1683,7 +1677,7 @@ function mergeFocusedPackingData(data, focused = {}) {
 
 async function fetchGeminiJson(filesInput, kind) {
   const apiKey = getGeminiApiKey();
-  if (!apiKey) throw new Error('Missing Gemini API key. Open the profile menu and set the Gemini API Key, or rebuild with VITE_GEMINI_API_KEY.');
+  if (!apiKey) throw new Error('Missing Gemini API key. Rebuild/redeploy with VITE_GEMINI_API_KEY set in the build environment.');
   if (!isLikelyGeminiApiKey(apiKey)) {
     throw new Error('Gemini API key looks too short. Please check your .env key value.');
   }
