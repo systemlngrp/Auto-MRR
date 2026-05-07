@@ -3,6 +3,7 @@ import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchShe
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
+import ConfirmModal from './components/modals/ConfirmModal';
 import ProfileMenu from './components/layout/ProfileMenu';
 import { directLabelPrintStyles, labelStyles, printGridStyles, styles } from './styles/appStyles';
 import { getSafeInputValue, normalizeInputDateValue } from './utils/inputFormatters';
@@ -4566,6 +4567,8 @@ function App() {
   const [geData, setGeData] = useState(null);
   const [pendingGEs, setPendingGEs] = useState([]);
   const [showGeModal, setShowGeModal] = useState(false);
+  const confirmResolveRef = useRef(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', confirmLabel: 'OK', cancelLabel: 'Cancel' });
   const [isFetchingGEs, setIsFetchingGEs] = useState(false);
   const [poRows, setPoRows] = useState([]);
   const [poFilter, setPoFilter] = useState('');
@@ -4595,6 +4598,17 @@ function App() {
   const [triggerPendingModal, setTriggerPendingModal] = useState(false);
   const [helperSheetReelSeed, setHelperSheetReelSeed] = useState(0);
   const [manualFields, setManualFields] = useState({}); // { [rowIdx]: { fieldName: true } }
+
+  const requestConfirm = ({ title = 'Confirm', message = '', confirmLabel = 'OK', cancelLabel = 'Cancel' } = {}) => new Promise((resolve) => {
+    confirmResolveRef.current = resolve;
+    setConfirmModal({ isOpen: true, title, message, confirmLabel, cancelLabel });
+  });
+  const closeConfirm = (result) => {
+    const resolve = confirmResolveRef.current;
+    confirmResolveRef.current = null;
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+    resolve?.(result);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -4838,8 +4852,14 @@ function App() {
   );
   const handlePageModeChange = async (nextType) => {
     if (!selectedFirm || nextType === mrrType || !canChangePageMode) return;
-    if (hasDraftContent && !window.confirm('Switching mode will clear the current unsaved MRR draft. Continue?')) {
-      return;
+    if (hasDraftContent) {
+      const ok = await requestConfirm({
+        title: 'Confirm',
+        message: 'Switching mode will clear the current unsaved MRR draft. Continue?',
+        confirmLabel: 'Continue',
+        cancelLabel: 'Cancel'
+      });
+      if (!ok) return;
     }
     const preservedGeNo = String(firstFilled(invoice.ge_no, packing.ge_no, '')).trim();
     const preservedMrrNo = String(firstFilled(invoice.mrr_no, packing.mrr_no, '')).trim();
@@ -6741,6 +6761,16 @@ function App() {
         pendingGEs={pendingGEs} 
         formatAmount={formatDecimal2}
         onSelect={handleSelectPendingGE} 
+      /> 
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        cancelLabel={confirmModal.cancelLabel}
+        onCancel={() => closeConfirm(false)}
+        onConfirm={() => closeConfirm(true)}
       />
 
         {activeTab === 'invoice' && (

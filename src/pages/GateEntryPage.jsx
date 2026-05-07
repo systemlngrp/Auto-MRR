@@ -26,6 +26,7 @@ export default function GateEntryPage({
   } = deps;
 
   const [pics, setPics] = useState(Array(8).fill(null));
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
   const defaultDate = new Date().toLocaleDateString('en-GB');
   const [data, setData] = useState(() => normalizeGateEntryInitialData(initialData, geNo, defaultDate));
   const [errors, setErrors] = useState({});
@@ -168,6 +169,22 @@ export default function GateEntryPage({
     <div style={{ color: '#b91c1c', fontSize: '11px', fontWeight: '600', marginTop: '4px' }}>⚠️ {msg}</div>
   ) : null;
 
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    const filledIndices = pics.map((p, i) => (p ? i : null)).filter((v) => v !== null);
+    const curr = filledIndices.indexOf(selectedPhotoIndex);
+    const prev = curr > 0 ? curr - 1 : filledIndices.length - 1;
+    setSelectedPhotoIndex(filledIndices[prev]);
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    const filledIndices = pics.map((p, i) => (p ? i : null)).filter((v) => v !== null);
+    const curr = filledIndices.indexOf(selectedPhotoIndex);
+    const next = curr < filledIndices.length - 1 ? curr + 1 : 0;
+    setSelectedPhotoIndex(filledIndices[next]);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', overflowY: 'auto', padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '700px', padding: '40px' }}>
@@ -235,9 +252,23 @@ export default function GateEntryPage({
           <label style={labelStyle}>Upload Photos (Up to 8)</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
             {pics.map((pic, i) => (
-              <div key={i} style={{ border: '1.5px dashed #d1d5db', borderRadius: '4px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#f9fafb', overflow: 'hidden' }}>
+              <div 
+                key={i} 
+                style={{ border: '1.5px dashed #d1d5db', borderRadius: '4px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#f9fafb', overflow: 'hidden', cursor: pic ? 'pointer' : 'default' }}
+                onClick={() => pic && setSelectedPhotoIndex(i)}
+              >
                 {pic ? <img src={pic} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <span style={{ fontSize: '10px', color: '#9ca3af' }}>Pic {i + 1}</span>}
-                <input type="file" accept="image/*" capture="environment" onChange={(e) => handleFileChange(i, e.target.files[0])} style={{ position: 'absolute', opacity: 0, cursor: 'pointer', inset: 0 }} />
+                <div style={{ position: 'absolute', right: '4px', bottom: '4px', background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', pointerEvents: 'none' }}>
+                  <span style={{ fontSize: '12px' }}>📷</span>
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={(e) => handleFileChange(i, e.target.files[0])} 
+                  style={{ position: 'absolute', opacity: 0, cursor: 'pointer', inset: 0 }} 
+                  onClick={(e) => { if (pics[i]) e.stopPropagation(); }}
+                />
               </div>
             ))}
           </div>
@@ -253,6 +284,37 @@ export default function GateEntryPage({
         {status && <div className="status" style={{ marginTop: '20px', textAlign: 'center' }}>{status}</div>}
       </div>
 
+      {selectedPhotoIndex !== null && (
+        <div 
+          className="loading-overlay" 
+          style={{ background: 'rgba(0,0,0,0.9)', zIndex: 10002, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setSelectedPhotoIndex(null)}
+        >
+          <div style={{ position: 'absolute', top: '20px', right: '20px', color: '#fff', fontSize: '30px', cursor: 'pointer', fontWeight: '900' }} onClick={() => setSelectedPhotoIndex(null)}>
+            ×
+          </div>
+          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button 
+              style={{ position: 'absolute', left: '10px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handlePrev}
+            >
+              ‹
+            </button>
+            <img 
+              src={pics[selectedPhotoIndex]} 
+              alt="Large view" 
+              style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', boxShadow: '0 0 40px rgba(0,0,0,0.5)', border: '2px solid #fff' }} 
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button 
+              style={{ position: 'absolute', right: '10px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handleNext}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

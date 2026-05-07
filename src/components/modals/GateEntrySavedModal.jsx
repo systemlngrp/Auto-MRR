@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function GateEntrySavedModal({ isOpen, firm, entry, previewPics, onClose, formatAmount, onDownload }) {
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
+
   if (!isOpen || !entry) return null;
 
   const previewPhotos = previewPics.filter(Boolean);
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    setSelectedPhotoIndex((prev) => (prev > 0 ? prev - 1 : previewPhotos.length - 1));
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    setSelectedPhotoIndex((prev) => (prev < previewPhotos.length - 1 ? prev + 1 : 0));
+  };
 
   return (
     <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 10001 }}>
@@ -57,7 +69,11 @@ export default function GateEntrySavedModal({ isOpen, firm, entry, previewPics, 
               <strong style={{ display: 'block', marginBottom: '16px', fontSize: '11px', textTransform: 'uppercase', color: '#888' }}>Attached Photos</strong>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                 {previewPhotos.map((pic, index) => (
-                  <div key={index} style={{ border: '1px solid #eee', padding: '6px', background: '#f9f9f9' }}>
+                  <div 
+                    key={index} 
+                    style={{ border: '1px solid #eee', padding: '6px', background: '#f9f9f9', cursor: 'pointer' }}
+                    onClick={() => setSelectedPhotoIndex(index)}
+                  >
                     <img src={pic} alt={`Pic ${index + 1}`} style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '2px' }} />
                   </div>
                 ))}
@@ -80,6 +96,41 @@ export default function GateEntrySavedModal({ isOpen, firm, entry, previewPics, 
           </button>
         </div>
       </div>
+
+      {selectedPhotoIndex !== null && (
+        <div 
+          className="loading-overlay" 
+          style={{ background: 'rgba(0,0,0,0.9)', zIndex: 10002, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setSelectedPhotoIndex(null)}
+        >
+          <div style={{ position: 'absolute', top: '20px', right: '20px', color: '#fff', fontSize: '30px', cursor: 'pointer', fontWeight: '900' }} onClick={() => setSelectedPhotoIndex(null)}>
+            ×
+          </div>
+          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button 
+              style={{ position: 'absolute', left: '10px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handlePrev}
+            >
+              ‹
+            </button>
+            <img 
+              src={previewPhotos[selectedPhotoIndex]} 
+              alt="Large view" 
+              style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', boxShadow: '0 0 40px rgba(0,0,0,0.5)', border: '2px solid #fff' }} 
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button 
+              style={{ position: 'absolute', right: '10px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={handleNext}
+            >
+              ›
+            </button>
+          </div>
+          <div style={{ color: '#fff', marginTop: '10px', fontSize: '14px', fontWeight: '700' }}>
+            Photo {selectedPhotoIndex + 1} of {previewPhotos.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
