@@ -106,6 +106,7 @@ function getConfig(): array
     $corsEnvOrigin = $env('CORS_ALLOW_ORIGIN');
     $appEnvTimezone = $env('APP_TIMEZONE');
 
+    $usedEnv = false;
     if ($corsEnvOrigin !== '') {
         $loaded['cors']['allow_origin'] = $corsEnvOrigin;
     }
@@ -118,6 +119,13 @@ function getConfig(): array
     if ($dbEnvUser !== '') $loaded['db']['username'] = $dbEnvUser;
     if ($dbEnvPass !== '') $loaded['db']['password'] = $dbEnvPass;
     if ($dbEnvCharset !== '') $loaded['db']['charset'] = $dbEnvCharset;
+    $usedEnv = $dbEnvHost !== '' || $dbEnvPort !== '' || $dbEnvName !== '' || $dbEnvUser !== '' || $dbEnvPass !== '' || $dbEnvCharset !== '';
+
+    $loaded['_meta'] = [
+        'config_source' => file_exists(__DIR__ . '/config.php') ? 'config.php' : (file_exists(__DIR__ . '/config.sample.php') ? 'config.sample.php' : 'none'),
+        'config_path' => $configPath,
+        'used_env' => $usedEnv,
+    ];
 
     $hasDbDetails = trim((string)($loaded['db']['database'] ?? '')) !== '' && trim((string)($loaded['db']['username'] ?? '')) !== '' && trim((string)($loaded['db']['host'] ?? '')) !== '';
     if (!$hasDbDetails) {
@@ -1540,9 +1548,44 @@ try {
     if ($action === 'health') {
         try {
             db()->query('SELECT 1');
-            jsonOut(['ok' => true, 'db' => 'ok']);
+            $cfg = getConfig();
+            $dbCfg = $cfg['db'] ?? [];
+            $meta = is_array($cfg['_meta'] ?? null) ? $cfg['_meta'] : [];
+            jsonOut([
+                'ok' => true,
+                'db' => 'ok',
+                'db_config' => [
+                    'host' => (string)($dbCfg['host'] ?? ''),
+                    'port' => (int)($dbCfg['port'] ?? 3306),
+                    'database' => (string)($dbCfg['database'] ?? ''),
+                    'username' => (string)($dbCfg['username'] ?? ''),
+                    'config_source' => (string)($meta['config_source'] ?? ''),
+                    'used_env' => (bool)($meta['used_env'] ?? false),
+                ],
+            ]);
         } catch (Throwable $e) {
-            jsonOut(['ok' => false, 'db' => 'error', 'error' => $e->getMessage()], 500);
+            $cfg = null;
+            $dbCfg = [];
+            $meta = [];
+            try {
+                $cfg = getConfig();
+                $dbCfg = $cfg['db'] ?? [];
+                $meta = is_array($cfg['_meta'] ?? null) ? $cfg['_meta'] : [];
+            } catch {
+            }
+            jsonOut([
+                'ok' => false,
+                'db' => 'error',
+                'error' => $e->getMessage(),
+                'db_config' => [
+                    'host' => (string)($dbCfg['host'] ?? ''),
+                    'port' => (int)($dbCfg['port'] ?? 3306),
+                    'database' => (string)($dbCfg['database'] ?? ''),
+                    'username' => (string)($dbCfg['username'] ?? ''),
+                    'config_source' => (string)($meta['config_source'] ?? ''),
+                    'used_env' => (bool)($meta['used_env'] ?? false),
+                ],
+            ], 500);
         }
     }
 
