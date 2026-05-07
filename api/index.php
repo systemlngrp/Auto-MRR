@@ -67,22 +67,61 @@ function getConfig(): array
         return $config;
     }
 
+    $env = static function (string $key): string {
+        $value = getenv($key);
+        if ($value !== false && trim((string)$value) !== '') return trim((string)$value);
+        if (isset($_ENV[$key]) && trim((string)$_ENV[$key]) !== '') return trim((string)$_ENV[$key]);
+        return '';
+    };
+
     $configPath = __DIR__ . '/config.php';
     if (!file_exists($configPath)) {
         $configPath = __DIR__ . '/config.sample.php';
     }
-    if (!file_exists($configPath)) {
-        throw new RuntimeException('Missing API config file. Create api/config.php from api/config.sample.php.');
-    }
-
-    try {
-        $loaded = require $configPath;
-    } catch (Throwable $e) {
-        throw new RuntimeException('Invalid API config file: ' . $e->getMessage(), 0, $e);
+    $loaded = null;
+    if (file_exists($configPath)) {
+        try {
+            $loaded = require $configPath;
+        } catch (Throwable $e) {
+            throw new RuntimeException('Invalid API config file: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     if (!is_array($loaded)) {
-        throw new RuntimeException('Invalid API config file: expected a PHP array.');
+        $loaded = [
+            'app' => [],
+            'cors' => [],
+            'db' => [],
+        ];
+    }
+
+    // Allow configuring the API via environment variables (useful on new deployments).
+    // These override values from config.php/config.sample.php when present.
+    $dbEnvHost = $env('DB_HOST');
+    $dbEnvPort = $env('DB_PORT');
+    $dbEnvName = $env('DB_NAME');
+    $dbEnvUser = $env('DB_USER');
+    $dbEnvPass = $env('DB_PASS');
+    $dbEnvCharset = $env('DB_CHARSET');
+    $corsEnvOrigin = $env('CORS_ALLOW_ORIGIN');
+    $appEnvTimezone = $env('APP_TIMEZONE');
+
+    if ($corsEnvOrigin !== '') {
+        $loaded['cors']['allow_origin'] = $corsEnvOrigin;
+    }
+    if ($appEnvTimezone !== '') {
+        $loaded['app']['timezone'] = $appEnvTimezone;
+    }
+    if ($dbEnvHost !== '') $loaded['db']['host'] = $dbEnvHost;
+    if ($dbEnvPort !== '' && ctype_digit($dbEnvPort)) $loaded['db']['port'] = (int)$dbEnvPort;
+    if ($dbEnvName !== '') $loaded['db']['database'] = $dbEnvName;
+    if ($dbEnvUser !== '') $loaded['db']['username'] = $dbEnvUser;
+    if ($dbEnvPass !== '') $loaded['db']['password'] = $dbEnvPass;
+    if ($dbEnvCharset !== '') $loaded['db']['charset'] = $dbEnvCharset;
+
+    $hasDbDetails = trim((string)($loaded['db']['database'] ?? '')) !== '' && trim((string)($loaded['db']['username'] ?? '')) !== '' && trim((string)($loaded['db']['host'] ?? '')) !== '';
+    if (!$hasDbDetails) {
+        throw new RuntimeException('Missing API config. Create api/config.php OR set DB_HOST, DB_NAME, DB_USER, DB_PASS (and optionally DB_PORT).');
     }
 
     $timezone = trim((string)($loaded['app']['timezone'] ?? 'Asia/Kolkata'));
@@ -172,10 +211,19 @@ function db(): PDO
         $db['charset'] ?? 'utf8mb4'
     );
 
-    $pdo = new PDO($dsn, $db['username'] ?? '', $db['password'] ?? '', [
+    try {
+        $pdo = new PDO($dsn, $db['username'] ?? '', $db['password'] ?? '', [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+        ]);
+    } catch (Throwable $e) {
+        $message = $e->getMessage();
+        // Make access-denied errors more actionable in the UI.
+        if (stripos($message, 'SQLSTATE[HY000] [1045]') !== false || stripos($message, 'Access denied') !== false) {
+            throw new RuntimeException('Database access denied (SQLSTATE 1045). Check DB_USER/DB_PASS and ensure the MySQL user has privileges on DB_NAME.', 0, $e);
+        }
+        throw $e;
+    }
 
     return $pdo;
 }
@@ -1488,6 +1536,15 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
 try {
     $action = getAction();
     $firmId = getFirmId();
+
+    if ($action === 'health') {
+        try {
+            db()->query('SELECT 1');
+            jsonOut(['ok' => true, 'db' => 'ok']);
+        } catch (Throwable $e) {
+            jsonOut(['ok' => false, 'db' => 'error', 'error' => $e->getMessage()], 500);
+        }
+    }
 
     $normalizeMenuAccess = static function ($value): ?string {
         if ($value === null) return null;

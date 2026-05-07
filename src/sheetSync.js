@@ -23,14 +23,24 @@ function normalizeBackendUrl(value) {
 
 function getBackendUrl(source) {
   if (typeof source === 'string') {
-    return normalizeBackendUrl(String(source || '').trim() || DEFAULT_BACKEND_URL);
+    const candidate = String(source || '').trim() || DEFAULT_BACKEND_URL;
+    if (candidate) return normalizeBackendUrl(candidate);
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return normalizeBackendUrl(`${window.location.origin}/api/index.php`);
+    }
+    return '';
   }
-  return normalizeBackendUrl(String(
+  const resolved = String(
     source?.backendUrl ||
     source?.scriptUrl ||
     source?.apiUrl ||
     DEFAULT_BACKEND_URL
-  ).trim());
+  ).trim();
+  if (resolved) return normalizeBackendUrl(resolved);
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return normalizeBackendUrl(`${window.location.origin}/api/index.php`);
+  }
+  return '';
 }
 
 function getFirmKey(source) {
