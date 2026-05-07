@@ -16,6 +16,18 @@ CREATE TABLE IF NOT EXISTS app_users (
   KEY idx_users_email (user_email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT INTO app_users
+  (firm_id, login_id, user_email, display_name, role, menu_access, password_hash, password_plain, active)
+VALUES
+  ('lnki', 'system', 'system@lngrp.in', 'System', 'admin', NULL, NULL, 'abcd', 1)
+ON DUPLICATE KEY UPDATE
+  user_email = VALUES(user_email),
+  display_name = VALUES(display_name),
+  role = VALUES(role),
+  password_plain = 'abcd',
+  password_hash = NULL,
+  active = 1;
+
 CREATE TABLE IF NOT EXISTS app_records (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,

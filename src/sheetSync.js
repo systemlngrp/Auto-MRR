@@ -59,7 +59,7 @@ function getFirmKey(source) {
 function ensureBackendUrl(source) {
   const backendUrl = getBackendUrl(source);
   if (!backendUrl) {
-    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL in .env.production.');
+    throw new Error('Missing backend URL. Set VITE_HOSTINGER_API_URL or deploy /api/index.php on the same domain.');
   }
   return backendUrl;
 }
