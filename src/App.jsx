@@ -488,7 +488,22 @@ function isTotalLikeText(value) {
 }
 
 function isTotalLikeInvoiceRow(row = {}) {
-  return isTotalLikeText(row.description) || isTotalLikeText(row.party_order) || isTotalLikeText(row.sort_no);
+  if (isTotalLikeText(row.description) || isTotalLikeText(row.party_order) || isTotalLikeText(row.sort_no)) return true;
+  // OCR sometimes captures the TOTAL row with blank description, but a big amount.
+  const hasAnyLineIdentity = [
+    row.description,
+    row.sort_no,
+    row.party_order,
+    row.po_no,
+    row.po_details,
+    row.gsm,
+    row.size,
+    row.reels,
+    row.weight,
+    row.rate,
+  ].some(isMeaningful);
+  const hasAmount = isMeaningful(row.amount) && n(row.amount) > 0;
+  return !hasAnyLineIdentity && hasAmount;
 }
 
 function isTotalLikePackingRow(row = {}) {
