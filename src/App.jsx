@@ -4836,7 +4836,7 @@ function App() {
   );
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked;
-  const showBottomModeSwitch = true;
+  const showBottomModeSwitch = false;
   const hasDraftContent = Boolean(
     invoicePhotoScanned ||
     packingPhotoScanned ||

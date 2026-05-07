@@ -1226,6 +1226,9 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
     ]);
     $existingParentId = $existingParentIdStmt->fetchColumn();
 
+    $parentColumns = tableColumns($parentTable);
+    $hasRequiredReelsColumn = in_array('required_reels', $parentColumns, true);
+
     $parentParams = [
         'firm_id' => $firmId,
         'record_group_id' => $recordGroupId,
@@ -1239,7 +1242,6 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         'truck_no' => value($parentData, 'truck_number') ?: null,
         'invoice_total_weight' => value($parentData, 'invoice_ttl_weight_kgs') !== '' ? value($parentData, 'invoice_ttl_weight_kgs') : null,
         'actual_mrr_total_weight' => value($parentData, 'actual_mrr_ttl_weight_kgs') !== '' ? value($parentData, 'actual_mrr_ttl_weight_kgs') : null,
-        'required_reels' => value($parentData, 'required_reel') !== '' ? value($parentData, 'required_reel') : null,
         'rows_added' => count($helperRows),
         'mrr_type' => value($parentData, 'mrr_entry_type') ?: null,
         'invoice_basic_value' => value($parentData, 'invoice_basic_value') !== '' ? value($parentData, 'invoice_basic_value') : null,
@@ -1257,54 +1259,70 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         'extra_json' => json_encode($parentData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ];
 
+    if ($hasRequiredReelsColumn) {
+        $parentParams['required_reels'] = value($parentData, 'required_reel') !== '' ? value($parentData, 'required_reel') : null;
+    }
+
     if ($existingParentId) {
+        $updateSetParts = [
+            'record_group_id = :record_group_id',
+            'ge_no = :ge_no',
+            'mrr_no = :mrr_no',
+            'mrr_form_id = :mrr_form_id',
+            'entry_date = :entry_date',
+            'receipt_date = :receipt_date',
+            'supplier_name = :supplier_name',
+            'supplier_doc_no = :supplier_doc_no',
+            'truck_no = :truck_no',
+            'invoice_total_weight = :invoice_total_weight',
+            'actual_mrr_total_weight = :actual_mrr_total_weight',
+            'rows_added = :rows_added',
+            'mrr_type = :mrr_type',
+            'invoice_basic_value = :invoice_basic_value',
+            'mrr_basic_value = :mrr_basic_value',
+            'e_way_bill_no = :e_way_bill_no',
+            'e_way_date = :e_way_date',
+            'lr_no = :lr_no',
+            'insurance = :insurance',
+            'round_off = :round_off',
+            'plant_head_approval = :plant_head_approval',
+            'accounts_approval = :accounts_approval',
+            'md_approval = :md_approval',
+            'pending_stage = :pending_stage',
+            'tally_posted = :tally_posted',
+            'extra_json = :extra_json',
+            'updated_at = CURRENT_TIMESTAMP',
+        ];
+        if ($hasRequiredReelsColumn) {
+            array_splice($updateSetParts, 11, 0, ['required_reels = :required_reels']);
+        }
         $updateParent = $pdo->prepare("
             UPDATE {$parentTable}
-            SET record_group_id = :record_group_id,
-                ge_no = :ge_no,
-                mrr_no = :mrr_no,
-                mrr_form_id = :mrr_form_id,
-                entry_date = :entry_date,
-                receipt_date = :receipt_date,
-                supplier_name = :supplier_name,
-                supplier_doc_no = :supplier_doc_no,
-                truck_no = :truck_no,
-                invoice_total_weight = :invoice_total_weight,
-                actual_mrr_total_weight = :actual_mrr_total_weight,
-                required_reels = :required_reels,
-                rows_added = :rows_added,
-                mrr_type = :mrr_type,
-                invoice_basic_value = :invoice_basic_value,
-                mrr_basic_value = :mrr_basic_value,
-                e_way_bill_no = :e_way_bill_no,
-                e_way_date = :e_way_date,
-                lr_no = :lr_no,
-                insurance = :insurance,
-                round_off = :round_off,
-                plant_head_approval = :plant_head_approval,
-                accounts_approval = :accounts_approval,
-                md_approval = :md_approval,
-                pending_stage = :pending_stage,
-                tally_posted = :tally_posted,
-                extra_json = :extra_json,
-                updated_at = CURRENT_TIMESTAMP
+            SET " . implode(",\n                ", $updateSetParts) . "
             WHERE id = :id AND firm_id = :firm_id
         ");
         $updateParent->execute($parentParams + ['id' => $existingParentId]);
         $parentId = (int)$existingParentId;
     } else {
+        $insertColumns = [
+            'firm_id', 'record_group_id', 'ge_no', 'mrr_no', 'mrr_form_id', 'entry_date', 'receipt_date', 'supplier_name',
+            'supplier_doc_no', 'truck_no', 'invoice_total_weight', 'actual_mrr_total_weight', 'rows_added',
+            'mrr_type', 'invoice_basic_value', 'mrr_basic_value', 'e_way_bill_no', 'e_way_date', 'lr_no', 'insurance', 'round_off',
+            'plant_head_approval', 'accounts_approval', 'md_approval', 'pending_stage', 'tally_posted', 'extra_json'
+        ];
+        $insertValues = [
+            ':firm_id', ':record_group_id', ':ge_no', ':mrr_no', ':mrr_form_id', ':entry_date', ':receipt_date', ':supplier_name',
+            ':supplier_doc_no', ':truck_no', ':invoice_total_weight', ':actual_mrr_total_weight', ':rows_added',
+            ':mrr_type', ':invoice_basic_value', ':mrr_basic_value', ':e_way_bill_no', ':e_way_date', ':lr_no', ':insurance', ':round_off',
+            ':plant_head_approval', ':accounts_approval', ':md_approval', ':pending_stage', ':tally_posted', ':extra_json'
+        ];
+        if ($hasRequiredReelsColumn) {
+            array_splice($insertColumns, 12, 0, ['required_reels']);
+            array_splice($insertValues, 12, 0, [':required_reels']);
+        }
         $insertParent = $pdo->prepare("
-            INSERT INTO {$parentTable} (
-                firm_id, record_group_id, ge_no, mrr_no, mrr_form_id, entry_date, receipt_date, supplier_name,
-                supplier_doc_no, truck_no, invoice_total_weight, actual_mrr_total_weight, required_reels, rows_added,
-                mrr_type, invoice_basic_value, mrr_basic_value, e_way_bill_no, e_way_date, lr_no, insurance, round_off,
-                plant_head_approval, accounts_approval, md_approval, pending_stage, tally_posted, extra_json
-            ) VALUES (
-                :firm_id, :record_group_id, :ge_no, :mrr_no, :mrr_form_id, :entry_date, :receipt_date, :supplier_name,
-                :supplier_doc_no, :truck_no, :invoice_total_weight, :actual_mrr_total_weight, :required_reels, :rows_added,
-                :mrr_type, :invoice_basic_value, :mrr_basic_value, :e_way_bill_no, :e_way_date, :lr_no, :insurance, :round_off,
-                :plant_head_approval, :accounts_approval, :md_approval, :pending_stage, :tally_posted, :extra_json
-            )
+            INSERT INTO {$parentTable} (" . implode(', ', $insertColumns) . ")
+            VALUES (" . implode(', ', $insertValues) . ")
         ");
         $insertParent->execute($parentParams);
         $parentId = (int)$pdo->lastInsertId();
