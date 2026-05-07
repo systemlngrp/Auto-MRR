@@ -67,6 +67,66 @@ function getConfig(): array
         return $config;
     }
 
+    // Load optional dotenv-style files so shared hosting (or local dev) can
+    // configure DB credentials without Apache/nginx env var wiring.
+    // Precedence: real environment variables win over dotenv values.
+    $loadDotEnvFile = static function (string $path): void {
+        if (!is_file($path) || !is_readable($path)) {
+            return;
+        }
+        $lines = @file($path, FILE_IGNORE_NEW_LINES);
+        if (!is_array($lines)) {
+            return;
+        }
+        foreach ($lines as $line) {
+            $line = trim((string)$line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            // Basic KEY=VALUE parsing with support for quoted values.
+            $eqPos = strpos($line, '=');
+            if ($eqPos === false) {
+                continue;
+            }
+            $key = trim(substr($line, 0, $eqPos));
+            if ($key === '' || !preg_match('/^[A-Z0-9_]+$/', $key)) {
+                continue;
+            }
+            // Do not override already-defined env vars.
+            if (getenv($key) !== false) {
+                continue;
+            }
+            $rawValue = ltrim(substr($line, $eqPos + 1));
+            $value = $rawValue;
+            if ($value !== '' && ($value[0] === '"' || $value[0] === "'")) {
+                $quote = $value[0];
+                $value = substr($value, 1);
+                $end = strrpos($value, $quote);
+                if ($end !== false) {
+                    $value = substr($value, 0, $end);
+                }
+                if ($quote === '"') {
+                    $value = str_replace(['\\n', '\\r', '\\t', '\\"', '\\\\'], ["\n", "\r", "\t", '"', '\\'], $value);
+                }
+            } else {
+                // Strip inline comments like: KEY=value # comment
+                $hashPos = strpos($value, ' #');
+                if ($hashPos !== false) {
+                    $value = substr($value, 0, $hashPos);
+                }
+                $value = rtrim($value);
+            }
+
+            $_ENV[$key] = $value;
+            @putenv($key . '=' . $value);
+        }
+    };
+
+    // Common locations: api/.env, project root .env, and optional prod override.
+    $loadDotEnvFile(__DIR__ . '/.env');
+    $loadDotEnvFile(dirname(__DIR__) . '/.env');
+    $loadDotEnvFile(dirname(__DIR__) . '/.env.production');
+
     $env = static function (string $key): string {
         $value = getenv($key);
         if ($value !== false && trim((string)$value) !== '') return trim((string)$value);
@@ -97,11 +157,12 @@ function getConfig(): array
 
     // Allow configuring the API via environment variables (useful on new deployments).
     // These override values from config.php/config.sample.php when present.
-    $dbEnvHost = $env('DB_HOST');
-    $dbEnvPort = $env('DB_PORT');
-    $dbEnvName = $env('DB_NAME');
-    $dbEnvUser = $env('DB_USER');
-    $dbEnvPass = $env('DB_PASS');
+    // Support both the app's DB_* names and common platform MYSQL_* names.
+    $dbEnvHost = $env('DB_HOST') !== '' ? $env('DB_HOST') : $env('MYSQL_HOST');
+    $dbEnvPort = $env('DB_PORT') !== '' ? $env('DB_PORT') : $env('MYSQL_PORT');
+    $dbEnvName = $env('DB_NAME') !== '' ? $env('DB_NAME') : $env('MYSQL_DATABASE');
+    $dbEnvUser = $env('DB_USER') !== '' ? $env('DB_USER') : $env('MYSQL_USER');
+    $dbEnvPass = $env('DB_PASS') !== '' ? $env('DB_PASS') : $env('MYSQL_PASSWORD');
     $dbEnvCharset = $env('DB_CHARSET');
     $corsEnvOrigin = $env('CORS_ALLOW_ORIGIN');
     $appEnvTimezone = $env('APP_TIMEZONE');

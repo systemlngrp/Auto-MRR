@@ -17,6 +17,8 @@ This folder provides the `PHP + MySQL` backend used by the React app on Hostinge
 
 Alternative: configure DB via environment variables (supported by `api/index.php`):
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_CHARSET`.
+Also supported (common on hosting panels/containers): `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`.
+You can place these in `api/.env` (dotenv format) if you can't set real server environment variables.
 5. Upload the `api` folder to your site, for example:
    - `public_html/api/index.php`
 6. Set the frontend env:

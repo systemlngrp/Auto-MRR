@@ -20,4 +20,5 @@ return [
 
 // Optional: you can also configure DB via environment variables instead of api/config.php:
 // DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, DB_CHARSET
+// Also supported (common on platforms): MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD
 // (Supported by api/index.php)
