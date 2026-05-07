@@ -56,8 +56,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
       setStatus('Loading users...');
       try {
         const data = await fetchUsers({
-          firmKey: selectedFirm.firmKey,
-          backendUrl: selectedFirm.backendUrl
+          spreadsheetId: selectedFirm.spreadsheetId
         });
         setUsers((data || []).map((user) => ({
           ...user,
@@ -135,13 +134,11 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
       };
 
       await saveUsers([userToSave], {
-        firmKey: selectedFirm.firmKey,
-        backendUrl: selectedFirm.backendUrl
+        spreadsheetId: selectedFirm.spreadsheetId
       });
 
       const data = await fetchUsers({
-        firmKey: selectedFirm.firmKey,
-        backendUrl: selectedFirm.backendUrl
+        spreadsheetId: selectedFirm.spreadsheetId
       });
       setUsers((data || []).map((user) => ({
         ...user,
@@ -164,13 +161,11 @@ export default function UsersPage({ selectedFirm, deps, onBack, initialView = 'l
     setIsSaving(true);
     try {
       await saveUsers([{ ...user, active: '0' }], {
-        firmKey: selectedFirm.firmKey,
-        backendUrl: selectedFirm.backendUrl
+        spreadsheetId: selectedFirm.spreadsheetId
       });
       
       const data = await fetchUsers({
-        firmKey: selectedFirm.firmKey,
-        backendUrl: selectedFirm.backendUrl
+        spreadsheetId: selectedFirm.spreadsheetId
       });
       setUsers((data || []).map((user) => ({
         ...user,
