@@ -1684,6 +1684,7 @@ try {
         $mrrSheetName = trim((string)($_GET['mrrSheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $geRows = fetchSheetDataRows($firmId, 'GE ENTRY');
         $parentTable = mrrParentTableForSheet($mrrSheetName);
+        $childTable = mrrChildTableForSheet($mrrSheetName);
         $parentStmt = db()->prepare("SELECT * FROM {$parentTable} WHERE firm_id = :firm_id ORDER BY mrr_no DESC, id ASC");
         $parentStmt->execute(['firm_id' => $firmId]);
         $mrrRows = array_map('hydrateMrrParentRow', $parentStmt->fetchAll());
@@ -1710,6 +1711,7 @@ try {
             ];
         }
 
+        $pendingParentPairs = [];
         foreach ($mrrRows as $row) {
             $stage = value($row, 'pending_stage');
             if ($stage === '') {
@@ -1717,6 +1719,13 @@ try {
             }
             if (!in_array($stage, ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'], true)) {
                 continue;
+            }
+            $pairKey = strtoupper(trim((string)value($row, 'ge_no'))) . '|' . strtoupper(trim((string)value($row, 'mrr_number', 'mrr_no')));
+            if ($pairKey !== '|') {
+                $pendingParentPairs[$pairKey] = [
+                    'ge_no' => trim((string)value($row, 'ge_no')),
+                    'mrr_no' => trim((string)value($row, 'mrr_number', 'mrr_no')),
+                ];
             }
             $result[] = [
                 'pending_stage' => $stage,
@@ -1733,8 +1742,73 @@ try {
                 'accounts_remark' => value($row, 'accounts_remark'),
                 'md_approval_remark' => value($row, 'md_approval_remark'),
                 'invoice_basic_value' => value($row, 'invoice_basic_value'),
+                'invoice_ttl_weight_kgs' => value($row, 'invoice_ttl_weight_kgs'),
+                'actual_mrr_ttl_weight_kgs' => value($row, 'actual_mrr_ttl_weight_kgs'),
                 'total_value' => value($row, 'invoice_basic_value'),
             ];
+        }
+
+        $pendingPairsList = array_values($pendingParentPairs);
+        if (!empty($pendingPairsList)) {
+            $pdo = db();
+            $childStmt = $pdo->prepare("SELECT * FROM {$childTable} WHERE firm_id = :firm_id AND ge_no = :ge_no AND mrr_no = :mrr_no ORDER BY id ASC");
+            $childrenByPair = [];
+            foreach ($pendingPairsList as $pair) {
+                $childStmt->execute([
+                    'firm_id' => $firmId,
+                    'ge_no' => $pair['ge_no'],
+                    'mrr_no' => $pair['mrr_no'],
+                ]);
+                $rows = array_map('hydrateMrrChildRow', $childStmt->fetchAll());
+                $pairKey = strtoupper(trim((string)$pair['ge_no'])) . '|' . strtoupper(trim((string)$pair['mrr_no']));
+                $childrenByPair[$pairKey] = $rows;
+            }
+
+            foreach ($result as &$row) {
+                $stage = trim((string)($row['pending_stage'] ?? ''));
+                if ($stage === 'pending_mrr') {
+                    continue;
+                }
+                $pairKey = strtoupper(trim((string)($row['ge_no'] ?? ''))) . '|' . strtoupper(trim((string)($row['mrr_number'] ?? $row['mrr_no'] ?? '')));
+                $children = $childrenByPair[$pairKey] ?? [];
+                if (empty($children)) {
+                    continue;
+                }
+
+                $items = [];
+                $poRates = [];
+                $invoiceRates = [];
+                foreach ($children as $child) {
+                    $text = trim((string)($child['description'] ?? ''));
+                    if ($text === '') $text = trim((string)($child['item_name'] ?? ''));
+                    if ($text === '') $text = trim((string)($child['po_details'] ?? ''));
+                    if ($text === '') $text = trim((string)($child['reel_details'] ?? ''));
+                    if ($text !== '' && !preg_match('/\\btotal\\b/i', $text)) {
+                        $items[] = $text;
+                    }
+                    $poRate = trim((string)($child['po_rate'] ?? ''));
+                    if ($poRate === '') $poRate = trim((string)($child['helper_po_rate'] ?? ''));
+                    if ($poRate !== '') {
+                        $poRates[] = $poRate;
+                    }
+                    $invRate = trim((string)($child['rate'] ?? ''));
+                    if ($invRate === '') $invRate = trim((string)($child['invoice_rate'] ?? ''));
+                    if ($invRate !== '') {
+                        $invoiceRates[] = $invRate;
+                    }
+                }
+
+                if (!empty($items)) {
+                    $row['item_name'] = implode('; ', array_slice($items, 0, 6));
+                }
+                if (!empty($poRates)) {
+                    $row['po_rate'] = implode(', ', array_slice($poRates, 0, 6));
+                }
+                if (!empty($invoiceRates)) {
+                    $row['rate'] = implode(', ', array_slice($invoiceRates, 0, 6));
+                }
+            }
+            unset($row);
         }
 
         usort($result, fn($a, $b) => strcmp((string)($a['date'] ?? ''), (string)($b['date'] ?? '')));
