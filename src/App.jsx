@@ -6330,7 +6330,30 @@ function App() {
         po_quantity: readRowValue(row, 'po_quantity', 'PO QUANTITY', 'PO Qunatity', 'po_qty', 'PO QTY')
       });
       const goodsForInvoice = parentRowsForMrr.length
-        ? parentRowsForMrr.map(mapMrrRowToInvoiceGoods)
+        ? parentRowsForMrr
+            .filter((row) => {
+              const sno = String(row?.s_no || row?.sno || '').trim();
+              const desc = String(row?.description || row?.Description || '').trim();
+              if (!sno) return false; // skip parent summary row (blank s_no)
+              if (/^parent\\s*summary$/i.test(desc)) return false;
+              const hasIdentity = [
+                desc,
+                row?.sort_no,
+                row?.party_order,
+                row?.po_no,
+                row?.po_details,
+                row?.gsm,
+                row?.size,
+                row?.reels,
+                row?.weight,
+                row?.rate
+              ].some(isMeaningful);
+              const amountRaw = row?.amount ?? row?.value ?? row?.invoice_basic_value ?? row?.['INVOICE BASIC VALUE'];
+              const hasAmountOnly = !hasIdentity && isMeaningful(amountRaw) && n(amountRaw) > 0;
+              if (hasAmountOnly) return false;
+              return true;
+            })
+            .map(mapMrrRowToInvoiceGoods)
         : (Object.values(parentGoodsRow).some((value) => isMeaningful(value)) ? [parentGoodsRow] : []);
       const itemsFromHelper = helperRowsForMrr.map((row) => ({
         ...blankPackingRow(),
