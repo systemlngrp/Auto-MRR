@@ -394,7 +394,16 @@ export default function PurchaseRequestsPage({
                   <option value="other">Other MRR</option>
                 </select>
                 {!locked ? (
-                  <button type="button" className="btn small" onClick={() => setItems((p) => [...p, blankItemRow()])}>+ Add Row</button>
+                  <button
+                    type="button"
+                    className="btn small"
+                    title="Add item row"
+                    aria-label="Add item row"
+                    onClick={() => setItems((p) => [...p, blankItemRow()])}
+                    style={{ width: '34px', height: '34px', borderRadius: '999px', fontWeight: 1000, padding: 0 }}
+                  >
+                    +
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -594,7 +603,7 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
-                          {isApproveMode && statusText === 'pending' ? (
+                          {statusText === 'pending' ? (
                             <>
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'approve'); }} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'reject'); }} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
