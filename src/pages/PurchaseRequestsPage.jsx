@@ -134,6 +134,12 @@ export default function PurchaseRequestsPage({
     });
   }, [rows, tab, search]);
 
+  const selectedRow = useMemo(() => {
+    const key = String(selectedPrNo || '').trim();
+    if (!key) return null;
+    return rows.find((r) => String(r?.pr_no || '').trim() === key) || null;
+  }, [rows, selectedPrNo]);
+
   const openNew = () => {
     const displayName = String(currentUser?.display_name || currentUser?.user?.display_name || '').trim();
     setFormData({ ...blankPr(), requested_by: displayName });
@@ -627,7 +633,7 @@ export default function PurchaseRequestsPage({
             <div style={{ fontSize: '12px', color: '#6b7280' }}>Selected: <span style={{ color: '#111827', fontWeight: 800 }}>{selectedPrNo}</span></div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" className="btn" onClick={() => openEdit(selectedPrNo)} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Open</button>
-              {isApproveMode ? (
+              {String(selectedRow?.status || 'pending').toLowerCase() === 'pending' ? (
                 <>
                   <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'approve')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
                   <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'reject')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
