@@ -406,24 +406,6 @@ export default function PurchaseOrdersPage({
               </select>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Supplier</div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input
-                  disabled={locked}
-                  list={supplierListId}
-                  value={formData.supplier}
-                  onChange={(e) => setFormData((p) => ({ ...p, supplier: e.target.value }))}
-                  style={inputStyle('supplier')}
-                  placeholder="Select / search supplier"
-                />
-                {!locked ? (
-                  <button type="button" className="btn" onClick={addSupplierQuick} style={{ padding: '10px 12px', fontWeight: 800 }} title="Add supplier">
-                    +
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>PO Date</div>
               <input
                 type="date"
@@ -440,7 +422,7 @@ export default function PurchaseOrdersPage({
                 value={formData.po_details}
                 onChange={(e) => setFormData((p) => ({ ...p, po_details: e.target.value }))}
                 style={inputStyle('po_details')}
-                placeholder="Auto: PO No - Date - Supplier"
+                placeholder="Auto: PO No - Date"
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
@@ -453,7 +435,10 @@ export default function PurchaseOrdersPage({
             <div style={{ padding: '10px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Items</div>
               {!locked ? (
-                <button type="button" className="btn small" onClick={() => setItems((p) => [...p, blankItemRow()])}>+ Add Row</button>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button type="button" className="btn small" onClick={addSupplierQuick}>+ Supplier</button>
+                  <button type="button" className="btn small" onClick={() => setItems((p) => [...p, blankItemRow()])}>+ Add Row</button>
+                </div>
               ) : null}
             </div>
             <div style={{ overflowX: 'auto' }}>
