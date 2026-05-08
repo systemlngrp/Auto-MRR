@@ -94,10 +94,18 @@ export default function PurchaseOrdersPage({
     setStatus('Loading purchase orders...');
     try {
       const data = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
-      setPos(Array.isArray(data) ? data : []);
+      const nextPos = Array.isArray(data) ? data : [];
+      setPos(nextPos);
       if (!isApproveMode) {
         const prs = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
-        const approved = (Array.isArray(prs) ? prs : []).filter((row) => String(row?.status || '').toLowerCase() === 'approved');
+        const poPrNoSet = new Set(
+          nextPos
+            .map((row) => String(row?.pr_no || '').trim())
+            .filter(Boolean)
+        );
+        const approved = (Array.isArray(prs) ? prs : [])
+          .filter((row) => String(row?.status || '').toLowerCase() === 'approved')
+          .filter((row) => !poPrNoSet.has(String(row?.pr_no || '').trim()));
         setApprovedPrs(approved);
       }
       setStatus('');
