@@ -401,6 +401,18 @@ export async function fetchUsers(options = {}) {
   return Array.isArray(payload?.users) ? payload.users : [];
 }
 
+export async function fetchItems(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_items',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.items) ? payload.items : [];
+}
+
 export async function saveUsers(users = [], options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const payload = {
@@ -414,6 +426,148 @@ export async function saveUsers(users = [], options = {}) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+}
+
+export async function saveItems(items = [], options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_items',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    items
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchPurchaseRequests(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_purchase_requests',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.purchase_requests) ? payload.purchase_requests : [];
+}
+
+export async function fetchPurchaseRequestDetails(prNo, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_purchase_request_details',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    pr_no: prNo
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function savePurchaseRequest(pr = {}, items = [], options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_purchase_request',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    purchase_request: pr,
+    items
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function approvePurchaseRequest(prNo, decision = 'approve', remark = '', options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'approve_purchase_request',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    pr_no: prNo,
+    decision,
+    remark,
+    user_email: options.userEmail
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function fetchPurchaseOrders(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_purchase_orders',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.purchase_orders) ? payload.purchase_orders : [];
+}
+
+export async function fetchPurchaseOrderDetails(poNo, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_purchase_order_details',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    po_no: poNo
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function savePurchaseOrder(po = {}, items = [], options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_purchase_order',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    purchase_order: po,
+    items
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function approvePurchaseOrder(poNo, decision = 'approve', remark = '', options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'approve_purchase_order',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    po_no: poNo,
+    decision,
+    remark,
+    user_email: options.userEmail
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function fetchLastPurchaseInfo(keys = [], itemType = 'mrr', options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'get_last_purchase_info',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    item_type: itemType,
+    keys
+  };
+  const resp = await fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return Array.isArray(resp?.items) ? resp.items : [];
 }
 
 export async function saveGeEntryToSheets(geEntry = {}, options = {}) {

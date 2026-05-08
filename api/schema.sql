@@ -337,3 +337,101 @@ ALTER TABLE reel_mrr_children
 
 ALTER TABLE other_mrr_children
   ADD COLUMN IF NOT EXISTS source_type VARCHAR(40) NOT NULL DEFAULT 'mrr_item' AFTER parent_id;
+
+CREATE TABLE IF NOT EXISTS item_master (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  item_type VARCHAR(20) NOT NULL DEFAULT 'mrr',
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  size_value VARCHAR(80) DEFAULT NULL,
+  gsm_value VARCHAR(80) DEFAULT NULL,
+  bf_value VARCHAR(80) DEFAULT NULL,
+  unit_value VARCHAR(30) DEFAULT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_item_erp (firm_id, item_type, erp_code),
+  UNIQUE KEY uniq_item_name (firm_id, item_type, item_name),
+  KEY idx_item_active (firm_id, active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS purchase_requests (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  pr_no VARCHAR(64) NOT NULL,
+  department_name VARCHAR(120) DEFAULT NULL,
+  requested_by VARCHAR(190) DEFAULT NULL,
+  requisition_date VARCHAR(40) DEFAULT NULL,
+  required_date VARCHAR(40) DEFAULT NULL,
+  status_text VARCHAR(40) NOT NULL DEFAULT 'pending',
+  remark_text TEXT DEFAULT NULL,
+  created_by VARCHAR(190) DEFAULT NULL,
+  approved_by VARCHAR(190) DEFAULT NULL,
+  approved_at VARCHAR(40) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_pr_no (firm_id, pr_no),
+  KEY idx_pr_status (firm_id, status_text)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS purchase_request_items (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  pr_id BIGINT UNSIGNED NOT NULL,
+  row_sort INT NOT NULL DEFAULT 0,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  description_text VARCHAR(255) DEFAULT NULL,
+  unit_value VARCHAR(30) DEFAULT NULL,
+  qty_value DECIMAL(18,3) DEFAULT NULL,
+  rate_value DECIMAL(18,2) DEFAULT NULL,
+  amount_value DECIMAL(18,2) DEFAULT NULL,
+  remark_text VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_pr_items (firm_id, pr_id, row_sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  po_no VARCHAR(64) NOT NULL,
+  pr_id BIGINT UNSIGNED DEFAULT NULL,
+  po_type VARCHAR(20) NOT NULL DEFAULT 'mrr',
+  supplier_name VARCHAR(255) DEFAULT NULL,
+  po_date VARCHAR(40) DEFAULT NULL,
+  status_text VARCHAR(40) NOT NULL DEFAULT 'draft',
+  remark_text TEXT DEFAULT NULL,
+  created_by VARCHAR(190) DEFAULT NULL,
+  approved_by VARCHAR(190) DEFAULT NULL,
+  approved_at VARCHAR(40) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_po_no (firm_id, po_no),
+  KEY idx_po_status (firm_id, status_text),
+  KEY idx_po_pr (firm_id, pr_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  po_id BIGINT UNSIGNED NOT NULL,
+  row_sort INT NOT NULL DEFAULT 0,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  description_text VARCHAR(255) DEFAULT NULL,
+  unit_value VARCHAR(30) DEFAULT NULL,
+  qty_value DECIMAL(18,3) DEFAULT NULL,
+  rate_value DECIMAL(18,2) DEFAULT NULL,
+  amount_value DECIMAL(18,2) DEFAULT NULL,
+  remark_text VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_po_items (firm_id, po_id, row_sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

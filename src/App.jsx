@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, fetchItems, saveItems, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -12,6 +12,9 @@ import PoDetailsPage from './pages/PoDetailsPage';
 import ReelLabelsPage from './pages/ReelLabelsPage';
 import UsersPage from './pages/UsersPage';
 import GateEntriesPage from './pages/GateEntriesPage';
+import ItemMasterPage from './pages/ItemMasterPage';
+import PurchaseRequestsPage from './pages/PurchaseRequestsPage';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3166,8 +3169,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         flexDirection: 'column',
         width: '100vw',
         height: '100vh',
-        background: 'rgba(216, 209, 196, 0.98)',
-        backdropFilter: 'blur(12px)'
+        background: '#f5f7fb'
       };
 
     const headerStyle = {
@@ -3198,8 +3200,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     const sidebarStyle = {
       width: '260px',
       background: '#fff',
-      borderRight: '1px solid var(--line)',
-      padding: '16px',
+      borderRight: '1px solid #e5e7eb',
+      padding: '14px',
       display: 'flex',
       flexDirection: 'column',
       gap: '10px',
@@ -3208,15 +3210,40 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
     const sideButtonStyle = {
       width: '100%',
-      padding: '12px 12px',
-      fontSize: '12px',
-      fontWeight: 900,
-      textTransform: 'uppercase',
-      letterSpacing: '0.04em',
-      border: '1px solid #d1d5db',
-      background: '#fff',
+      padding: '10px 10px',
+      fontSize: '13px',
+      fontWeight: 800,
+      letterSpacing: '0.01em',
+      border: '1px solid transparent',
+      background: 'transparent',
       textAlign: 'left',
-      cursor: 'pointer'
+      cursor: 'pointer',
+      borderRadius: '10px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      color: '#111827'
+    };
+
+    const sideButtonActiveStyle = {
+      ...sideButtonStyle,
+      background: '#dc2626',
+      color: '#fff'
+    };
+
+    const sideIconStyle = {
+      width: '22px',
+      height: '22px',
+      display: 'grid',
+      placeItems: 'center',
+      borderRadius: '6px',
+      background: 'rgba(17,24,39,0.06)',
+      flex: '0 0 auto'
+    };
+
+    const sideIconActiveStyle = {
+      ...sideIconStyle,
+      background: 'rgba(255,255,255,0.22)'
     };
 
     const mainStyle = {
@@ -3253,6 +3280,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
         <div style={bodyStyle}>
           <div style={sidebarStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px 10px 8px' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#2563eb', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 1000 }}>
+                IM
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Inventory Management</div>
+                <div style={{ marginTop: '2px', fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tempFirm?.name || 'Firm'}</div>
+              </div>
+            </div>
+
+            <button type="button" style={sideButtonActiveStyle} onClick={() => { /* dashboard */ }}>
+              <span style={sideIconActiveStyle} />
+              <span>Dashboard</span>
+            </button>
             {canSeeMenu('new_ge') ? (
               <button
                 type="button"
@@ -3262,12 +3303,14 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(4);
                 }}
               >
-                NEW GE ENTRY
+                <span style={sideIconStyle} />
+                <span>New GE Entry</span>
               </button>
             ) : null}
             {canSeeMenu('ge_data') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(11); }}>
-                GE ENTRY DATA
+                <span style={sideIconStyle} />
+                <span>GE Entry Data</span>
               </button>
             ) : null}
             {canSeeMenu('pending_mrr') ? (
@@ -3280,7 +3323,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                PENDING MRR {menuCountText(pendingCounts.pending_mrr)}
+                <span style={sideIconStyle} />
+                <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+                  <span>Pending MRR</span>
+                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.pending_mrr)}</span>
+                </span>
               </button>
             ) : null}
             {canSeeMenu('edit_mrr') ? (
@@ -3293,7 +3340,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                EDIT MRR {menuCountText(pendingCounts.edit_mrr)}
+                <span style={sideIconStyle} />
+                <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+                  <span>Edit MRR</span>
+                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.edit_mrr)}</span>
+                </span>
               </button>
             ) : null}
             {canSeeMenu('approvals') ? (
@@ -3306,7 +3357,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                APPROVALS {menuCountText(pendingCounts.all_approvals)}
+                <span style={sideIconStyle} />
+                <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+                  <span>Approvals</span>
+                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.all_approvals)}</span>
+                </span>
               </button>
             ) : null}
             {canSeeMenu('review') ? (
@@ -3319,41 +3374,121 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(7);
                 }}
               >
-                REVIEW
+                <span style={sideIconStyle} />
+                <span>Review</span>
               </button>
             ) : null}
             {canSeeMenu('po_details') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
-                PO DETAILS
+                <span style={sideIconStyle} />
+                <span>PO Details</span>
+              </button>
+            ) : null}
+            {canSeeMenu('item_master') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(13); }}>
+                <span style={sideIconStyle} />
+                <span>Item Master</span>
+              </button>
+            ) : null}
+            {canSeeMenu('purchase_requests') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(14); }}>
+                <span style={sideIconStyle} />
+                <span>Purchase Requisition</span>
+              </button>
+            ) : null}
+            {canSeeMenu('purchase_approval') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(15); }}>
+                <span style={sideIconStyle} />
+                <span>Approval of Purchase</span>
+              </button>
+            ) : null}
+            {canSeeMenu('make_po') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(16); }}>
+                <span style={sideIconStyle} />
+                <span>Make PO</span>
+              </button>
+            ) : null}
+            {canSeeMenu('approve_po') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(17); }}>
+                <span style={sideIconStyle} />
+                <span>Approve PO</span>
               </button>
             ) : null}
             {canSeeMenu('users') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
-                USERS
+                <span style={sideIconStyle} />
+                <span>Users</span>
               </button>
             ) : null}
 
-            <div style={{ marginTop: '6px', height: 1, background: '#e5e7eb' }} />
+            <div style={{ marginTop: '6px', height: 1, background: '#eef2f7' }} />
 
             {canSeeMenu('download_label') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
-                DOWNLOAD LABEL
+                <span style={sideIconStyle} />
+                <span>Download Label</span>
               </button>
             ) : null}
 
-            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ marginTop: 'auto' }} />
+
+            <div style={{ paddingTop: '10px', borderTop: '1px solid #eef2f7' }}>
               <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} placement="top" />
             </div>
             <button
               type="button"
-              style={{ ...sideButtonStyle, color: '#111827', background: '#f9fafb' }}
+              style={{ ...sideButtonStyle, color: '#111827', background: '#f3f4f6' }}
               onClick={() => { setStep(2); }}
             >
-              ← BACK TO FIRMS
+              <span style={sideIconStyle} />
+              <span>Back to Firms</span>
             </button>
           </div>
 
-          {/* Intentionally no main dashboard panel (sidebar-only layout). */}
+          <div style={{ ...mainStyle, justifyContent: 'flex-start' }}>
+            <div style={{ width: 'min(1120px, 100%)' }}>
+              <div style={{ fontSize: '18px', fontWeight: 1000, color: '#111827' }}>Dashboard</div>
+
+              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>ACTIVE REQUESTS</div>
+                    <div style={{ color: '#2563eb' }}>▦</div>
+                  </div>
+                  <div style={{ marginTop: '10px', fontSize: '26px', fontWeight: 1100, color: '#111827' }}>
+                    {pendingCounts.pending_mrr + pendingCounts.edit_mrr + pendingCounts.all_approvals}
+                  </div>
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: '#16a34a' }}>↘ 4.2% from last week</div>
+                </div>
+
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>TOTAL MONTHLY SPEND</div>
+                    <div style={{ color: '#2563eb' }}>▤</div>
+                  </div>
+                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#111827' }}>—</div>
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--muted)' }}>Budget: —</div>
+                  <div style={{ marginTop: '10px', height: '4px', background: '#eef2ff', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: '55%', height: '100%', background: '#1d4ed8' }} />
+                  </div>
+                </div>
+
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>AVG APPROVAL TIME</div>
+                    <div style={{ color: '#2563eb' }}>◷</div>
+                  </div>
+                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#111827' }}>—</div>
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: '#f97316' }}>↗ 0.2d increase this period</div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#111827' }}>Overview</div>
+                <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--muted)' }}>Select a module from the left sidebar to view details.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -4551,6 +4686,114 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (step === 13) {
+    return (
+      <>
+        {userBadge}
+        <ItemMasterPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchItems,
+            saveItems
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 14) {
+    return (
+      <>
+        {userBadge}
+        <PurchaseRequestsPage
+          selectedFirm={tempFirm}
+          currentUser={currentUser}
+          mode="manage"
+          deps={{
+            fetchItems,
+            fetchLastPurchaseInfo,
+            fetchPurchaseRequests,
+            fetchPurchaseRequestDetails,
+            savePurchaseRequest,
+            approvePurchaseRequest
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 15) {
+    return (
+      <>
+        {userBadge}
+        <PurchaseRequestsPage
+          selectedFirm={tempFirm}
+          currentUser={currentUser}
+          mode="approve"
+          deps={{
+            fetchItems,
+            fetchLastPurchaseInfo,
+            fetchPurchaseRequests,
+            fetchPurchaseRequestDetails,
+            savePurchaseRequest,
+            approvePurchaseRequest
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 16) {
+    return (
+      <>
+        {userBadge}
+        <PurchaseOrdersPage
+          selectedFirm={tempFirm}
+          currentUser={currentUser}
+          mode="make_po"
+          deps={{
+            fetchItems,
+            fetchLastPurchaseInfo,
+            fetchPurchaseOrders,
+            fetchPurchaseOrderDetails,
+            savePurchaseOrder,
+            approvePurchaseOrder,
+            fetchPurchaseRequests,
+            fetchPurchaseRequestDetails
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 17) {
+    return (
+      <>
+        {userBadge}
+        <PurchaseOrdersPage
+          selectedFirm={tempFirm}
+          currentUser={currentUser}
+          mode="approve_po"
+          deps={{
+            fetchItems,
+            fetchLastPurchaseInfo,
+            fetchPurchaseOrders,
+            fetchPurchaseOrderDetails,
+            savePurchaseOrder,
+            approvePurchaseOrder,
+            fetchPurchaseRequests,
+            fetchPurchaseRequestDetails
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
     );
   }
 

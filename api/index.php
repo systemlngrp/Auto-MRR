@@ -404,6 +404,29 @@ function numericSuffixMax(array $values, string $prefix = ''): int
     return $max;
 }
 
+function fiscalYearText(DateTimeInterface $dt): string
+{
+    // India FY: Apr-Mar. Example: May 2026 => "26-27"
+    $year = (int)$dt->format('Y');
+    $month = (int)$dt->format('n');
+    $startYear = $month >= 4 ? $year : ($year - 1);
+    $endYear = $startYear + 1;
+    return substr((string)$startYear, -2) . '-' . substr((string)$endYear, -2);
+}
+
+function nextSequenceNumber(string $firmId, string $prefix, string $table, string $column): int
+{
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT {$column} AS code FROM {$table} WHERE firm_id = :firm_id AND {$column} LIKE :prefix ORDER BY id DESC LIMIT 200");
+    $stmt->execute([
+        'firm_id' => $firmId,
+        'prefix' => $prefix . '%',
+    ]);
+    $values = array_map(static fn($row) => (string)($row['code'] ?? ''), $stmt->fetchAll());
+    $max = numericSuffixMax($values, $prefix);
+    return $max + 1;
+}
+
 function determinePendingStage(array $data): string
 {
     $plant = strtolower(value($data, 'plant_head_approval'));
@@ -1967,6 +1990,261 @@ try {
         ]);
     }
 
+    if ($action === 'get_items') {
+        $cols = tableColumns('item_master');
+        $hasType = in_array('item_type', $cols, true);
+        $hasSize = in_array('size_value', $cols, true);
+        $hasGsm = in_array('gsm_value', $cols, true);
+        $hasBf = in_array('bf_value', $cols, true);
+
+        $select = [
+            $hasType ? 'item_type' : "'mrr' AS item_type",
+            'erp_code',
+            'item_name',
+            $hasSize ? 'size_value' : "'' AS size_value",
+            $hasGsm ? 'gsm_value' : "'' AS gsm_value",
+            $hasBf ? 'bf_value' : "'' AS bf_value",
+            'unit_value',
+            'active',
+        ];
+
+        $stmt = db()->prepare("
+            SELECT " . implode(', ', $select) . "
+            FROM item_master
+            WHERE firm_id = :firm_id
+            ORDER BY item_type ASC, COALESCE(erp_code, ''), item_name ASC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = $stmt->fetchAll();
+        $items = array_map(static function (array $row): array {
+            return [
+                'item_type' => trim((string)($row['item_type'] ?? 'mrr')) ?: 'mrr',
+                'erp_code' => trim((string)($row['erp_code'] ?? '')),
+                'item_name' => trim((string)($row['item_name'] ?? '')),
+                'size' => trim((string)($row['size_value'] ?? '')),
+                'gsm' => trim((string)($row['gsm_value'] ?? '')),
+                'bf' => trim((string)($row['bf_value'] ?? '')),
+                'unit' => trim((string)($row['unit_value'] ?? '')),
+                'active' => (string)((int)($row['active'] ?? 1)),
+            ];
+        }, $rows);
+        jsonOut([
+            'ok' => true,
+            'items' => $items,
+        ]);
+    }
+
+    if ($action === 'get_purchase_requests') {
+        $stmt = db()->prepare("
+            SELECT pr_no, department_name, requested_by, requisition_date, required_date, status_text, created_by, approved_by, approved_at
+            FROM purchase_requests
+            WHERE firm_id = :firm_id
+            ORDER BY id DESC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = $stmt->fetchAll();
+        $prs = array_map(static function (array $row): array {
+            return [
+                'pr_no' => trim((string)($row['pr_no'] ?? '')),
+                'department' => trim((string)($row['department_name'] ?? '')),
+                'requested_by' => trim((string)($row['requested_by'] ?? '')),
+                'requisition_date' => trim((string)($row['requisition_date'] ?? '')),
+                'required_date' => trim((string)($row['required_date'] ?? '')),
+                'status' => trim((string)($row['status_text'] ?? 'pending')) ?: 'pending',
+                'created_by' => trim((string)($row['created_by'] ?? '')),
+                'approved_by' => trim((string)($row['approved_by'] ?? '')),
+                'approved_at' => trim((string)($row['approved_at'] ?? '')),
+            ];
+        }, $rows);
+        jsonOut(['ok' => true, 'purchase_requests' => $prs]);
+    }
+
+    if ($action === 'get_purchase_request_details') {
+        $prNo = trim((string)($_GET['pr_no'] ?? ''));
+        if ($prNo === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing pr_no.'], 400);
+        }
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT * FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'pr_no' => $prNo]);
+        $pr = $stmt->fetch();
+        if (!$pr) {
+            jsonOut(['ok' => false, 'error' => 'Purchase request not found.'], 404);
+        }
+        $itemsStmt = $pdo->prepare("
+            SELECT row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
+            FROM purchase_request_items
+            WHERE firm_id = :firm_id AND pr_id = :pr_id
+            ORDER BY row_sort ASC, id ASC
+        ");
+        $itemsStmt->execute(['firm_id' => $firmId, 'pr_id' => (int)$pr['id']]);
+        $items = array_map(static function (array $row): array {
+            return [
+                'erp_code' => trim((string)($row['erp_code'] ?? '')),
+                'item_name' => trim((string)($row['item_name'] ?? '')),
+                'description' => trim((string)($row['description_text'] ?? '')),
+                'unit' => trim((string)($row['unit_value'] ?? '')),
+                'qty' => (string)($row['qty_value'] ?? ''),
+                'rate' => (string)($row['rate_value'] ?? ''),
+                'amount' => (string)($row['amount_value'] ?? ''),
+                'remark' => trim((string)($row['remark_text'] ?? '')),
+            ];
+        }, $itemsStmt->fetchAll());
+
+        jsonOut([
+            'ok' => true,
+            'purchase_request' => [
+                'pr_no' => trim((string)($pr['pr_no'] ?? '')),
+                'department' => trim((string)($pr['department_name'] ?? '')),
+                'requested_by' => trim((string)($pr['requested_by'] ?? '')),
+                'requisition_date' => trim((string)($pr['requisition_date'] ?? '')),
+                'required_date' => trim((string)($pr['required_date'] ?? '')),
+                'status' => trim((string)($pr['status_text'] ?? 'pending')) ?: 'pending',
+                'remark' => trim((string)($pr['remark_text'] ?? '')),
+                'created_by' => trim((string)($pr['created_by'] ?? '')),
+                'approved_by' => trim((string)($pr['approved_by'] ?? '')),
+                'approved_at' => trim((string)($pr['approved_at'] ?? '')),
+            ],
+            'items' => $items,
+        ]);
+    }
+
+    if ($action === 'get_purchase_orders') {
+        $stmt = db()->prepare("
+            SELECT po_no, pr_id, supplier_name, po_date, status_text, created_by, approved_by, approved_at, po_type
+            FROM purchase_orders
+            WHERE firm_id = :firm_id
+            ORDER BY id DESC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = $stmt->fetchAll();
+        $pos = array_map(static function (array $row): array {
+            return [
+                'po_no' => trim((string)($row['po_no'] ?? '')),
+                'pr_id' => (string)($row['pr_id'] ?? ''),
+                'supplier' => trim((string)($row['supplier_name'] ?? '')),
+                'po_date' => trim((string)($row['po_date'] ?? '')),
+                'po_type' => trim((string)($row['po_type'] ?? 'mrr')) ?: 'mrr',
+                'status' => trim((string)($row['status_text'] ?? 'draft')) ?: 'draft',
+                'created_by' => trim((string)($row['created_by'] ?? '')),
+                'approved_by' => trim((string)($row['approved_by'] ?? '')),
+                'approved_at' => trim((string)($row['approved_at'] ?? '')),
+            ];
+        }, $rows);
+        jsonOut(['ok' => true, 'purchase_orders' => $pos]);
+    }
+
+    if ($action === 'get_purchase_order_details') {
+        $poNo = trim((string)($_GET['po_no'] ?? ''));
+        if ($poNo === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing po_no.'], 400);
+        }
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT * FROM purchase_orders WHERE firm_id = :firm_id AND po_no = :po_no LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'po_no' => $poNo]);
+        $po = $stmt->fetch();
+        if (!$po) {
+            jsonOut(['ok' => false, 'error' => 'Purchase order not found.'], 404);
+        }
+        $itemsStmt = $pdo->prepare("
+            SELECT row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
+            FROM purchase_order_items
+            WHERE firm_id = :firm_id AND po_id = :po_id
+            ORDER BY row_sort ASC, id ASC
+        ");
+        $itemsStmt->execute(['firm_id' => $firmId, 'po_id' => (int)$po['id']]);
+        $items = array_map(static function (array $row): array {
+            return [
+                'erp_code' => trim((string)($row['erp_code'] ?? '')),
+                'item_name' => trim((string)($row['item_name'] ?? '')),
+                'description' => trim((string)($row['description_text'] ?? '')),
+                'unit' => trim((string)($row['unit_value'] ?? '')),
+                'qty' => (string)($row['qty_value'] ?? ''),
+                'rate' => (string)($row['rate_value'] ?? ''),
+                'amount' => (string)($row['amount_value'] ?? ''),
+                'remark' => trim((string)($row['remark_text'] ?? '')),
+            ];
+        }, $itemsStmt->fetchAll());
+
+        jsonOut([
+            'ok' => true,
+            'purchase_order' => [
+                'po_no' => trim((string)($po['po_no'] ?? '')),
+                'pr_id' => (string)($po['pr_id'] ?? ''),
+                'supplier' => trim((string)($po['supplier_name'] ?? '')),
+                'po_date' => trim((string)($po['po_date'] ?? '')),
+                'po_type' => trim((string)($po['po_type'] ?? 'mrr')) ?: 'mrr',
+                'status' => trim((string)($po['status_text'] ?? 'draft')) ?: 'draft',
+                'remark' => trim((string)($po['remark_text'] ?? '')),
+                'created_by' => trim((string)($po['created_by'] ?? '')),
+                'approved_by' => trim((string)($po['approved_by'] ?? '')),
+                'approved_at' => trim((string)($po['approved_at'] ?? '')),
+            ],
+            'items' => $items,
+        ]);
+    }
+
+    if ($action === 'get_last_purchase_info') {
+        $payload = readPayload();
+        $type = strtolower(trim((string)($_GET['item_type'] ?? $payload['item_type'] ?? 'mrr'))) ?: 'mrr';
+        if ($type !== 'mrr' && $type !== 'other') $type = 'mrr';
+
+        $keys = [];
+        $fromPayload = $payload['keys'] ?? null;
+        if (is_array($fromPayload)) {
+            foreach ($fromPayload as $k) {
+                $t = trim((string)$k);
+                if ($t !== '') $keys[] = $t;
+            }
+        } else {
+            $csv = (string)($_GET['keys'] ?? '');
+            if (trim($csv) !== '') {
+                foreach (explode(',', $csv) as $k) {
+                    $t = trim((string)$k);
+                    if ($t !== '') $keys[] = $t;
+                }
+            }
+        }
+        $keys = array_values(array_unique($keys));
+        if (!$keys) {
+            jsonOut(['ok' => true, 'items' => []]);
+        }
+
+        $pdo = db();
+        $in = implode(',', array_fill(0, count($keys), '?'));
+        $field = $type === 'mrr' ? 'poi.erp_code' : 'poi.item_name';
+        $sql = "
+            SELECT po.id AS po_id, po.po_no, po.po_date, poi.erp_code, poi.item_name, poi.rate_value
+            FROM purchase_orders po
+            JOIN purchase_order_items poi ON poi.po_id = po.id AND poi.firm_id = po.firm_id
+            WHERE po.firm_id = ?
+              AND po.status_text = 'approved'
+              AND {$field} IN ({$in})
+            ORDER BY po.id DESC, poi.id DESC
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array_merge([$firmId], $keys));
+        $rows = $stmt->fetchAll();
+
+        $seen = [];
+        $result = [];
+        foreach ($rows as $row) {
+            $key = $type === 'mrr'
+                ? trim((string)($row['erp_code'] ?? ''))
+                : trim((string)($row['item_name'] ?? ''));
+            if ($key === '' || isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $result[] = [
+                'key' => $key,
+                'po_no' => trim((string)($row['po_no'] ?? '')),
+                'po_date' => trim((string)($row['po_date'] ?? '')),
+                'last_rate' => (string)($row['rate_value'] ?? ''),
+            ];
+        }
+
+        jsonOut(['ok' => true, 'items' => $result]);
+    }
+
     if ($action === 'get_pending_ge') {
         $mrrSheetName = trim((string)($_GET['mrrSheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $geRows = fetchSheetDataRows($firmId, 'GE ENTRY');
@@ -2388,6 +2666,488 @@ try {
             'trace_id' => $traceId,
             'savedUsers' => count($users),
         ]);
+    }
+
+    if ($action === 'save_items') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+        writeBackendLog('save_items_start', array_merge(
+            ['trace_id' => $traceId, 'action' => 'save_items'],
+            loggerContextSummary($payload)
+        ));
+
+        $pdo = db();
+        $cols = tableColumns('item_master');
+        $hasType = in_array('item_type', $cols, true);
+        $hasSize = in_array('size_value', $cols, true);
+        $hasGsm = in_array('gsm_value', $cols, true);
+        $hasBf = in_array('bf_value', $cols, true);
+
+        if ($hasType || $hasSize || $hasGsm || $hasBf) {
+            $stmt = $pdo->prepare("
+                INSERT INTO item_master (firm_id, item_type, erp_code, item_name, size_value, gsm_value, bf_value, unit_value, active)
+                VALUES (:firm_id, :item_type, :erp_code, :item_name, :size_value, :gsm_value, :bf_value, :unit_value, :active)
+                ON DUPLICATE KEY UPDATE
+                  item_name = VALUES(item_name),
+                  size_value = VALUES(size_value),
+                  gsm_value = VALUES(gsm_value),
+                  bf_value = VALUES(bf_value),
+                  unit_value = VALUES(unit_value),
+                  active = VALUES(active)
+            ");
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO item_master (firm_id, erp_code, item_name, unit_value, active)
+                VALUES (:firm_id, :erp_code, :item_name, :unit_value, :active)
+                ON DUPLICATE KEY UPDATE
+                  item_name = VALUES(item_name),
+                  unit_value = VALUES(unit_value),
+                  active = VALUES(active)
+            ");
+        }
+
+        $saved = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $erp = trim((string)($item['erp_code'] ?? $item['erp'] ?? ''));
+            $name = trim((string)($item['item_name'] ?? $item['name'] ?? ''));
+
+            $type = $hasType
+                ? (strtolower(trim((string)($item['item_type'] ?? $item['type'] ?? 'mrr'))) ?: 'mrr')
+                : 'mrr';
+            if ($type !== 'other' && $type !== 'mrr') $type = 'mrr';
+
+            $size = $hasSize ? trim((string)($item['size'] ?? $item['size_value'] ?? '')) : '';
+            $gsm = $hasGsm ? trim((string)($item['gsm'] ?? $item['gsm_value'] ?? '')) : '';
+            $bf = $hasBf ? trim((string)($item['bf'] ?? $item['bf_value'] ?? '')) : '';
+
+            if ($hasType || $hasSize || $hasGsm || $hasBf) {
+                if ($type === 'mrr') {
+                    if ($erp === '' || $size === '' || $gsm === '' || $bf === '') {
+                        continue;
+                    }
+                    if ($name === '') {
+                        $parts = [];
+                        if ($size !== '') $parts[] = 'Size: ' . $size . ($unit !== '' ? (' ' . $unit) : '');
+                        if ($gsm !== '') $parts[] = 'GSM: ' . $gsm;
+                        if ($bf !== '') $parts[] = 'BF: ' . $bf;
+                        $rhs = implode(' X ', $parts);
+                        $name = trim($erp . ($rhs !== '' ? (' - ' . $rhs) : ''));
+                        if ($name === '') {
+                            $name = $erp;
+                        }
+                    }
+                } else {
+                    if ($name === '') continue;
+                    if ($erp === '') $erp = null;
+                    if ($size === '') $size = null;
+                    if ($gsm === '') $gsm = null;
+                    if ($bf === '') $bf = null;
+                }
+            } else {
+                if ($erp === '' || $name === '') continue;
+            }
+            $unit = trim((string)($item['unit'] ?? $item['unit_value'] ?? ''));
+            $active = trim((string)($item['active'] ?? '1')) === '0' ? 0 : 1;
+
+            if ($hasType || $hasSize || $hasGsm || $hasBf) {
+                $stmt->execute([
+                    'firm_id' => $firmId,
+                    'item_type' => $type,
+                    'erp_code' => $erp,
+                    'item_name' => $name,
+                    'size_value' => $size !== '' ? $size : null,
+                    'gsm_value' => $gsm !== '' ? $gsm : null,
+                    'bf_value' => $bf !== '' ? $bf : null,
+                    'unit_value' => $unit !== '' ? $unit : null,
+                    'active' => $active,
+                ]);
+            } else {
+                $stmt->execute([
+                    'firm_id' => $firmId,
+                    'erp_code' => $erp,
+                    'item_name' => $name,
+                    'unit_value' => $unit !== '' ? $unit : null,
+                    'active' => $active,
+                ]);
+            }
+            $saved++;
+        }
+
+        writeBackendLog('save_items_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'saved_items' => $saved,
+        ]);
+        jsonOut([
+            'ok' => true,
+            'trace_id' => $traceId,
+            'savedItems' => $saved,
+        ]);
+    }
+
+    if ($action === 'save_purchase_request') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $pr = is_array($payload['purchase_request'] ?? null) ? $payload['purchase_request'] : [];
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+        $pdo = db();
+
+        $prNo = trim((string)($pr['pr_no'] ?? ''));
+        $department = trim((string)($pr['department'] ?? $pr['department_name'] ?? ''));
+        $requestedBy = trim((string)($pr['requested_by'] ?? ''));
+        $requisitionDate = trim((string)($pr['requisition_date'] ?? ''));
+        $requiredDate = trim((string)($pr['required_date'] ?? ''));
+        $remark = trim((string)($pr['remark'] ?? $pr['remark_text'] ?? ''));
+        $createdBy = trim((string)($pr['created_by'] ?? $payload['user_email'] ?? ''));
+
+        if ($prNo === '') {
+            $fy = fiscalYearText(new DateTimeImmutable('now'));
+            $prefix = 'PR-' . $fy . '/';
+            $seq = nextSequenceNumber($firmId, $prefix, 'purchase_requests', 'pr_no');
+            $prNo = $prefix . str_pad((string)$seq, 5, '0', STR_PAD_LEFT);
+        }
+
+        writeBackendLog('save_purchase_request_start', array_merge(
+            ['trace_id' => $traceId, 'action' => 'save_purchase_request', 'pr_no' => $prNo],
+            loggerContextSummary($payload)
+        ));
+
+        $check = $pdo->prepare("SELECT id, status_text FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
+        $check->execute(['firm_id' => $firmId, 'pr_no' => $prNo]);
+        $existing = $check->fetch();
+
+        if ($existing) {
+            // Do not edit already approved PR.
+            $status = trim((string)($existing['status_text'] ?? 'pending')) ?: 'pending';
+            if (strcasecmp($status, 'approved') === 0) {
+                jsonOut(['ok' => false, 'error' => 'Approved PR cannot be edited.'], 400);
+            }
+            $update = $pdo->prepare("
+                UPDATE purchase_requests
+                SET department_name = :department,
+                    requested_by = :requested_by,
+                    requisition_date = :requisition_date,
+                    required_date = :required_date,
+                    remark_text = :remark_text,
+                    created_by = COALESCE(NULLIF(:created_by, ''), created_by),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+            ");
+            $update->execute([
+                'department' => $department !== '' ? $department : null,
+                'requested_by' => $requestedBy !== '' ? $requestedBy : null,
+                'requisition_date' => $requisitionDate !== '' ? $requisitionDate : null,
+                'required_date' => $requiredDate !== '' ? $requiredDate : null,
+                'remark_text' => $remark !== '' ? $remark : null,
+                'created_by' => $createdBy,
+                'id' => (int)$existing['id'],
+            ]);
+            $prId = (int)$existing['id'];
+        } else {
+            $insert = $pdo->prepare("
+                INSERT INTO purchase_requests (firm_id, pr_no, department_name, requested_by, requisition_date, required_date, status_text, remark_text, created_by)
+                VALUES (:firm_id, :pr_no, :department, :requested_by, :requisition_date, :required_date, 'pending', :remark_text, :created_by)
+            ");
+            $insert->execute([
+                'firm_id' => $firmId,
+                'pr_no' => $prNo,
+                'department' => $department !== '' ? $department : null,
+                'requested_by' => $requestedBy !== '' ? $requestedBy : null,
+                'requisition_date' => $requisitionDate !== '' ? $requisitionDate : null,
+                'required_date' => $requiredDate !== '' ? $requiredDate : null,
+                'remark_text' => $remark !== '' ? $remark : null,
+                'created_by' => $createdBy !== '' ? $createdBy : null,
+            ]);
+            $prId = (int)$pdo->lastInsertId();
+        }
+
+        // Replace items
+        $del = $pdo->prepare("DELETE FROM purchase_request_items WHERE firm_id = :firm_id AND pr_id = :pr_id");
+        $del->execute(['firm_id' => $firmId, 'pr_id' => $prId]);
+        $ins = $pdo->prepare("
+            INSERT INTO purchase_request_items (
+                firm_id, pr_id, row_sort, erp_code, item_name, description_text, unit_value,
+                qty_value, rate_value, amount_value, remark_text
+            ) VALUES (
+                :firm_id, :pr_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value,
+                :qty_value, :rate_value, :amount_value, :remark_text
+            )
+        ");
+        $rowSort = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
+            $code = trim((string)($item['erp_code'] ?? ''));
+            $name = trim((string)($item['item_name'] ?? ''));
+            $qty = trim((string)($item['qty'] ?? $item['quantity'] ?? ''));
+            if ($desc === '' && $code === '' && $name === '' && $qty === '') continue;
+            $rowSort++;
+            $rate = trim((string)($item['rate'] ?? ''));
+            $amount = trim((string)($item['amount'] ?? ''));
+            $unit = trim((string)($item['unit'] ?? ''));
+            $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
+            $ins->execute([
+                'firm_id' => $firmId,
+                'pr_id' => $prId,
+                'row_sort' => $rowSort,
+                'erp_code' => $code !== '' ? $code : null,
+                'item_name' => $name !== '' ? $name : null,
+                'description_text' => $desc !== '' ? $desc : null,
+                'unit_value' => $unit !== '' ? $unit : null,
+                'qty_value' => $qty !== '' ? $qty : null,
+                'rate_value' => $rate !== '' ? $rate : null,
+                'amount_value' => $amount !== '' ? $amount : null,
+                'remark_text' => $remarkItem !== '' ? $remarkItem : null,
+            ]);
+        }
+
+        writeBackendLog('save_purchase_request_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'pr_no' => $prNo,
+            'saved_items' => $rowSort,
+        ]);
+
+        jsonOut([
+            'ok' => true,
+            'trace_id' => $traceId,
+            'pr_no' => $prNo,
+            'savedItems' => $rowSort,
+        ]);
+    }
+
+    if ($action === 'approve_purchase_request') {
+        $firmId = getFirmId();
+        $prNo = trim((string)($_GET['pr_no'] ?? ''));
+        $decision = strtolower(trim((string)($_GET['decision'] ?? 'approve'))) ?: 'approve';
+        $remark = trim((string)($_GET['remark'] ?? ''));
+        $userEmail = trim((string)($_GET['user_email'] ?? ''));
+        if ($prNo === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing pr_no.'], 400);
+        }
+        if ($decision !== 'approve' && $decision !== 'reject') {
+            $decision = 'approve';
+        }
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT id, status_text FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'pr_no' => $prNo]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            jsonOut(['ok' => false, 'error' => 'Purchase request not found.'], 404);
+        }
+        $status = trim((string)($row['status_text'] ?? 'pending')) ?: 'pending';
+        if ($status !== 'pending') {
+            jsonOut(['ok' => false, 'error' => 'Only pending PR can be approved/rejected.'], 400);
+        }
+        $newStatus = $decision === 'approve' ? 'approved' : 'rejected';
+        $update = $pdo->prepare("
+            UPDATE purchase_requests
+            SET status_text = :status,
+                approved_by = :approved_by,
+                approved_at = :approved_at,
+                remark_text = COALESCE(NULLIF(:remark, ''), remark_text),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ");
+        $update->execute([
+            'status' => $newStatus,
+            'approved_by' => $userEmail !== '' ? $userEmail : null,
+            'approved_at' => nowText(),
+            'remark' => $remark,
+            'id' => (int)$row['id'],
+        ]);
+        jsonOut(['ok' => true, 'status' => $newStatus, 'pr_no' => $prNo]);
+    }
+
+    if ($action === 'save_purchase_order') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $po = is_array($payload['purchase_order'] ?? null) ? $payload['purchase_order'] : [];
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+        $pdo = db();
+
+        $poNo = trim((string)($po['po_no'] ?? ''));
+        $poType = strtolower(trim((string)($po['po_type'] ?? $po['type'] ?? 'mrr'))) ?: 'mrr';
+        if ($poType !== 'mrr' && $poType !== 'other') $poType = 'mrr';
+
+        $supplier = trim((string)($po['supplier'] ?? $po['supplier_name'] ?? ''));
+        $poDate = trim((string)($po['po_date'] ?? ''));
+        $remark = trim((string)($po['remark'] ?? $po['remark_text'] ?? ''));
+        $createdBy = trim((string)($po['created_by'] ?? $payload['user_email'] ?? ''));
+        $prNo = trim((string)($po['pr_no'] ?? ''));
+        $desiredStatus = strtolower(trim((string)($po['status'] ?? $po['status_text'] ?? 'draft'))) ?: 'draft';
+        if ($desiredStatus !== 'pending' && $desiredStatus !== 'draft') {
+            $desiredStatus = 'draft';
+        }
+
+        $prId = null;
+        if ($prNo !== '') {
+            $stmt = $pdo->prepare("SELECT id FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
+            $stmt->execute(['firm_id' => $firmId, 'pr_no' => $prNo]);
+            $prRow = $stmt->fetch();
+            if ($prRow) $prId = (int)$prRow['id'];
+        }
+
+        if ($poNo === '') {
+            $fy = fiscalYearText(new DateTimeImmutable('now'));
+            $prefix = 'PO-' . $fy . '/';
+            $seq = nextSequenceNumber($firmId, $prefix, 'purchase_orders', 'po_no');
+            $poNo = $prefix . str_pad((string)$seq, 5, '0', STR_PAD_LEFT);
+        }
+
+        writeBackendLog('save_purchase_order_start', array_merge(
+            ['trace_id' => $traceId, 'action' => 'save_purchase_order', 'po_no' => $poNo],
+            loggerContextSummary($payload)
+        ));
+
+        $check = $pdo->prepare("SELECT id, status_text FROM purchase_orders WHERE firm_id = :firm_id AND po_no = :po_no LIMIT 1");
+        $check->execute(['firm_id' => $firmId, 'po_no' => $poNo]);
+        $existing = $check->fetch();
+
+        if ($existing) {
+            $status = trim((string)($existing['status_text'] ?? 'draft')) ?: 'draft';
+            if (strcasecmp($status, 'approved') === 0) {
+                jsonOut(['ok' => false, 'error' => 'Approved PO cannot be edited.'], 400);
+            }
+            $update = $pdo->prepare("
+                UPDATE purchase_orders
+                SET pr_id = :pr_id,
+                    po_type = :po_type,
+                    supplier_name = :supplier,
+                    po_date = :po_date,
+                    status_text = :status_text,
+                    remark_text = :remark_text,
+                    created_by = COALESCE(NULLIF(:created_by, ''), created_by),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+            ");
+            $update->execute([
+                'pr_id' => $prId,
+                'po_type' => $poType,
+                'supplier' => $supplier !== '' ? $supplier : null,
+                'po_date' => $poDate !== '' ? $poDate : null,
+                'status_text' => $desiredStatus,
+                'remark_text' => $remark !== '' ? $remark : null,
+                'created_by' => $createdBy,
+                'id' => (int)$existing['id'],
+            ]);
+            $poId = (int)$existing['id'];
+        } else {
+            $insert = $pdo->prepare("
+                INSERT INTO purchase_orders (firm_id, po_no, pr_id, po_type, supplier_name, po_date, status_text, remark_text, created_by)
+                VALUES (:firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :status_text, :remark_text, :created_by)
+            ");
+            $insert->execute([
+                'firm_id' => $firmId,
+                'po_no' => $poNo,
+                'pr_id' => $prId,
+                'po_type' => $poType,
+                'supplier' => $supplier !== '' ? $supplier : null,
+                'po_date' => $poDate !== '' ? $poDate : null,
+                'status_text' => $desiredStatus,
+                'remark_text' => $remark !== '' ? $remark : null,
+                'created_by' => $createdBy !== '' ? $createdBy : null,
+            ]);
+            $poId = (int)$pdo->lastInsertId();
+        }
+
+        $del = $pdo->prepare("DELETE FROM purchase_order_items WHERE firm_id = :firm_id AND po_id = :po_id");
+        $del->execute(['firm_id' => $firmId, 'po_id' => $poId]);
+        $ins = $pdo->prepare("
+            INSERT INTO purchase_order_items (
+                firm_id, po_id, row_sort, erp_code, item_name, description_text, unit_value,
+                qty_value, rate_value, amount_value, remark_text
+            ) VALUES (
+                :firm_id, :po_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value,
+                :qty_value, :rate_value, :amount_value, :remark_text
+            )
+        ");
+        $rowSort = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
+            $code = trim((string)($item['erp_code'] ?? ''));
+            $name = trim((string)($item['item_name'] ?? ''));
+            $qty = trim((string)($item['qty'] ?? $item['quantity'] ?? ''));
+            if ($desc === '' && $code === '' && $name === '' && $qty === '') continue;
+            $rowSort++;
+            $rate = trim((string)($item['rate'] ?? ''));
+            $amount = trim((string)($item['amount'] ?? ''));
+            $unit = trim((string)($item['unit'] ?? ''));
+            $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
+            $ins->execute([
+                'firm_id' => $firmId,
+                'po_id' => $poId,
+                'row_sort' => $rowSort,
+                'erp_code' => $code !== '' ? $code : null,
+                'item_name' => $name !== '' ? $name : null,
+                'description_text' => $desc !== '' ? $desc : null,
+                'unit_value' => $unit !== '' ? $unit : null,
+                'qty_value' => $qty !== '' ? $qty : null,
+                'rate_value' => $rate !== '' ? $rate : null,
+                'amount_value' => $amount !== '' ? $amount : null,
+                'remark_text' => $remarkItem !== '' ? $remarkItem : null,
+            ]);
+        }
+
+        writeBackendLog('save_purchase_order_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'po_no' => $poNo,
+            'saved_items' => $rowSort,
+        ]);
+
+        jsonOut([
+            'ok' => true,
+            'trace_id' => $traceId,
+            'po_no' => $poNo,
+            'savedItems' => $rowSort,
+        ]);
+    }
+
+    if ($action === 'approve_purchase_order') {
+        $firmId = getFirmId();
+        $poNo = trim((string)($_GET['po_no'] ?? ''));
+        $decision = strtolower(trim((string)($_GET['decision'] ?? 'approve'))) ?: 'approve';
+        $remark = trim((string)($_GET['remark'] ?? ''));
+        $userEmail = trim((string)($_GET['user_email'] ?? ''));
+        if ($poNo === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing po_no.'], 400);
+        }
+        if ($decision !== 'approve' && $decision !== 'reject') {
+            $decision = 'approve';
+        }
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT id, status_text FROM purchase_orders WHERE firm_id = :firm_id AND po_no = :po_no LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'po_no' => $poNo]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            jsonOut(['ok' => false, 'error' => 'Purchase order not found.'], 404);
+        }
+        $status = trim((string)($row['status_text'] ?? 'draft')) ?: 'draft';
+        if ($status !== 'pending') {
+            jsonOut(['ok' => false, 'error' => 'Only pending PO can be approved/rejected.'], 400);
+        }
+        $newStatus = $decision === 'approve' ? 'approved' : 'rejected';
+        $update = $pdo->prepare("
+            UPDATE purchase_orders
+            SET status_text = :status,
+                approved_by = :approved_by,
+                approved_at = :approved_at,
+                remark_text = COALESCE(NULLIF(:remark, ''), remark_text),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ");
+        $update->execute([
+            'status' => $newStatus,
+            'approved_by' => $userEmail !== '' ? $userEmail : null,
+            'approved_at' => nowText(),
+            'remark' => $remark,
+            'id' => (int)$row['id'],
+        ]);
+        jsonOut(['ok' => true, 'status' => $newStatus, 'po_no' => $poNo]);
     }
     if ($action === 'save_ge_entry') {
         jsonOut(saveGeEntryAction($payload));
