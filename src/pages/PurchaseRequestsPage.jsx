@@ -412,6 +412,7 @@ export default function PurchaseRequestsPage({
                 <thead>
                   <tr>
                     {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>ERP</th> : null}
+                    {!locked ? <th style={{ width: '46px', padding: '8px 6px', borderBottom: '1px solid #e5e7eb' }} /> : null}
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
@@ -444,6 +445,24 @@ export default function PurchaseRequestsPage({
                               <option key={`${it.item_type}-${it.erp_code}`} value={it.erp_code}>{it.erp_code}</option>
                             ))}
                           </select>
+                        </td>
+                      ) : null}
+                      {!locked ? (
+                        <td style={{ padding: '6px 6px', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn small"
+                            title="Add item row below"
+                            aria-label="Add item row below"
+                            onClick={() => setItems((prev) => {
+                              const next = [...prev];
+                              next.splice(idx + 1, 0, blankItemRow());
+                              return next;
+                            })}
+                            style={{ width: '28px', height: '28px', borderRadius: '999px', fontWeight: 1000, padding: 0, lineHeight: '28px' }}
+                          >
+                            +
+                          </button>
                         </td>
                       ) : null}
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
