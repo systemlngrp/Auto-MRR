@@ -404,6 +404,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   po_type VARCHAR(20) NOT NULL DEFAULT 'mrr',
   supplier_name VARCHAR(255) DEFAULT NULL,
   po_date VARCHAR(40) DEFAULT NULL,
+  po_details TEXT DEFAULT NULL,
   status_text VARCHAR(40) NOT NULL DEFAULT 'draft',
   remark_text TEXT DEFAULT NULL,
   created_by VARCHAR(190) DEFAULT NULL,

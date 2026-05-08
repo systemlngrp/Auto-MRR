@@ -134,7 +134,8 @@ export default function PurchaseRequestsPage({
   }, [rows, tab, search]);
 
   const openNew = () => {
-    setFormData(blankPr());
+    const displayName = String(currentUser?.display_name || currentUser?.user?.display_name || '').trim();
+    setFormData({ ...blankPr(), requested_by: displayName });
     setItems([blankItemRow()]);
     setErrors({});
     setView('form');

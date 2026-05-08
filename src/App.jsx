@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, fetchItems, saveItems, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, fetchItems, saveItems, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -15,6 +15,7 @@ import GateEntriesPage from './pages/GateEntriesPage';
 import ItemMasterPage from './pages/ItemMasterPage';
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
+import SuppliersPage from './pages/SuppliersPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3414,6 +3415,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 <span>Approve PO</span>
               </button>
             ) : null}
+            {canSeeMenu('suppliers') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(18); }}>
+                <span style={sideIconStyle} />
+                <span>Suppliers</span>
+              </button>
+            ) : null}
             {canSeeMenu('users') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
                 <span style={sideIconStyle} />
@@ -4760,6 +4767,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
+            fetchSuppliers,
+            saveSupplierMaster,
             fetchPurchaseOrders,
             fetchPurchaseOrderDetails,
             savePurchaseOrder,
@@ -4784,12 +4793,30 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
+            fetchSuppliers,
+            saveSupplierMaster,
             fetchPurchaseOrders,
             fetchPurchaseOrderDetails,
             savePurchaseOrder,
             approvePurchaseOrder,
             fetchPurchaseRequests,
             fetchPurchaseRequestDetails
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 18) {
+    return (
+      <>
+        {userBadge}
+        <SuppliersPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchSupplierMaster,
+            saveSupplierMaster
           }}
           onBack={() => setStep(3)}
         />

@@ -17,6 +17,7 @@ const blankPo = () => ({
   po_type: 'mrr',
   supplier: '',
   po_date: '',
+  po_details: '',
   remark: '',
   status: 'draft'
 });
@@ -58,6 +59,8 @@ export default function PurchaseOrdersPage({
 }) {
   const {
     fetchItems,
+    fetchSuppliers,
+    saveSupplierMaster,
     fetchPurchaseOrders,
     fetchPurchaseOrderDetails,
     savePurchaseOrder,
@@ -74,6 +77,7 @@ export default function PurchaseOrdersPage({
   const [pos, setPos] = useState([]);
   const [approvedPrs, setApprovedPrs] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
+  const [supplierOptions, setSupplierOptions] = useState([]);
 
   const [view, setView] = useState('list'); // list | form
   const [formData, setFormData] = useState(blankPo());
@@ -122,6 +126,45 @@ export default function PurchaseOrdersPage({
     loadItems();
   }, [fetchItems, selectedFirm]);
 
+  useEffect(() => {
+    async function loadSuppliers() {
+      if (!selectedFirm || !fetchSuppliers) return;
+      try {
+        const data = await fetchSuppliers({ spreadsheetId: selectedFirm.spreadsheetId });
+        setSupplierOptions(Array.isArray(data) ? data : []);
+      } catch {
+        setSupplierOptions([]);
+      }
+    }
+    loadSuppliers();
+  }, [fetchSuppliers, selectedFirm]);
+
+  const addSupplierQuick = async () => {
+    if (!selectedFirm || !saveSupplierMaster) return;
+    const name = window.prompt('Supplier name:', '');
+    const supplierName = String(name || '').trim();
+    if (!supplierName) return;
+    try {
+      await saveSupplierMaster({ supplier_name: supplierName, active: '1' }, { spreadsheetId: selectedFirm.spreadsheetId });
+      const data = await fetchSuppliers({ spreadsheetId: selectedFirm.spreadsheetId });
+      setSupplierOptions(Array.isArray(data) ? data : []);
+      setFormData((p) => ({ ...p, supplier: supplierName }));
+    } catch (err) {
+      alert(err?.message || 'Could not save supplier.');
+    }
+  };
+
+  useEffect(() => {
+    const supplierText = String(formData.supplier || '').trim();
+    const dateText = String(formData.po_date || '').trim();
+    const poNoText = String(formData.po_no || '').trim();
+    const auto = [poNoText, dateText, supplierText].filter(Boolean).join(' - ');
+    if (!String(formData.po_details || '').trim() && auto) {
+      setFormData((p) => ({ ...p, po_details: auto }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.po_no, formData.po_date, formData.supplier]);
+
   const filteredPos = useMemo(() => {
     const q = String(search || '').trim().toLowerCase();
     return pos.filter((row) => {
@@ -157,6 +200,7 @@ export default function PurchaseOrdersPage({
     const next = {};
     if (!String(formData.supplier || '').trim()) next.supplier = 'Supplier required';
     if (!String(formData.po_date || '').trim()) next.po_date = 'PO date required';
+    if (!String(formData.po_details || '').trim()) next.po_details = 'PO details required';
     const meaningfulItems = items.filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''));
     if (!meaningfulItems.length) next.items = 'At least 1 item required';
     meaningfulItems.forEach((it, idx) => {
@@ -178,7 +222,7 @@ export default function PurchaseOrdersPage({
         ...blankPo(),
         pr_no: prNo,
         po_type: 'mrr',
-        po_date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('/') // YYYY/MM/DD-ish fallback
+        po_date: new Date().toLocaleDateString('en-GB') // DD/MM/YYYY
       });
       setItems(prItems.length ? prItems.map((it) => ({
         ...blankItemRow(),
@@ -249,6 +293,7 @@ export default function PurchaseOrdersPage({
         po_type: String(formData.po_type || 'mrr') === 'other' ? 'other' : 'mrr',
         supplier: String(formData.supplier || '').trim(),
         po_date: String(formData.po_date || '').trim(),
+        po_details: String(formData.po_details || '').trim(),
         remark: String(formData.remark || '').trim(),
         status: nextStatus,
         created_by: userEmail
@@ -299,6 +344,7 @@ export default function PurchaseOrdersPage({
     const showErp = itemType === 'mrr';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `po-item-names-${itemType}`;
+    const supplierListId = 'po-suppliers';
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
         <div style={{ width: 'min(1100px, 100%)', margin: '0 auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
@@ -342,7 +388,21 @@ export default function PurchaseOrdersPage({
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Supplier</div>
-              <input disabled={locked} value={formData.supplier} onChange={(e) => setFormData((p) => ({ ...p, supplier: e.target.value }))} style={inputStyle('supplier')} />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  disabled={locked}
+                  list={supplierListId}
+                  value={formData.supplier}
+                  onChange={(e) => setFormData((p) => ({ ...p, supplier: e.target.value }))}
+                  style={inputStyle('supplier')}
+                  placeholder="Select / search supplier"
+                />
+                {!locked ? (
+                  <button type="button" className="btn" onClick={addSupplierQuick} style={{ padding: '10px 12px', fontWeight: 800 }} title="Add supplier">
+                    +
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>PO Date</div>
@@ -352,6 +412,16 @@ export default function PurchaseOrdersPage({
                 value={ddmmyyyyToIso(formData.po_date)}
                 onChange={(e) => setFormData((p) => ({ ...p, po_date: isoToDdmmyyyy(e.target.value) }))}
                 style={inputStyle('po_date')}
+              />
+            </div>
+            <div style={{ gridColumn: 'span 4' }}>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>PO Details</div>
+              <input
+                disabled={locked}
+                value={formData.po_details}
+                onChange={(e) => setFormData((p) => ({ ...p, po_details: e.target.value }))}
+                style={inputStyle('po_details')}
+                placeholder="Auto: PO No - Date - Supplier"
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
@@ -451,6 +521,9 @@ export default function PurchaseOrdersPage({
             </div>
             <datalist id={itemNameListId}>
               {itemNameOptions.map((name) => <option key={name} value={name} />)}
+            </datalist>
+            <datalist id={supplierListId}>
+              {supplierOptions.map((name) => <option key={name} value={name} />)}
             </datalist>
           </div>
         </div>

@@ -1966,6 +1966,27 @@ try {
         jsonOut(['ok' => true, 'values' => $result]);
     }
 
+    if ($action === 'get_supplier_master') {
+        $stmt = db()->prepare("
+            SELECT id, supplier_name, supplier_code, phone_no, gstin, active
+            FROM suppliers
+            WHERE firm_id = :firm_id
+            ORDER BY supplier_name ASC, id ASC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = array_map(static function (array $row): array {
+            return [
+                'id' => (string)($row['id'] ?? ''),
+                'supplier_name' => trim((string)($row['supplier_name'] ?? '')),
+                'supplier_code' => trim((string)($row['supplier_code'] ?? '')),
+                'phone_no' => trim((string)($row['phone_no'] ?? '')),
+                'gstin' => trim((string)($row['gstin'] ?? '')),
+                'active' => (string)($row['active'] ?? '1'),
+            ];
+        }, $stmt->fetchAll());
+        jsonOut(['ok' => true, 'suppliers' => $rows]);
+    }
+
     if ($action === 'get_users') {
         $stmt = db()->prepare($hasMenuAccessColumn
             ? "SELECT login_id, display_name, user_email, role, menu_access, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC"
@@ -2110,20 +2131,27 @@ try {
     }
 
     if ($action === 'get_purchase_orders') {
+        $cols = tableColumns('purchase_orders');
+        $hasPoDetails = in_array('po_details', $cols, true);
+        $select = 'po_no, pr_id, supplier_name, po_date, status_text, created_by, approved_by, approved_at, po_type';
+        if ($hasPoDetails) {
+            $select = 'po_no, pr_id, supplier_name, po_date, po_details, status_text, created_by, approved_by, approved_at, po_type';
+        }
         $stmt = db()->prepare("
-            SELECT po_no, pr_id, supplier_name, po_date, status_text, created_by, approved_by, approved_at, po_type
+            SELECT {$select}
             FROM purchase_orders
             WHERE firm_id = :firm_id
             ORDER BY id DESC
         ");
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
-        $pos = array_map(static function (array $row): array {
+        $pos = array_map(static function (array $row) use ($hasPoDetails): array {
             return [
                 'po_no' => trim((string)($row['po_no'] ?? '')),
                 'pr_id' => (string)($row['pr_id'] ?? ''),
                 'supplier' => trim((string)($row['supplier_name'] ?? '')),
                 'po_date' => trim((string)($row['po_date'] ?? '')),
+                'po_details' => $hasPoDetails ? trim((string)($row['po_details'] ?? '')) : '',
                 'po_type' => trim((string)($row['po_type'] ?? 'mrr')) ?: 'mrr',
                 'status' => trim((string)($row['status_text'] ?? 'draft')) ?: 'draft',
                 'created_by' => trim((string)($row['created_by'] ?? '')),
@@ -2173,6 +2201,7 @@ try {
                 'pr_id' => (string)($po['pr_id'] ?? ''),
                 'supplier' => trim((string)($po['supplier_name'] ?? '')),
                 'po_date' => trim((string)($po['po_date'] ?? '')),
+                'po_details' => trim((string)($po['po_details'] ?? '')),
                 'po_type' => trim((string)($po['po_type'] ?? 'mrr')) ?: 'mrr',
                 'status' => trim((string)($po['status_text'] ?? 'draft')) ?: 'draft',
                 'remark' => trim((string)($po['remark_text'] ?? '')),
@@ -2668,6 +2697,79 @@ try {
         ]);
     }
 
+    if ($action === 'save_supplier_master') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $supplier = is_array($payload['supplier'] ?? null) ? $payload['supplier'] : [];
+
+        $supplierName = trim((string)($supplier['supplier_name'] ?? $supplier['name'] ?? ''));
+        if ($supplierName === '') {
+            jsonOut(['ok' => false, 'error' => 'Supplier name required.'], 400);
+        }
+
+        $id = trim((string)($supplier['id'] ?? ''));
+        $supplierCode = trim((string)($supplier['supplier_code'] ?? ''));
+        $phone = trim((string)($supplier['phone_no'] ?? ''));
+        $gstin = trim((string)($supplier['gstin'] ?? ''));
+        $active = trim((string)($supplier['active'] ?? '1')) === '0' ? 0 : 1;
+
+        writeBackendLog('save_supplier_master_start', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'supplier_name' => $supplierName,
+        ]);
+
+        $pdo = db();
+        if ($id !== '') {
+            $stmt = $pdo->prepare("
+                UPDATE suppliers
+                SET supplier_name = :supplier_name,
+                    supplier_code = NULLIF(:supplier_code, ''),
+                    phone_no = NULLIF(:phone_no, ''),
+                    gstin = NULLIF(:gstin, ''),
+                    active = :active,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE firm_id = :firm_id AND id = :id
+            ");
+            $stmt->execute([
+                'supplier_name' => $supplierName,
+                'supplier_code' => $supplierCode,
+                'phone_no' => $phone,
+                'gstin' => $gstin,
+                'active' => $active,
+                'firm_id' => $firmId,
+                'id' => (int)$id,
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO suppliers (firm_id, supplier_name, supplier_code, phone_no, gstin, active)
+                VALUES (:firm_id, :supplier_name, NULLIF(:supplier_code, ''), NULLIF(:phone_no, ''), NULLIF(:gstin, ''), :active)
+                ON DUPLICATE KEY UPDATE
+                    supplier_code = COALESCE(NULLIF(VALUES(supplier_code), ''), supplier_code),
+                    phone_no = COALESCE(NULLIF(VALUES(phone_no), ''), phone_no),
+                    gstin = COALESCE(NULLIF(VALUES(gstin), ''), gstin),
+                    active = VALUES(active),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([
+                'firm_id' => $firmId,
+                'supplier_name' => $supplierName,
+                'supplier_code' => $supplierCode,
+                'phone_no' => $phone,
+                'gstin' => $gstin,
+                'active' => $active,
+            ]);
+        }
+
+        writeBackendLog('save_supplier_master_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'supplier_name' => $supplierName,
+        ]);
+
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
     if ($action === 'save_items') {
         $traceId = createTraceId();
         $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
@@ -2968,12 +3070,24 @@ try {
         $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
         $pdo = db();
 
+        $cols = tableColumns('purchase_orders');
+        $hasPoDetails = in_array('po_details', $cols, true);
+        if (!$hasPoDetails) {
+            try {
+                $pdo->exec("ALTER TABLE purchase_orders ADD COLUMN po_details TEXT DEFAULT NULL");
+                $hasPoDetails = true;
+            } catch (Throwable $e) {
+                $hasPoDetails = false;
+            }
+        }
+
         $poNo = trim((string)($po['po_no'] ?? ''));
         $poType = strtolower(trim((string)($po['po_type'] ?? $po['type'] ?? 'mrr'))) ?: 'mrr';
         if ($poType !== 'mrr' && $poType !== 'other') $poType = 'mrr';
 
         $supplier = trim((string)($po['supplier'] ?? $po['supplier_name'] ?? ''));
         $poDate = trim((string)($po['po_date'] ?? ''));
+        $poDetails = trim((string)($po['po_details'] ?? $po['po_details_text'] ?? ''));
         $remark = trim((string)($po['remark'] ?? $po['remark_text'] ?? ''));
         $createdBy = trim((string)($po['created_by'] ?? $payload['user_email'] ?? ''));
         $prNo = trim((string)($po['pr_no'] ?? ''));
@@ -3011,45 +3125,64 @@ try {
             if (strcasecmp($status, 'approved') === 0) {
                 jsonOut(['ok' => false, 'error' => 'Approved PO cannot be edited.'], 400);
             }
-            $update = $pdo->prepare("
+            $updateSql = "
                 UPDATE purchase_orders
                 SET pr_id = :pr_id,
                     po_type = :po_type,
                     supplier_name = :supplier,
                     po_date = :po_date,
+            ";
+            if ($hasPoDetails) {
+                $updateSql .= "    po_details = :po_details,\n";
+            }
+            $updateSql .= "
                     status_text = :status_text,
                     remark_text = :remark_text,
                     created_by = COALESCE(NULLIF(:created_by, ''), created_by),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :id
-            ");
-            $update->execute([
+            ";
+            $update = $pdo->prepare($updateSql);
+            $params = [
                 'pr_id' => $prId,
                 'po_type' => $poType,
                 'supplier' => $supplier !== '' ? $supplier : null,
                 'po_date' => $poDate !== '' ? $poDate : null,
+                'po_details' => $poDetails !== '' ? $poDetails : null,
                 'status_text' => $desiredStatus,
                 'remark_text' => $remark !== '' ? $remark : null,
                 'created_by' => $createdBy,
                 'id' => (int)$existing['id'],
-            ]);
+            ];
+            if (!$hasPoDetails) {
+                unset($params['po_details']);
+            }
+            $update->execute($params);
             $poId = (int)$existing['id'];
         } else {
-            $insert = $pdo->prepare("
-                INSERT INTO purchase_orders (firm_id, po_no, pr_id, po_type, supplier_name, po_date, status_text, remark_text, created_by)
-                VALUES (:firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :status_text, :remark_text, :created_by)
-            ");
-            $insert->execute([
+            $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, status_text, remark_text, created_by";
+            $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :status_text, :remark_text, :created_by";
+            if ($hasPoDetails) {
+                $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, po_details, status_text, remark_text, created_by";
+                $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :po_details, :status_text, :remark_text, :created_by";
+            }
+            $insert = $pdo->prepare("INSERT INTO purchase_orders ({$insertCols}) VALUES ({$insertVals})");
+            $params = [
                 'firm_id' => $firmId,
                 'po_no' => $poNo,
                 'pr_id' => $prId,
                 'po_type' => $poType,
                 'supplier' => $supplier !== '' ? $supplier : null,
                 'po_date' => $poDate !== '' ? $poDate : null,
+                'po_details' => $poDetails !== '' ? $poDetails : null,
                 'status_text' => $desiredStatus,
                 'remark_text' => $remark !== '' ? $remark : null,
                 'created_by' => $createdBy !== '' ? $createdBy : null,
-            ]);
+            ];
+            if (!$hasPoDetails) {
+                unset($params['po_details']);
+            }
+            $insert->execute($params);
             $poId = (int)$pdo->lastInsertId();
         }
 

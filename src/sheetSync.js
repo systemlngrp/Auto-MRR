@@ -401,6 +401,45 @@ export async function fetchUsers(options = {}) {
   return Array.isArray(payload?.users) ? payload.users : [];
 }
 
+export async function fetchSuppliers(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_suppliers',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.values) ? payload.values : [];
+}
+
+export async function fetchSupplierMaster(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_supplier_master',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.suppliers) ? payload.suppliers : [];
+}
+
+export async function saveSupplierMaster(supplier = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_supplier_master',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    supplier
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function fetchItems(options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const firmId = getFirmKey(options);
