@@ -2148,6 +2148,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
   const isAdmin = currentUserRoleText === 'admin';
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
+  const [itemMasterReturnStep, setItemMasterReturnStep] = useState(3);
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
@@ -4706,7 +4707,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             fetchItems,
             saveItems
           }}
-          onBack={() => setStep(3)}
+          onBack={() => setStep(itemMasterReturnStep || 3)}
         />
       </>
     );
@@ -4720,6 +4721,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="manage"
+          onOpenNewItem={() => {
+            setItemMasterReturnStep(14);
+            setStep(13);
+          }}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
@@ -4742,6 +4747,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="approve"
+          onOpenNewItem={() => {
+            setItemMasterReturnStep(15);
+            setStep(13);
+          }}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,

@@ -54,6 +54,7 @@ export default function PurchaseRequestsPage({
   selectedFirm,
   deps,
   onBack,
+  onOpenNewItem,
   mode = 'manage', // 'manage' | 'approve'
   currentUser
 }) {
@@ -452,13 +453,11 @@ export default function PurchaseRequestsPage({
                           <button
                             type="button"
                             className="btn small"
-                            title="Add item row below"
-                            aria-label="Add item row below"
-                            onClick={() => setItems((prev) => {
-                              const next = [...prev];
-                              next.splice(idx + 1, 0, blankItemRow());
-                              return next;
-                            })}
+                            title="New Item"
+                            aria-label="New Item"
+                            onClick={() => {
+                              if (typeof onOpenNewItem === 'function') onOpenNewItem();
+                            }}
                             style={{ width: '28px', height: '28px', borderRadius: '999px', fontWeight: 1000, padding: 0, lineHeight: '28px' }}
                           >
                             +
