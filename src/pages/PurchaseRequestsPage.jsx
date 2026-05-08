@@ -593,13 +593,13 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.required_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button type="button" className="btn small" onClick={() => openEdit(prNo)} disabled={isSaving}>Open</button>{' '}
-                        {isApproveMode && statusText === 'pending' ? (
-                          <>
-                            <button type="button" className="btn small" onClick={() => approve(prNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
-                            <button type="button" className="btn small" onClick={() => approve(prNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                          </>
-                        ) : null}
+                          <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
+                          {statusText === 'pending' && isSelected ? (
+                            <>
+                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'approve'); }} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
+                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'reject'); }} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                            </>
+                          ) : null}
                       </td>
                     </tr>
                   );
@@ -632,13 +632,6 @@ export default function PurchaseRequestsPage({
           <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>Selected: <span style={{ color: '#111827', fontWeight: 800 }}>{selectedPrNo}</span></div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn" onClick={() => openEdit(selectedPrNo)} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Open</button>
-              {String(selectedRow?.status || 'pending').toLowerCase() === 'pending' ? (
-                <>
-                  <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'approve')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
-                  <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'reject')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                </>
-              ) : null}
               <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Clear</button>
             </div>
           </div>
