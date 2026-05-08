@@ -80,6 +80,7 @@ export default function PurchaseRequestsPage({
   const [lastPurchaseByKey, setLastPurchaseByKey] = useState({});
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedPrNo, setSelectedPrNo] = useState('');
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve';
@@ -138,6 +139,7 @@ export default function PurchaseRequestsPage({
     setFormData({ ...blankPr(), requested_by: displayName });
     setItems([blankItemRow()]);
     setErrors({});
+    setSelectedPrNo('');
     setView('form');
   };
 
@@ -160,6 +162,7 @@ export default function PurchaseRequestsPage({
         amount: item?.amount || formatAmount(toNumber(item?.qty) * toNumber(item?.rate))
       })) : [blankItemRow()]);
       setErrors({});
+      setSelectedPrNo(String(prNo || '').trim());
       setView('form');
       setStatus('');
     } catch (err) {
@@ -287,6 +290,7 @@ export default function PurchaseRequestsPage({
     try {
       await approvePurchaseRequest(prNo, decision, String(remark || ''), { spreadsheetId: selectedFirm.spreadsheetId, userEmail });
       await load();
+      setSelectedPrNo('');
     } catch (err) {
       alert(err?.message || 'Could not update PR.');
     } finally {
@@ -560,6 +564,7 @@ export default function PurchaseRequestsPage({
                 {filteredRows.map((row) => {
                   const prNo = String(row?.pr_no || '').trim();
                   const statusText = String(row?.status || 'pending').toLowerCase();
+                  const isSelected = selectedPrNo && prNo === selectedPrNo;
                   const statusPill = {
                     display: 'inline-block',
                     padding: '4px 10px',
@@ -571,7 +576,11 @@ export default function PurchaseRequestsPage({
                     color: '#111827'
                   };
                   return (
-                      <tr key={prNo}>
+                      <tr
+                        key={prNo}
+                        onClick={() => setSelectedPrNo(prNo)}
+                        style={{ background: isSelected ? '#eff6ff' : '#fff', cursor: 'pointer' }}
+                      >
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#1d4ed8' }}>{prNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.requested_by || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.requisition_date || '-'}</td>
@@ -599,6 +608,36 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
       </div>
+
+      {selectedPrNo ? (
+        <div
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(245, 247, 251, 0.92)',
+            backdropFilter: 'blur(6px)',
+            borderTop: '1px solid #e5e7eb',
+            padding: '10px 18px',
+            zIndex: 10010
+          }}
+        >
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280' }}>Selected: <span style={{ color: '#111827', fontWeight: 800 }}>{selectedPrNo}</span></div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn" onClick={() => openEdit(selectedPrNo)} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Open</button>
+              {isApproveMode ? (
+                <>
+                  <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'approve')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
+                  <button type="button" className="btn" onClick={() => approve(selectedPrNo, 'reject')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 900, background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                </>
+              ) : null}
+              <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Clear</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
