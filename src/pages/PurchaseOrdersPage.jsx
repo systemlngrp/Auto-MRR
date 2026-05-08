@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 const blankItemRow = () => ({
+  supplier: '',
   erp_code: '',
   item_name: '',
   description: '',
@@ -206,11 +207,13 @@ export default function PurchaseOrdersPage({
 
   const validate = () => {
     const next = {};
-    if (!String(formData.supplier || '').trim()) next.supplier = 'Supplier required';
     if (!String(formData.po_date || '').trim()) next.po_date = 'PO date required';
     if (!String(formData.po_details || '').trim()) next.po_details = 'PO details required';
     const meaningfulItems = items.filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''));
     if (!meaningfulItems.length) next.items = 'At least 1 item required';
+    if (meaningfulItems.length && meaningfulItems.some((it) => !String(it?.supplier || '').trim())) {
+      next.items = 'Supplier required for each item';
+    }
     meaningfulItems.forEach((it, idx) => {
       if (!String(it.description || it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item description required';
       if (!String(it.qty || '').trim()) next[`qty_${idx}`] = 'Qty required';
@@ -235,6 +238,7 @@ export default function PurchaseOrdersPage({
       setItems(prItems.length ? prItems.map((it) => ({
         ...blankItemRow(),
         ...it,
+        supplier: String(it?.supplier || '').trim(),
         amount: it?.amount || formatAmount(toNumber(it?.qty) * toNumber(it?.rate))
       })) : [blankItemRow()]);
       setErrors({});
@@ -264,6 +268,7 @@ export default function PurchaseOrdersPage({
       setItems(loadedItems.length ? loadedItems.map((item) => ({
         ...blankItemRow(),
         ...item,
+        supplier: String(item?.supplier || '').trim(),
         amount: item?.amount || formatAmount(toNumber(item?.qty) * toNumber(item?.rate))
       })) : [blankItemRow()]);
       setErrors({});
@@ -285,6 +290,7 @@ export default function PurchaseOrdersPage({
       const meaningfulItems = items
         .filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''))
         .map((it) => ({
+          supplier: String(it.supplier || '').trim(),
           erp_code: String(it.erp_code || '').trim(),
           item_name: String(it.item_name || '').trim(),
           description: String(it.description || '').trim(),
@@ -299,7 +305,12 @@ export default function PurchaseOrdersPage({
         po_no: String(formData.po_no || '').trim(),
         pr_no: String(formData.pr_no || '').trim(),
         po_type: String(formData.po_type || 'mrr') === 'other' ? 'other' : 'mrr',
-        supplier: String(formData.supplier || '').trim(),
+        supplier: (() => {
+          const fromHeader = String(formData.supplier || '').trim();
+          if (fromHeader) return fromHeader;
+          const unique = Array.from(new Set(meaningfulItems.map((it) => String(it.supplier || '').trim()).filter(Boolean)));
+          return unique.length === 1 ? unique[0] : '';
+        })(),
         po_date: String(formData.po_date || '').trim(),
         po_details: String(formData.po_details || '').trim(),
         remark: String(formData.remark || '').trim(),
@@ -450,6 +461,7 @@ export default function PurchaseOrdersPage({
                 <thead>
                   <tr>
                     {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>ERP</th> : null}
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Supplier</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
@@ -473,6 +485,16 @@ export default function PurchaseOrdersPage({
                           </select>
                         </td>
                       ) : null}
+                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
+                        <input
+                          disabled={locked}
+                          list={supplierListId}
+                          value={row.supplier}
+                          onChange={(e) => setItem(idx, 'supplier', e.target.value)}
+                          style={{ width: '200px' }}
+                          placeholder="Select / search supplier"
+                        />
+                      </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input
                           disabled={locked}

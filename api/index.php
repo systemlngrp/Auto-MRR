@@ -2174,15 +2174,18 @@ try {
         if (!$po) {
             jsonOut(['ok' => false, 'error' => 'Purchase order not found.'], 404);
         }
+        $poiCols = tableColumns('purchase_order_items');
+        $hasItemSupplier = in_array('supplier_name', $poiCols, true);
         $itemsStmt = $pdo->prepare("
-            SELECT row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
+            SELECT row_sort, " . ($hasItemSupplier ? "supplier_name, " : "") . "erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
             FROM purchase_order_items
             WHERE firm_id = :firm_id AND po_id = :po_id
             ORDER BY row_sort ASC, id ASC
         ");
         $itemsStmt->execute(['firm_id' => $firmId, 'po_id' => (int)$po['id']]);
-        $items = array_map(static function (array $row): array {
+        $items = array_map(static function (array $row) use ($hasItemSupplier): array {
             return [
+                'supplier' => $hasItemSupplier ? trim((string)($row['supplier_name'] ?? '')) : '',
                 'erp_code' => trim((string)($row['erp_code'] ?? '')),
                 'item_name' => trim((string)($row['item_name'] ?? '')),
                 'description' => trim((string)($row['description_text'] ?? '')),
@@ -3081,6 +3084,17 @@ try {
             }
         }
 
+        $poiCols = tableColumns('purchase_order_items');
+        $hasItemSupplier = in_array('supplier_name', $poiCols, true);
+        if (!$hasItemSupplier) {
+            try {
+                $pdo->exec("ALTER TABLE purchase_order_items ADD COLUMN supplier_name VARCHAR(255) DEFAULT NULL AFTER row_sort");
+                $hasItemSupplier = true;
+            } catch (Throwable $e) {
+                $hasItemSupplier = false;
+            }
+        }
+
         $poNo = trim((string)($po['po_no'] ?? ''));
         $poType = strtolower(trim((string)($po['po_type'] ?? $po['type'] ?? 'mrr'))) ?: 'mrr';
         if ($poType !== 'mrr' && $poType !== 'other') $poType = 'mrr';
@@ -3188,18 +3202,17 @@ try {
 
         $del = $pdo->prepare("DELETE FROM purchase_order_items WHERE firm_id = :firm_id AND po_id = :po_id");
         $del->execute(['firm_id' => $firmId, 'po_id' => $poId]);
-        $ins = $pdo->prepare("
-            INSERT INTO purchase_order_items (
-                firm_id, po_id, row_sort, erp_code, item_name, description_text, unit_value,
-                qty_value, rate_value, amount_value, remark_text
-            ) VALUES (
-                :firm_id, :po_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value,
-                :qty_value, :rate_value, :amount_value, :remark_text
-            )
-        ");
+        $insertCols = "firm_id, po_id, row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+        $insertVals = ":firm_id, :po_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+        if ($hasItemSupplier) {
+            $insertCols = "firm_id, po_id, row_sort, supplier_name, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+            $insertVals = ":firm_id, :po_id, :row_sort, :supplier_name, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+        }
+        $ins = $pdo->prepare("INSERT INTO purchase_order_items ({$insertCols}) VALUES ({$insertVals})");
         $rowSort = 0;
         foreach ($items as $item) {
             if (!is_array($item)) continue;
+            $itemSupplier = trim((string)($item['supplier'] ?? $item['supplier_name'] ?? ''));
             $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
             $code = trim((string)($item['erp_code'] ?? ''));
             $name = trim((string)($item['item_name'] ?? ''));
@@ -3210,10 +3223,11 @@ try {
             $amount = trim((string)($item['amount'] ?? ''));
             $unit = trim((string)($item['unit'] ?? ''));
             $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
-            $ins->execute([
+            $params = [
                 'firm_id' => $firmId,
                 'po_id' => $poId,
                 'row_sort' => $rowSort,
+                'supplier_name' => $itemSupplier !== '' ? $itemSupplier : null,
                 'erp_code' => $code !== '' ? $code : null,
                 'item_name' => $name !== '' ? $name : null,
                 'description_text' => $desc !== '' ? $desc : null,
@@ -3222,7 +3236,11 @@ try {
                 'rate_value' => $rate !== '' ? $rate : null,
                 'amount_value' => $amount !== '' ? $amount : null,
                 'remark_text' => $remarkItem !== '' ? $remarkItem : null,
-            ]);
+            ];
+            if (!$hasItemSupplier) {
+                unset($params['supplier_name']);
+            }
+            $ins->execute($params);
         }
 
         writeBackendLog('save_purchase_order_success', [

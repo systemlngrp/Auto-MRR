@@ -423,6 +423,7 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
   firm_id VARCHAR(64) NOT NULL,
   po_id BIGINT UNSIGNED NOT NULL,
   row_sort INT NOT NULL DEFAULT 0,
+  supplier_name VARCHAR(255) DEFAULT NULL,
   erp_code VARCHAR(120) DEFAULT NULL,
   item_name VARCHAR(255) DEFAULT NULL,
   description_text VARCHAR(255) DEFAULT NULL,
