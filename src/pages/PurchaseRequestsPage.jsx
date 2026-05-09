@@ -482,7 +482,7 @@ export default function PurchaseRequestsPage({
           </div>
 
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 12px', background: '#1d4ed8', color: '#fff', borderBottom: '1px solid #1d4ed8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <div style={{ padding: '8px 12px', background: '#1d4ed8', color: '#fff', borderBottom: '1px solid #1d4ed8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <div style={{ fontSize: '12px', fontWeight: 1000, color: '#fff' }}>Items</div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <select
@@ -495,7 +495,7 @@ export default function PurchaseRequestsPage({
                       setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
                     }
                   }}
-                  style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #ffffff66', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111' }}
+                  style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #ffffff80', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111', height: '34px' }}
                 >
                   <option value="mrr">MRR</option>
                   <option value="other">Other MRR</option>
@@ -506,18 +506,18 @@ export default function PurchaseRequestsPage({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                    {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>ERP{requiredMark}</th> : null}
-                    {!locked ? <th style={{ width: '46px', padding: '8px 6px', borderBottom: '1px solid #1d4ed8' }} /> : null}
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Item{requiredMark}</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Description</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Unit</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Qty{requiredMark}</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Last PO Date</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Last PO Rate</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Remark</th>
-                    {!locked ? <th style={{ padding: '8px 10px', borderBottom: '1px solid #1d4ed8' }} /> : null}
+                    {showErp ? <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>ERP{requiredMark}</th> : null}
+                    {!locked ? <th style={{ width: '46px', padding: '6px 6px', borderBottom: '1px solid #1d4ed8' }} /> : null}
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Item{requiredMark}</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Unit</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Qty{requiredMark}</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Rate</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Date</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Rate</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Remark</th>
+                    {!locked ? <th style={{ padding: '6px 10px', borderBottom: '1px solid #1d4ed8' }} /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -640,15 +640,12 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
         {!locked ? (
-          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#1d4ed8', color: '#fff', padding: '12px 18px', zIndex: 10010, borderTop: '1px solid #1d4ed8' }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: '12px', fontWeight: 1000 }}>Actions</div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '10px 14px', fontWeight: 1000 }}>+ Item</button>
-                <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '10px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#1d4ed8' }}>
-                  {busy ? 'Saving...' : 'Save PR'}
-                </button>
-              </div>
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#1d4ed8', color: '#fff', padding: '8px 18px', zIndex: 10010, borderTop: '1px solid #1d4ed8', boxShadow: '0 -10px 30px rgba(0,0,0,0.12)' }}>
+            <div style={{ maxWidth: '1300px', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
+              <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#1d4ed8', borderRadius: '12px' }}>
+                {busy ? 'Saving...' : 'Save PR'}
+              </button>
             </div>
           </div>
         ) : null}
