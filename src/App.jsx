@@ -84,56 +84,6 @@ function syncBrowserPath(nextPath, { replace = false } = {}) {
 }
 let GEMINI_COOLDOWN_UNTIL = 0;
 const HOSTINGER_API_URL = String(import.meta.env.VITE_HOSTINGER_API_URL || '').trim();
-const BACKEND_OVERRIDE_STORAGE_KEY = 'mrr_backend_url';
-
-function normalizeBackendOverrideUrl(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  try {
-    const resolved = typeof window !== 'undefined'
-      ? new URL(raw, window.location.origin)
-      : new URL(raw);
-    resolved.pathname = resolved.pathname.replace(/\/{2,}/g, '/');
-    return resolved.toString();
-  } catch {
-    return raw.replace(/([^:]\/)\/+/g, '$1');
-  }
-}
-
-function readBackendOverrideUrl() {
-  if (typeof window === 'undefined') return '';
-  try {
-    return normalizeBackendOverrideUrl(window.localStorage.getItem(BACKEND_OVERRIDE_STORAGE_KEY) || '');
-  } catch {
-    return '';
-  }
-}
-
-function writeBackendOverrideUrl(nextUrl) {
-  if (typeof window === 'undefined') return;
-  const normalized = normalizeBackendOverrideUrl(nextUrl);
-  try {
-    if (!normalized) window.localStorage.removeItem(BACKEND_OVERRIDE_STORAGE_KEY);
-    else window.localStorage.setItem(BACKEND_OVERRIDE_STORAGE_KEY, normalized);
-  } catch {
-    // ignore
-  }
-}
-
-function applyBackendOverrideToFirms(firms = [], backendUrlOverride = '') {
-  const override = normalizeBackendOverrideUrl(backendUrlOverride);
-  return (Array.isArray(firms) ? firms : []).map((firm) => {
-    const resolvedBackend = override || String(firm?.backendUrl || '').trim();
-    const firmKey = String(firm?.firmKey || firm?.spreadsheetId || firm?.id || '').trim();
-    return {
-      ...firm,
-      backendUrl: resolvedBackend,
-      scriptUrl: resolvedBackend,
-      spreadsheetId: firmKey || String(firm?.spreadsheetId || '').trim(),
-      firmKey: firmKey || String(firm?.firmKey || '').trim()
-    };
-  });
-}
 
 const FIRMS = [
   { 
@@ -3140,22 +3090,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               }}
             >
               {isLoggingIn ? 'Logging In...' : 'Login'}
-            </button>
-            <button
-              className="btn"
-              type="button"
-              disabled={isLoggingIn}
-              style={{ minWidth: '120px' }}
-              onClick={() => {
-                const current = readBackendOverrideUrl() || HOSTINGER_API_URL || '';
-                const next = window.prompt('Set Backend URL (example: https://script.google.com/macros/s/.../exec)', current) || '';
-                const normalized = normalizeBackendOverrideUrl(next);
-                writeBackendOverrideUrl(normalized);
-                setLoginError(normalized ? 'Backend URL saved. Reloading...' : 'Backend URL cleared. Reloading...');
-                setTimeout(() => window.location.reload(), 200);
-              }}
-            >
-              Backend URL
             </button>
           </div>
         </div>
