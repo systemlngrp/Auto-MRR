@@ -64,8 +64,13 @@ function getRowDepartment(row) {
 function inferPrNoFromPoNo(poNo) {
   const text = String(poNo || '').trim();
   if (!text) return '';
-  if (/^PO\b/i.test(text)) return text.replace(/^PO\b/i, 'PR');
-  if (/^PO-/i.test(text)) return text.replace(/^PO-/i, 'PR-');
+  // Common patterns:
+  // - "PO-26-27/00003" -> "PR-26-27/00003"
+  // - "PO 26-27/00003" -> "PR 26-27/00003"
+  // - "PO26-27/00003"  -> "PR26-27/00003"
+  if (/^PO\s*-/i.test(text)) return text.replace(/^PO\s*-/i, 'PR-');
+  if (/^PO\s+/i.test(text)) return text.replace(/^PO\s+/i, 'PR ');
+  if (/^PO/i.test(text)) return text.replace(/^PO/i, 'PR');
   return '';
 }
 

@@ -54,8 +54,9 @@ function isoToDdmmyyyy(value) {
 function inferPrNoFromPoNo(poNo) {
   const text = String(poNo || '').trim();
   if (!text) return '';
-  if (/^PO\b/i.test(text)) return text.replace(/^PO\b/i, 'PR');
-  if (/^PO-/i.test(text)) return text.replace(/^PO-/i, 'PR-');
+  if (/^PO\s*-/i.test(text)) return text.replace(/^PO\s*-/i, 'PR-');
+  if (/^PO\s+/i.test(text)) return text.replace(/^PO\s+/i, 'PR ');
+  if (/^PO/i.test(text)) return text.replace(/^PO/i, 'PR');
   return '';
 }
 
@@ -684,7 +685,7 @@ export default function PurchaseOrdersPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>{' '}
-                          {isApproveMode && statusText === 'pending' ? (
+                          {statusText === 'pending' ? (
                             <>
                               <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
                               <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
