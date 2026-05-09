@@ -89,7 +89,6 @@ export default function PurchaseOrdersPage({
   const [search, setSearch] = useState('');
 
   const [pos, setPos] = useState([]);
-  const [approvedPrs, setApprovedPrs] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [supplierOptions, setSupplierOptions] = useState([]);
 
@@ -112,21 +111,6 @@ export default function PurchaseOrdersPage({
       const data = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
       const nextPos = Array.isArray(data) ? data : [];
       setPos(nextPos);
-      if (!isApproveMode) {
-        const prs = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
-        const poPrNoSet = new Set(
-          nextPos
-            .map((row) => {
-              const poNo = String(row?.po_no || '').trim();
-              return String(row?.pr_no || '').trim() || inferPrNoFromPoNo(poNo);
-            })
-            .filter(Boolean)
-        );
-        const approved = (Array.isArray(prs) ? prs : [])
-          .filter((row) => String(row?.status || '').toLowerCase() === 'approved')
-          .filter((row) => !poPrNoSet.has(String(row?.pr_no || '').trim()));
-        setApprovedPrs(approved);
-      }
       setStatus('');
     } catch (err) {
       setStatus(err?.message || 'Could not load purchase orders.');
@@ -619,19 +603,6 @@ export default function PurchaseOrdersPage({
             <button type="button" className="btn small" onClick={load} disabled={isLoading} style={{ padding: '10px 14px', fontWeight: 900 }}>Refresh</button>
           </div>
         </div>
-
-        {!isApproveMode ? (
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Approved Purchase Requests (PO)</div>
-            <div style={{ marginTop: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {approvedPrs.length ? approvedPrs.map((pr) => (
-                <button key={pr.pr_no} type="button" className="btn small" onClick={() => openNewFromPr(pr.pr_no)}>
-                  {pr.pr_no}
-                </button>
-              )) : <div style={{ fontSize: '12px', color: '#6b7280' }}>No approved PR found.</div>}
-            </div>
-          </div>
-        ) : null}
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {tabButton('all', 'All')}
