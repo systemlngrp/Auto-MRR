@@ -6,6 +6,7 @@ export const MRR_FORM_SHEET_NAME = 'MRR FORM';
 export const GE_SHEET_NAME = 'GE ENTRY';
 
 const DEFAULT_BACKEND_URL = String(import.meta.env.VITE_HOSTINGER_API_URL || '').trim();
+const BACKEND_OVERRIDE_STORAGE_KEY = 'mrr_backend_url';
 
 function normalizeBackendUrl(value) {
   const raw = String(value || '').trim();
@@ -22,6 +23,14 @@ function normalizeBackendUrl(value) {
 }
 
 function getBackendUrl(source) {
+  if (typeof window !== 'undefined') {
+    try {
+      const override = String(window.localStorage.getItem(BACKEND_OVERRIDE_STORAGE_KEY) || '').trim();
+      if (override) return normalizeBackendUrl(override);
+    } catch {
+      // ignore
+    }
+  }
   if (typeof source === 'string') {
     const candidate = String(source || '').trim() || DEFAULT_BACKEND_URL;
     if (candidate) return normalizeBackendUrl(candidate);
@@ -86,6 +95,7 @@ async function fetchJson(url, options = {}) {
       }
     });
     const text = await response.text();
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
     let payload = null;
     try {
       payload = text ? JSON.parse(text) : null;
@@ -100,10 +110,13 @@ async function fetchJson(url, options = {}) {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 220);
+      const hint = contentType.includes('text/html')
+        ? ' (HTML response - backend URL wrong, forbidden, or not deployed)'
+        : '';
       throw new Error(
         preview
-          ? `Backend returned invalid JSON. Response preview: ${preview}`
-          : 'Backend returned an empty or invalid JSON response.'
+          ? `Backend returned invalid JSON (status ${response.status}${hint}). Response preview: ${preview}`
+          : `Backend returned an empty or invalid JSON response (status ${response.status}${hint}).`
       );
     }
     if (payload?.ok === false) {

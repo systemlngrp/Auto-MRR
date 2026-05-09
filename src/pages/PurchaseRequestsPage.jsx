@@ -50,6 +50,17 @@ function isoToDdmmyyyy(value) {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+function getRowDepartment(row) {
+  return String(
+    row?.department ??
+    row?.dept ??
+    row?.dept_name ??
+    row?.department_name ??
+    row?.requested_dept ??
+    ''
+  ).trim();
+}
+
 export default function PurchaseRequestsPage({
   selectedFirm,
   deps,
@@ -75,6 +86,9 @@ export default function PurchaseRequestsPage({
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState('all'); // all | pending | approved | rejected
   const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
+  const [toDate, setToDate] = useState(''); // YYYY-MM-DD
+  const [deptFilter, setDeptFilter] = useState('all');
 
   const [view, setView] = useState('list'); // list | form
   const [formData, setFormData] = useState(blankPr());
@@ -131,6 +145,12 @@ export default function PurchaseRequestsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm]);
 
+  const departmentOptions = useMemo(() => {
+    const opts = Array.from(new Set(rows.map(getRowDepartment).filter(Boolean)));
+    opts.sort((a, b) => a.localeCompare(b));
+    return opts;
+  }, [rows]);
+
   useEffect(() => {
     async function loadItems() {
       if (!selectedFirm || !fetchItems) return;
@@ -149,16 +169,27 @@ export default function PurchaseRequestsPage({
     return rows.filter((row) => {
       const statusOk = tab === 'all' ? true : String(row?.status || '').toLowerCase() === tab;
       if (!statusOk) return false;
+      const dept = getRowDepartment(row);
+      const deptOk = deptFilter === 'all' ? true : dept.toLowerCase() === String(deptFilter || '').toLowerCase();
+      if (!deptOk) return false;
+      if (fromDate || toDate) {
+        const rowIso = ddmmyyyyToIso(row?.requisition_date || '');
+        if (rowIso) {
+          if (fromDate && rowIso < fromDate) return false;
+          if (toDate && rowIso > toDate) return false;
+        }
+      }
       if (!q) return true;
       return [
         row?.pr_no,
         row?.requested_by,
+        getRowDepartment(row),
         row?.requisition_date,
         row?.required_date,
         row?.status
       ].some((v) => String(v || '').toLowerCase().includes(q));
     });
-  }, [rows, tab, search]);
+  }, [rows, tab, search, deptFilter, fromDate, toDate]);
 
   const selectedRow = useMemo(() => {
     const key = String(selectedPrNo || '').trim();
@@ -597,8 +628,39 @@ export default function PurchaseRequestsPage({
           {tabButton('all', 'All')}
           {tabButton('pending', 'Pending')}
           {tabButton('approved', 'Approved')}
+          {tabButton('complete', 'Completed')}
           {tabButton('rejected', 'Rejected')}
           <button type="button" className="btn small" onClick={load} disabled={isLoading} style={{ padding: '8px 10px', fontWeight: 900 }}>Refresh</button>
+        </div>
+
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 1000, color: '#111827', marginBottom: '6px' }}>DATE RANGE</div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ ...inputStyle('search'), width: '160px', borderRadius: '10px' }} />
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>to</span>
+                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ ...inputStyle('search'), width: '160px', borderRadius: '10px' }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 1000, color: '#111827', marginBottom: '6px' }}>DEPARTMENT</div>
+              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={{ ...inputStyle('search'), width: '220px', borderRadius: '10px' }}>
+                <option value="all">All Depts</option>
+                {departmentOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => { setFromDate(''); setToDate(''); setDeptFilter('all'); }}
+                style={{ padding: '10px 14px', fontWeight: 900 }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
         </div>
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
@@ -612,6 +674,7 @@ export default function PurchaseRequestsPage({
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>PR</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Requested By</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Department</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Requisition Date</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Required Date</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Status</th>
@@ -647,6 +710,7 @@ export default function PurchaseRequestsPage({
                       >
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#1d4ed8' }}>{prNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.requested_by || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{getRowDepartment(row) || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.requisition_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.required_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
@@ -690,7 +754,7 @@ export default function PurchaseRequestsPage({
                 })}
                 {!filteredRows.length ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                    <td colSpan={7} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>
