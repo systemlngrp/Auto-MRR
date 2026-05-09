@@ -44,9 +44,9 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
 
   const headerCellStyle = {
     fontSize: '12px',
-    background: '#e5e7eb',
-    color: '#111',
-    fontWeight: 900,
+    background: '#1d4ed8',
+    color: '#fff',
+    fontWeight: 'bold',
     padding: '10px 10px',
     textAlign: 'center',
     verticalAlign: 'middle',
@@ -54,14 +54,14 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
     letterSpacing: '0.05em',
     whiteSpace: 'nowrap'
   };
-  const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'middle' };
+  const bodyCellStyle = { fontSize: '12px', color: '#000', padding: '10px 10px', verticalAlign: 'middle' };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px' }}>
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900' }}>GATE ENTRIES</h2>
+            <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900', color: '#1d4ed8' }}>GATE ENTRIES</h2>
             <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{selectedFirm?.name || ''}</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>

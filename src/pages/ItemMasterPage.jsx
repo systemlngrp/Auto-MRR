@@ -17,7 +17,12 @@ function buildMrrItemName(erp, size, unit, gsm, bf) {
 export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItemType = '', onSaved }) {
   const { fetchItems, saveItems } = deps;
   const autoOpenNew = Boolean(String(initialItemType || '').trim());
-  const requestedItemType = String(initialItemType || '').trim().toLowerCase() === 'other' ? 'other' : String(initialItemType || '').trim() ? 'mrr' : '';
+  const requestedItemType = (() => {
+    const t = String(initialItemType || '').trim().toLowerCase();
+    if (t === 'other') return 'other';
+    if (t === 'reel' || t === 'mrr') return 'reel';
+    return '';
+  })();
   const autoOpenedRef = useRef(false);
 
   const digitsOnly = (value) => String(value || '').replace(/[^\d]/g, '');
@@ -29,7 +34,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   };
 
   const blankItem = () => ({
-    item_type: String(initialItemType || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr', // 'mrr' | 'other'
+    item_type: requestedItemType || 'reel', // 'reel' | 'other'
     erp_code: '',
     item_name: '',
     size: '',
@@ -53,7 +58,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const set = new Set();
     items.forEach((item, index) => {
       if (index === editingIndex) return;
-      const type = String(item?.item_type || 'mrr').trim().toLowerCase() || 'mrr';
+      const type = String(item?.item_type || 'reel').trim().toLowerCase() || 'mrr';
       const code = String(item?.erp_code || '').trim().toLowerCase();
       const name = String(item?.item_name || '').trim().toLowerCase();
       if (code) set.add(`${type}:erp:${code}`);
@@ -65,7 +70,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const filteredItems = useMemo(() => {
     const query = String(search || '').trim().toLowerCase();
     const typeFiltered = requestedItemType
-      ? items.filter((item) => String(item?.item_type || 'mrr').trim().toLowerCase() === requestedItemType)
+      ? items.filter((item) => String(item?.item_type || 'reel').trim().toLowerCase() === requestedItemType)
       : items;
     if (!query) return typeFiltered;
     return typeFiltered.filter((item) => {
@@ -146,7 +151,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     setFormData({
       ...blankItem(),
       ...row,
-      item_type: String(row?.item_type || 'mrr') === 'other' ? 'other' : 'mrr',
+      item_type: String(row?.item_type || 'reel') === 'other' ? 'other' : 'reel',
       size: String(row?.size || '').trim(),
       gsm: String(row?.gsm || '').trim(),
       bf: String(row?.bf || '').trim(),
@@ -164,7 +169,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     setIsSaving(true);
     setStatus('Saving item...');
     try {
-      const type = String(formData.item_type || 'mrr').trim().toLowerCase() === 'other' ? 'other' : 'mrr';
+      const type = String(formData.item_type || 'reel').trim().toLowerCase() === 'other' ? 'other' : 'reel';
       const payload = {
         item_type: type,
         erp_code: String(formData.erp_code || '').trim(),
@@ -176,8 +181,8 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         active: String(formData.active || '1') === '0' ? '0' : '1'
       };
 
-      if (type === 'mrr') {
-        payload.item_name = buildMrrItemName(payload.erp_code, payload.size, payload.unit, payload.gsm, payload.bf) || payload.erp_code || 'MRR ITEM';
+      if (type === 'reel') {
+        payload.item_name = buildMrrItemName(payload.erp_code, payload.size, payload.unit, payload.gsm, payload.bf) || payload.erp_code || 'REEL ITEM';
       } else {
         // Other items: ERP/size/gsm/bf are optional.
         if (!payload.erp_code) payload.erp_code = '';
@@ -243,8 +248,8 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   });
 
   if (view === 'form') {
-    const isMrrType = String(formData.item_type || 'mrr').trim().toLowerCase() !== 'other';
-    const mrrItemNamePreview = isMrrType
+    const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
+    const mrrItemNamePreview = isReelType
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
     return (
@@ -257,9 +262,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Type</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type</div>
               <select value={formData.item_type} onChange={(e) => {
-                const nextType = String(e.target.value || 'mrr');
+                const nextType = String(e.target.value || 'reel');
                 setFormData((p) => ({
                   ...p,
                   item_type: nextType,
@@ -267,20 +272,20 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   ...(nextType === 'other' ? { erp_code: '', size: '', gsm: '', bf: '' } : {})
                 }));
               }} style={inputStyle('item_type')}>
-                <option value="mrr">MRR (Reel)</option>
+                <option value="reel">Reel</option>
                 <option value="other">Other</option>
               </select>
             </div>
-            {isMrrType ? (
+            {isReelType ? (
               <div style={{ gridColumn: 'span 1' }}>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>ERP Code</div>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code</div>
                 <input
                   value={formData.erp_code}
                   inputMode="numeric"
                   pattern="[0-9]*"
                   onChange={(e) => setFormData((p) => ({ ...p, erp_code: digitsOnly(e.target.value) }))}
                   style={smallNumericStyle('erp_code')}
-                  placeholder="Required for MRR"
+                  placeholder="Required for Reel"
                 />
                 {errors.erp_code ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.erp_code}</div> : null}
               </div>
@@ -288,7 +293,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               <div style={{ gridColumn: 'span 1' }} />
             )}
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Unit</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Unit</div>
               <select value={formData.unit} onChange={(e) => setFormData((p) => ({ ...p, unit: e.target.value }))} style={inputStyle('unit')}>
                 <option value="KG">KG</option>
                 <option value="PCS">PCS</option>
@@ -296,34 +301,34 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <option value="MTR">MTR</option>
               </select>
             </div>
-            {isMrrType ? (
+            {isReelType ? (
               <>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Size</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Size</div>
                   <input
                     value={formData.size}
                     inputMode="decimal"
                     pattern="[0-9]*[.]?[0-9]*"
                     onChange={(e) => setFormData((p) => ({ ...p, size: decimalOnly(e.target.value) }))}
                     style={smallNumericStyle('size')}
-                    placeholder="Required for MRR"
+                    placeholder="Required for Reel"
                   />
                   {errors.size ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.size}</div> : null}
                 </div>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>GSM</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>GSM</div>
                   <input
                     value={formData.gsm}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     onChange={(e) => setFormData((p) => ({ ...p, gsm: digitsOnly(e.target.value) }))}
                     style={smallNumericStyle('gsm')}
-                    placeholder="Required for MRR"
+                    placeholder="Required for Reel"
                   />
                   {errors.gsm ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.gsm}</div> : null}
                 </div>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>BF</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>BF</div>
                   <input
                     value={formData.bf}
                     inputMode="numeric"
@@ -336,7 +341,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 </div>
                 <div style={{ gridColumn: 'span 1' }} />
                 <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Item Name</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
                   <input value={mrrItemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f9fafb' }} />
                   <div style={{ marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>
                     Auto: <code>ERP- SIZE UNIT * GSM * BF</code>
@@ -345,13 +350,13 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               </>
             ) : (
               <div style={{ gridColumn: 'span 2' }}>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Item Name</div>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
                 <input value={formData.item_name} onChange={(e) => setFormData((p) => ({ ...p, item_name: e.target.value }))} style={inputStyle('item_name')} placeholder="Required for Other" />
                 {errors.item_name ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.item_name}</div> : null}
               </div>
             )}
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Active</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Active</div>
               <select value={formData.active} onChange={(e) => setFormData((p) => ({ ...p, active: e.target.value }))} style={inputStyle('active')}>
                 <option value="1">Yes</option>
                 <option value="0">No</option>
@@ -359,9 +364,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             </div>
           </div>
 
-          <div style={{ marginTop: '16px', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
-            {status ? <div style={{ marginRight: 'auto', fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
-            <button type="button" className="btn main" disabled={isSaving} onClick={doSave} style={{ padding: '10px 16px', fontWeight: 900 }}>
+          <div style={{ marginTop: '24px', padding: '16px', background: '#1d4ed8', borderRadius: '12px', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+            {status ? <div style={{ marginRight: 'auto', fontSize: '12px', color: '#fff', fontWeight: 700 }}>{status}</div> : null}
+            <button type="button" className="btn" disabled={isSaving} onClick={doSave} style={{ padding: '10px 16px', fontWeight: 900, background: '#fff', color: '#1d4ed8', borderColor: '#fff' }}>
               {isSaving ? 'Saving...' : 'Save Item'}
             </button>
           </div>
@@ -396,22 +401,22 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Type</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>ERP Code</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Item Name</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Size</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>GSM</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>BF</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Unit</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Active</th>
-                  <th style={{ textAlign: 'right', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Action</th>
+                <tr style={{ background: '#1d4ed8', color: '#fff' }}>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>ERP Code</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Item Name</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Size</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>GSM</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>BF</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Unit</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Active</th>
+                  <th style={{ textAlign: 'right', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredItems.map((item, index) => (
                   <tr key={`${item?.erp_code || ''}-${index}`}>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_type || 'mrr') === 'other' ? 'Other' : 'MRR'}</td>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_type || 'reel') === 'other' ? 'Other' : 'Reel'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 900 }}>{String(item?.erp_code || '').trim()}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_name || '').trim()}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.size || '').trim()}</td>

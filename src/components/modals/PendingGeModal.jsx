@@ -3,7 +3,7 @@ import React from 'react';
 export default function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect, formatAmount }) {
   if (!isOpen) return null;
   const pendingTableStyle = { width: '100%', tableLayout: 'auto' };
-  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '8px 10px' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', padding: '8px 10px' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 10px' };
   return (
     <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 10000 }}>

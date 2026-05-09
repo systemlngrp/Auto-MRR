@@ -2218,8 +2218,8 @@ try {
 
     if ($action === 'get_last_purchase_info') {
         $payload = readPayload();
-        $type = strtolower(trim((string)($_GET['item_type'] ?? $payload['item_type'] ?? 'mrr'))) ?: 'mrr';
-        if ($type !== 'mrr' && $type !== 'other') $type = 'mrr';
+        $type = strtolower(trim((string)($_GET['item_type'] ?? $payload['item_type'] ?? 'reel'))) ?: 'reel';
+        if ($type !== 'reel' && $type !== 'mrr' && $type !== 'other') $type = 'reel';
 
         $keys = [];
         $fromPayload = $payload['keys'] ?? null;
@@ -2244,7 +2244,7 @@ try {
 
         $pdo = db();
         $in = implode(',', array_fill(0, count($keys), '?'));
-        $field = $type === 'mrr' ? 'poi.erp_code' : 'poi.item_name';
+        $field = ($type === 'reel' || $type === 'mrr') ? 'poi.erp_code' : 'poi.item_name';
         $sql = "
             SELECT po.id AS po_id, po.po_no, po.po_date, poi.erp_code, poi.item_name, poi.rate_value
             FROM purchase_orders po
@@ -2819,9 +2819,9 @@ try {
             $name = trim((string)($item['item_name'] ?? $item['name'] ?? ''));
 
             $type = $hasType
-                ? (strtolower(trim((string)($item['item_type'] ?? $item['type'] ?? 'mrr'))) ?: 'mrr')
-                : 'mrr';
-            if ($type !== 'other' && $type !== 'mrr') $type = 'mrr';
+                ? (strtolower(trim((string)($item['item_type'] ?? $item['type'] ?? 'reel'))) ?: 'reel')
+                : 'reel';
+            if ($type !== 'other' && $type !== 'mrr' && $type !== 'reel') $type = 'reel';
 
             $size = $hasSize ? trim((string)($item['size'] ?? $item['size_value'] ?? '')) : '';
             $gsm = $hasGsm ? trim((string)($item['gsm'] ?? $item['gsm_value'] ?? '')) : '';
@@ -3096,8 +3096,8 @@ try {
         }
 
         $poNo = trim((string)($po['po_no'] ?? ''));
-        $poType = strtolower(trim((string)($po['po_type'] ?? $po['type'] ?? 'mrr'))) ?: 'mrr';
-        if ($poType !== 'mrr' && $poType !== 'other') $poType = 'mrr';
+        $poType = strtolower(trim((string)($po['po_type'] ?? $po['type'] ?? 'reel'))) ?: 'reel';
+        if ($poType !== 'reel' && $poType !== 'mrr' && $poType !== 'other') $poType = 'reel';
 
         $supplier = trim((string)($po['supplier'] ?? $po['supplier_name'] ?? ''));
         $poDate = trim((string)($po['po_date'] ?? ''));

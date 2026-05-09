@@ -15,7 +15,7 @@ const blankItemRow = () => ({
 const blankPo = () => ({
   po_no: '',
   pr_no: '',
-  po_type: 'mrr',
+  po_type: 'reel',
   supplier: '',
   po_date: '',
   po_details: '',
@@ -218,8 +218,8 @@ export default function PurchaseOrdersPage({
         row.amount = formatAmount(toNumber(row.qty) * toNumber(row.rate));
       }
       if (key === 'erp_code') {
-        const type = String(formData.po_type || 'mrr') === 'other' ? 'other' : 'mrr';
-        const match = itemMaster.find((it) => String(it?.item_type || 'mrr') === type && String(it?.erp_code || '').trim() === String(value || '').trim());
+        const type = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
+        const match = itemMaster.find((it) => String(it?.item_type || 'reel') === type && String(it?.erp_code || '').trim() === String(value || '').trim());
         if (match) {
           if (!String(row.item_name || '').trim()) row.item_name = String(match.item_name || '').trim();
           if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
@@ -258,7 +258,7 @@ export default function PurchaseOrdersPage({
       setFormData({
         ...blankPo(),
         pr_no: prNo,
-        po_type: 'mrr',
+        po_type: 'reel',
         po_date: new Date().toLocaleDateString('en-GB') // DD/MM/YYYY
       });
       setItems(prItems.length ? prItems.map((it) => ({
@@ -288,7 +288,7 @@ export default function PurchaseOrdersPage({
       setFormData({
         ...blankPo(),
         ...po,
-        po_type: String(po?.po_type || 'mrr') === 'other' ? 'other' : 'mrr',
+        po_type: String(po?.po_type || 'reel') === 'other' ? 'other' : 'reel',
         status: String(po?.status || 'draft')
       });
       setItems(loadedItems.length ? loadedItems.map((item) => ({
@@ -330,7 +330,7 @@ export default function PurchaseOrdersPage({
       const poPayload = {
         po_no: String(formData.po_no || '').trim(),
         pr_no: String(formData.pr_no || '').trim(),
-        po_type: String(formData.po_type || 'mrr') === 'other' ? 'other' : 'mrr',
+        po_type: String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel',
         supplier: (() => {
           const fromHeader = String(formData.supplier || '').trim();
           if (fromHeader) return fromHeader;
@@ -384,9 +384,9 @@ export default function PurchaseOrdersPage({
 
   if (view === 'form') {
     const locked = isApproveMode || String(formData.status || 'draft') === 'approved';
-    const itemType = String(formData.po_type || 'mrr') === 'other' ? 'other' : 'mrr';
-    const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'mrr') === itemType && String(it?.active || '1') !== '0');
-    const showErp = itemType === 'mrr';
+    const itemType = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
+    const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'reel') === itemType && String(it?.active || '1') !== '0');
+    const showErp = itemType === 'reel';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `po-item-names-${itemType}`;
     const supplierListId = 'po-suppliers';
@@ -395,7 +395,7 @@ export default function PurchaseOrdersPage({
         <div style={{ width: '100%', margin: 0, background: '#fff', border: 0, borderRadius: 0, padding: '18px', minHeight: '100vh', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.po_no ? `Purchase Order - ${formData.po_no}` : 'New Purchase Order'}</div>
+              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#1d4ed8' }}>{formData.po_no ? `Purchase Order - ${formData.po_no}` : 'New Purchase Order'}</div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}{formData.pr_no ? ` | From PR: ${formData.pr_no}` : ''}</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -414,25 +414,25 @@ export default function PurchaseOrdersPage({
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Type</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type</div>
               <select
                 disabled={locked}
-                value={formData.po_type || 'mrr'}
+                value={formData.po_type || 'reel'}
                 onChange={(e) => {
-                  const nextType = String(e.target.value || 'mrr');
+                  const nextType = String(e.target.value || 'reel');
                   setFormData((p) => ({ ...p, po_type: nextType }));
-                  if (nextType !== 'mrr') {
+                  if (nextType === 'other') {
                     setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
                   }
                 }}
                 style={inputStyle('po_type')}
               >
-                <option value="mrr">MRR</option>
-                <option value="other">Other MRR</option>
+                <option value="reel">Reel</option>
+                <option value="other">Other</option>
               </select>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>PO Date</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Date</div>
               <input
                 type="date"
                 disabled={locked}
@@ -442,7 +442,7 @@ export default function PurchaseOrdersPage({
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>PO Details</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Details</div>
               <input
                 disabled={locked}
                 value={formData.po_details}
@@ -452,14 +452,14 @@ export default function PurchaseOrdersPage({
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Remark</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Remark</div>
               <input disabled={locked} value={formData.remark} onChange={(e) => setFormData((p) => ({ ...p, remark: e.target.value }))} style={inputStyle('remark')} />
             </div>
           </div>
 
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ padding: '10px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Items</div>
+              <div style={{ fontSize: '12px', fontWeight: 1000, color: '#1d4ed8' }}>Items</div>
               {!locked ? (
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <button type="button" className="btn small" onClick={addSupplierQuick}>+ Supplier</button>
@@ -582,7 +582,7 @@ export default function PurchaseOrdersPage({
         fontWeight: 900,
         background: tab === key ? '#1d4ed8' : '#fff',
         borderColor: tab === key ? '#1d4ed8' : '#d1d5db',
-        color: tab === key ? '#fff' : '#111827'
+        color: tab === key ? '#fff' : '#1d4ed8'
       }}
     >
       {label}
@@ -594,7 +594,7 @@ export default function PurchaseOrdersPage({
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#111827' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
+            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -646,11 +646,11 @@ export default function PurchaseOrdersPage({
                       fontWeight: 900,
                       border: '1px solid #e5e7eb',
                       background: statusText === 'approved' ? '#e0f2fe' : statusText === 'rejected' ? '#fee2e2' : '#f3f4f6',
-                      color: '#111827'
+                      color: '#1d4ed8'
                     };
                     return (
                       <tr key={poNo}>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#1d4ed8' }}>{poNo}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#000' }}>{poNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.supplier || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>

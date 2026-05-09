@@ -53,13 +53,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
 
   if (!isAdmin) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <h2 style={{ margin: 0, fontSize: '26px', letterSpacing: '0.02em' }}>Users</h2>
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 16px' }}>Back</button>
           </div>
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px', background: '#f9fafb', color: '#111827', maxWidth: '740px' }}>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
             <div style={{ fontWeight: 900, marginBottom: '6px' }}>Access denied</div>
             <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
               Only <span style={{ fontWeight: 800 }}>Admin</span> can view or update users. Please contact Admin if you need access.
@@ -218,7 +218,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   const labelStyle = {
     fontSize: '13px',
     fontWeight: '700',
-    color: '#374151',
+    color: '#1d4ed8',
     marginBottom: '6px',
     display: 'block',
     letterSpacing: '0.01em'
@@ -243,14 +243,14 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
 
   if (view === 'form') {
     return (
-      <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '40px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '540px', padding: '40px' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <div style={{ display: 'inline-block', padding: '12px 20px', background: '#f9fafb', borderRadius: '50px', marginBottom: '16px', border: '1px solid #f3f4f6' }}>
                <span style={{ fontSize: '28px' }}>👤</span>
             </div>
-            <h2 style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: '#111827' }}>
+            <h2 style={{ margin: 0, fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: '#1d4ed8' }}>
               {editingIndex >= 0 ? 'Edit User' : 'New User'}
             </h2>
           </div>
@@ -350,7 +350,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                       {MENU_OPTIONS.map((opt) => {
                         const selected = Array.isArray(formData.menu_access) && formData.menu_access.includes(opt.key);
                         return (
-                          <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#111827' }}>
+                          <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#1d4ed8' }}>
                             <input
                               type="checkbox"
                               checked={!!selected}
@@ -428,7 +428,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px' }}>
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
@@ -462,8 +462,8 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
         {status ? <div className="status" style={{ marginBottom: '16px', padding: '12px' }}>{status}</div> : null}
 
         {(() => {
-          const headerCellStyle = { fontSize: '12px', background: '#e5e7eb', color: '#111', fontWeight: 900, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' };
-          const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'middle' };
+          const headerCellStyle = { fontSize: '12px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' };
+          const bodyCellStyle = { fontSize: '12px', color: '#000', padding: '10px 10px', verticalAlign: 'middle' };
 
           return (
         <div className="wrap" style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: '4px' }}>
@@ -492,9 +492,9 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                 <tr key={user.login_id || index} style={{ background: index % 2 === 1 ? '#fbfbfb' : '#fff' }}>
                   <td style={{ ...bodyCellStyle, fontWeight: 900 }}>{user.login_id}</td>
                   <td style={{ ...bodyCellStyle, fontWeight: 800 }}>{user.display_name}</td>
-                  <td style={{ ...bodyCellStyle, color: '#374151' }}>{user.user_email}</td>
+                  <td style={{ ...bodyCellStyle, color: '#1d4ed8' }}>{user.user_email}</td>
                   <td style={{ ...bodyCellStyle, textAlign: 'center' }}>
-                    <span style={{ padding: '4px 10px', background: '#f3f4f6', borderRadius: '50px', fontSize: '12px', fontWeight: '800', color: '#374151', textTransform: 'uppercase' }}>
+                    <span style={{ padding: '4px 10px', background: '#f3f4f6', borderRadius: '50px', fontSize: '12px', fontWeight: '800', color: '#1d4ed8', textTransform: 'uppercase' }}>
                       {user.role}
                     </span>
                   </td>

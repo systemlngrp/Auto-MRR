@@ -596,7 +596,7 @@ export async function approvePurchaseOrder(poNo, decision = 'approve', remark = 
   return fetchJson(`${backendUrl}?${query}`);
 }
 
-export async function fetchLastPurchaseInfo(keys = [], itemType = 'mrr', options = {}) {
+export async function fetchLastPurchaseInfo(keys = [], itemType = 'reel', options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const payload = {
     action: 'get_last_purchase_info',

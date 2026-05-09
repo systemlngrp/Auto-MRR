@@ -118,7 +118,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
         <div style={{ width: 'min(1100px, 100%)', margin: '0 auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#111827' }}>{formData.id ? 'Edit Supplier' : 'New Supplier'}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#1d4ed8' }}>{formData.id ? 'Edit Supplier' : 'New Supplier'}</div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -133,23 +133,23 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Supplier Name *</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Name *</div>
               <input value={formData.supplier_name} onChange={(e) => setFormData((p) => ({ ...p, supplier_name: e.target.value }))} style={inputStyle('supplier_name')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Supplier Code</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Code</div>
               <input value={formData.supplier_code} onChange={(e) => setFormData((p) => ({ ...p, supplier_code: e.target.value }))} style={inputStyle('supplier_code')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Phone</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Phone</div>
               <input value={formData.phone_no} onChange={(e) => setFormData((p) => ({ ...p, phone_no: e.target.value }))} style={inputStyle('phone_no')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>GSTIN</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>GSTIN</div>
               <input value={formData.gstin} onChange={(e) => setFormData((p) => ({ ...p, gstin: e.target.value }))} style={inputStyle('gstin')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Active</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Active</div>
               <select value={formData.active} onChange={(e) => setFormData((p) => ({ ...p, active: e.target.value }))} style={inputStyle('active')}>
                 <option value="1">Yes</option>
                 <option value="0">No</option>
@@ -166,7 +166,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 800, color: '#111827' }}>Suppliers</div>
+            <div style={{ fontSize: '26px', fontWeight: 800, color: '#1d4ed8' }}>Suppliers</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -185,13 +185,13 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Supplier</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Code</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Phone</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GSTIN</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Active</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
-                </tr>
+                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Code</th>
+                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Name</th>
+                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Phone</th>
+                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GSTIN</th>
+                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Active</th>
+                                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
+                                </tr>
               </thead>
               <tbody>
                 {filteredRows.map((row) => (

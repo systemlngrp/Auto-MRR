@@ -2229,7 +2229,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [allApprovalRows]);
   const pendingTableStyle = { width: '100%', tableLayout: 'fixed' };
-  const pendingHeaderCellStyle = { fontSize: '15px', background: '#d1d5db', color: '#111', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', color: '#111', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '10px 10px', verticalAlign: 'top' };
   const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3%', minWidth: '36px' };
   const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'middle' };
@@ -2293,8 +2293,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   };
   const isReelMrrType = (value) => String(value || '').trim().toLowerCase() === 'reel';
   const isOtherMrrEntryTypeRejection = (value) => String(value || '').trim().toLowerCase() === 'rejection';
-  // Debit Note inputs are shown/required only for REEL MRR approvals when weight diff > 40 kg.
-  // OTHER MRR "Rejection" requires Debit Note only when rejecting (handled at reject action).
+  // Debit Note inputs are shown/required only for REEL approvals when weight diff > 40 kg.
+  // OTHER "Rejection" requires Debit Note only when rejecting (handled at reject action).
   const isGroupedApprovalDebitNoteRequired = (row) => (
     String(row?.pending_stage || '').trim() === 'pending_accounts_approval' &&
     isReelMrrType(row?.mrr_type) &&
@@ -2698,7 +2698,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               firm_id: firm.id,
               firm_name: firm.name,
               mrr_type: type,
-              mrr_type_label: type === 'other' ? 'OTHER MRR' : 'REEL MRR'
+              mrr_type_label: type === 'other' ? 'OTHER' : 'REEL'
             }));
         } catch {
           return [];
@@ -2849,7 +2849,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           mergedRows.push([
             firm.name,
             firm.id,
-            type === 'other' ? 'OTHER MRR' : 'REEL MRR',
+            type === 'other' ? 'OTHER' : 'REEL',
             ...baseHeaders.map((header) => rowMap.get(header) ?? '')
           ]);
         });
@@ -3036,7 +3036,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   if (step === 1) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         {userBadge}
         {loginSpinnerOverlay}
         <div style={{ margin: 'auto', background: '#fff', padding: '34px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '520px', width: '90%' }}>
@@ -3101,7 +3101,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   if (step === 2) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         {userBadge}
         {loginSpinnerOverlay}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '600px', width: '90%', textAlign: 'center' }}>
@@ -3228,7 +3228,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
-      color: '#111827'
+      color: '#1d4ed8'
     };
 
     const sideButtonActiveStyle = {
@@ -3291,7 +3291,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 IM
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Inventory Management</div>
+                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Inventory Management</div>
                 <div style={{ marginTop: '2px', fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tempFirm?.name || 'Firm'}</div>
               </div>
             </div>
@@ -3437,7 +3437,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             </div>
             <button
               type="button"
-              style={{ ...sideButtonStyle, color: '#111827', background: '#f3f4f6' }}
+              style={{ ...sideButtonStyle, color: '#1d4ed8', background: '#f3f4f6' }}
               onClick={() => { setStep(2); }}
             >
               <span style={sideIconStyle} />
@@ -3447,7 +3447,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
           <div style={{ ...mainStyle, justifyContent: 'flex-start' }}>
             <div style={{ width: 'min(1120px, 100%)' }}>
-              <div style={{ fontSize: '18px', fontWeight: 1000, color: '#111827' }}>Dashboard</div>
+              <div style={{ fontSize: '18px', fontWeight: 1000, color: '#1d4ed8' }}>Dashboard</div>
 
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
@@ -3455,7 +3455,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>ACTIVE REQUESTS</div>
                     <div style={{ color: '#2563eb' }}>▦</div>
                   </div>
-                  <div style={{ marginTop: '10px', fontSize: '26px', fontWeight: 1100, color: '#111827' }}>
+                  <div style={{ marginTop: '10px', fontSize: '26px', fontWeight: 1100, color: '#1d4ed8' }}>
                     {pendingCounts.pending_mrr + pendingCounts.edit_mrr + pendingCounts.all_approvals}
                   </div>
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#16a34a' }}>↘ 4.2% from last week</div>
@@ -3466,7 +3466,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>TOTAL MONTHLY SPEND</div>
                     <div style={{ color: '#2563eb' }}>▤</div>
                   </div>
-                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#111827' }}>—</div>
+                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#1d4ed8' }}>—</div>
                   <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--muted)' }}>Budget: —</div>
                   <div style={{ marginTop: '10px', height: '4px', background: '#eef2ff', borderRadius: '999px', overflow: 'hidden' }}>
                     <div style={{ width: '55%', height: '100%', background: '#1d4ed8' }} />
@@ -3478,13 +3478,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                     <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.06em', color: 'var(--muted)' }}>AVG APPROVAL TIME</div>
                     <div style={{ color: '#2563eb' }}>◷</div>
                   </div>
-                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#111827' }}>—</div>
+                  <div style={{ marginTop: '10px', fontSize: '22px', fontWeight: 1100, color: '#1d4ed8' }}>—</div>
                   <div style={{ marginTop: '6px', fontSize: '12px', color: '#f97316' }}>↗ 0.2d increase this period</div>
                 </div>
               </div>
 
               <div style={{ marginTop: '14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#111827' }}>Overview</div>
+                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8' }}>Overview</div>
                 <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--muted)' }}>Select a module from the left sidebar to view details.</div>
               </div>
             </div>
@@ -3533,7 +3533,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   if (step === 5) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         {userBadge}
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <ReelLabelsPage
@@ -3580,13 +3580,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {(() => {
           if (!isAdmin) {
             return (
-              <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+              <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
                 <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
                     <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Users</h2>
                     <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
                   </div>
-                  <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#111827', maxWidth: '740px' }}>
+                  <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
                     <div style={{ fontWeight: 900, marginBottom: '6px' }}>Access denied</div>
                     <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
                       Only <span style={{ fontWeight: 800 }}>Admin</span> can view or update users. Please contact Admin if you need access.
@@ -3615,7 +3615,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   if (step === 6) {
     const canViewAllFirmsApprovals = isAdmin;
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '12px', marginBottom: '20px', width: '100%' }}>
              <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>
@@ -3806,7 +3806,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                               </button>
                               <button
                                 className="btn main small"
-                                style={{ width: '100%', fontSize: '13px', padding: '9px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                style={{ width: '100%', fontSize: '13px', padding: '9px 12px', background: '#1d4ed8', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
                                 disabled={isAnyPendingApproval}
@@ -4204,7 +4204,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                           <>
                             <button
                               className="btn main small"
-                              style={{ fontSize: '13px', padding: '8px 12px', background: '#111', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                              style={{ fontSize: '13px', padding: '8px 12px', background: '#1d4ed8', color: '#fff', transition: 'background-color 0.2s ease, color 0.2s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#111'; e.currentTarget.style.color = '#fff'; }}
                               disabled={isAnyPendingApproval}
@@ -4262,7 +4262,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                         debitNoteDateInput = window.prompt('Enter Debit Note Date (DD/MM/YYYY)') || '';
                                         debitNoteAmountInput = window.prompt('Enter Debit Note Amount') || '';
                                         if (!String(debitNoteInput).trim() || !String(debitNoteDateInput).trim() || !String(debitNoteAmountInput).trim()) {
-                                          throw new Error('Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER MRR Rejection.');
+                                          throw new Error('Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER Rejection.');
                                         }
                                         const mrrDate = firstFilled(ge?.date, ge?.entry_date, '');
                                         const cmp = compareInputDates(debitNoteDateInput, mrrDate);
@@ -4365,7 +4365,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         firm: readReportCell(firstRow, 'firm name') || tempFirm?.name || '',
         firmId: readReportCell(firstRow, 'firm id') || tempFirm?.id || '',
         mrrType: String(readReportCell(firstRow, 'mrr mode') || tempType || 'reel').toLowerCase().includes('other') ? 'other' : 'reel',
-        mrrTypeLabel: readReportCell(firstRow, 'mrr mode') || (String(readReportCell(firstRow, 'mrr mode') || '').toLowerCase().includes('other') ? 'OTHER MRR' : 'REEL MRR'),
+        mrrTypeLabel: readReportCell(firstRow, 'mrr mode') || (String(readReportCell(firstRow, 'mrr mode') || '').toLowerCase().includes('other') ? 'OTHER' : 'REEL'),
         entryType: normalizeOtherMrrEntryType(readReportCell(firstRow, 'mrr type')),
         supplier: supplierValue,
         totalQty: qtyValues.length ? String(qtyValues.reduce((sum, value) => sum + value, 0)) : readReportCell(firstRow, 'required reel', 'rows added'),
@@ -4448,8 +4448,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         ...allKeys.filter((k) => !preferredOrder.includes(k)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
       ];
 
-      const headerCellStyle = { fontSize: '12px', background: '#e5e7eb', color: '#111', fontWeight: 900, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' };
-      const bodyCellStyle = { fontSize: '12px', color: '#111827', padding: '10px 10px', verticalAlign: 'top' };
+      const headerCellStyle = { fontSize: '12px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' };
+      const bodyCellStyle = { fontSize: '12px', color: '#000', padding: '10px 10px', verticalAlign: 'top' };
       const cellText = (value) => {
         const text = String(value ?? '').trim();
         return text !== '' ? text : '-';
@@ -4536,7 +4536,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     });
 
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         {isLoadingReviewPreview ? (
           <div className="loading-overlay" style={{ zIndex: 10005 }}>
             <div className="spinner" />
@@ -4616,19 +4616,19 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               <table className="table" style={{ width: '100%', tableLayout: 'auto' }}>
                 <thead>
                   <tr>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>GE No</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR No</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Firm</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Mode</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Entry Type</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Supplier</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Total Qty</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Items</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>MRR Weight</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Weight</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Invoice Rate</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Basic Value</th>
-                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#d1d5db' }}>Actions</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>GE No</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>MRR No</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Firm</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Mode</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Entry Type</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Supplier</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Total Qty</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Items</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>MRR Weight</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Invoice Weight</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Invoice Rate</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Basic Value</th>
+                    <th style={{ fontSize: '11px', whiteSpace: 'nowrap', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4688,32 +4688,32 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   if (step === 12) {
     return (
-      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(216, 209, 196, 0.98)', backdropFilter: 'blur(12px)' }}>
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
         {userBadge}
         <div style={{ margin: 'auto', background: '#fff', padding: '40px', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', maxWidth: '500px', width: '90%', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '20px' }}>Select MRR Mode</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               className="btn main"
-              style={{ padding: '16px', background: '#27ae60' }}
+              style={{ padding: '16px', background: '#1d4ed8' }}
               onClick={() => {
                 setTempType('reel');
                 setPendingFilter('pending_mrr');
                 setStep(6);
               }}
             >
-              REEL MRR
+              REEL
             </button>
             <button
               className="btn main"
-              style={{ padding: '16px', background: '#27ae60' }}
+              style={{ padding: '16px', background: '#1d4ed8' }}
               onClick={() => {
                 setTempType('other');
                 setPendingFilter('pending_mrr');
                 setStep(6);
               }}
             >
-              OTHER MRR
+              OTHER
             </button>
             <button className="btn" onClick={() => setStep(3)}>Back</button>
           </div>
@@ -5154,7 +5154,7 @@ function App() {
   const computedPackingWeight = Number(packing.items.reduce((sum, row) => sum + n(row.net_wt), 0).toFixed(2));
   const computedPackingWeightText = String(computedPackingWeight);
   const isOtherMrr = String(mrrType || '').trim().toLowerCase() === 'other';
-  const currentModeLabel = isOtherMrr ? 'OTHER MRR' : 'REEL MRR';
+  const currentModeLabel = isOtherMrr ? 'OTHER' : 'REEL';
   const invoiceBasicValue = Number(invoice.goods.reduce((sum, row) => sum + (n(row.amount) || (n(row.weight) * n(row.rate))), 0).toFixed(2));
   const mrrBasicValue = isOtherMrr
     ? Number(invoice.goods.reduce((sum, row) => sum + (n(row.rate) * n(row.weight)), 0).toFixed(2))
@@ -5166,8 +5166,8 @@ function App() {
   const isApprovalMode = ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'].includes(approvalStage);
   const approvalMrrType = String(geData?.mrr_type || mrrType || '').trim().toLowerCase();
   const approvalEntryType = normalizeOtherMrrEntryType(geData?.mrr_entry_type || invoice.mrr_entry_type || '').toLowerCase();
-  // Shown/required in UI only for REEL MRR approvals when weight diff > 40 kg.
-  // OTHER MRR "Rejection" requires Debit Note only when rejecting (validated on reject click).
+  // Shown/required in UI only for REEL approvals when weight diff > 40 kg.
+  // OTHER "Rejection" requires Debit Note only when rejecting (validated on reject click).
   const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && (approvalMrrType === 'reel' && accountsWeightDifference > 40);
   const shouldRequireAccountsDebitNoteForDecision = (decision) => {
     if (approvalStage !== 'pending_accounts_approval') return false;
@@ -6032,7 +6032,7 @@ function App() {
       if (!String(accountsDebitNote || '').trim() || !String(accountsDebitNoteDate || '').trim() || !String(accountsDebitNoteAmount || '').trim()) {
         showPopup(
           approvalMrrType === 'other'
-            ? 'Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER MRR Rejection.'
+            ? 'Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER Rejection.'
             : 'Debit Note, Debit Note Date, and Debit Note Amount are required when weight difference is more than 40 kg.',
           'error'
         );
@@ -6188,7 +6188,7 @@ function App() {
       return false;
     }
     if (isOtherMrr && !String(invoice.mrr_entry_type || '').trim()) {
-      const errorMessage = 'MRR TYPE is required for OTHER MRR.';
+      const errorMessage = 'MRR TYPE is required for OTHER.';
       setStatus(errorMessage);
       showPopup(errorMessage, 'error');
       return false;
@@ -6428,7 +6428,7 @@ function App() {
 
   const downloadLabelFromCurrentScreen = async () => {
     if (isOtherMrr) {
-      showPopup('Labels are not available for OTHER MRR.', 'error');
+      showPopup('Labels are not available for OTHER.', 'error');
       return;
     }
     const mrrNumber = String(lastSavedRecord?.mrrNumber || invoice.mrr_no || packing.mrr_no || '').trim();
@@ -7004,8 +7004,8 @@ function App() {
                 title={canChangePageMode ? 'Change current MRR mode' : 'Mode can only be changed for a fresh editable MRR draft'}
                 style={{ border: '1px solid #a8a8a8', padding: '4px 8px', fontSize: '11px', fontWeight: 700, background: canChangePageMode ? '#fff' : '#f5f5f5', minWidth: '92px' }}
               >
-                <option value="reel">REEL MRR</option>
-                <option value="other">OTHER MRR</option>
+                <option value="reel">REEL</option>
+                <option value="other">OTHER</option>
               </select>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)' }}>Firm:</span>
               <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, border: '1px solid #a8a8a8', background: '#f5f5f5', minWidth: '68px', textAlign: 'center' }}>
@@ -7213,7 +7213,7 @@ function App() {
           <section className="doc">
             <div className="sectionHead">
               <div>
-                  <h2>MRR Entry{isOtherMrr ? ' (OTHER MRR)' : ''}</h2>
+                  <h2>MRR Entry{isOtherMrr ? ' (OTHER)' : ''}</h2>
               </div>
             </div>
             <div className="sheet">
@@ -7537,7 +7537,7 @@ function App() {
                     </>
                   : <>
                       <button className="btn" disabled={isSaving || isDataEntryLocked} onClick={addInvoiceRow}>+ Add Row</button>
-                      <button className="btn main" disabled={isSaving || isDataEntryLocked} onClick={() => saveAllData({ goToMenuAfterSuccess: false })}>{isSavingInvoice ? 'Saving...' : 'Save OTHER MRR'}</button>
+                      <button className="btn main" disabled={isSaving || isDataEntryLocked} onClick={() => saveAllData({ goToMenuAfterSuccess: false })}>{isSavingInvoice ? 'Saving...' : 'Save OTHER'}</button>
                     </>
               )}
             </div>
@@ -7761,32 +7761,34 @@ function App() {
             right: 0,
             bottom: 0,
             zIndex: 9999,
-            background: 'rgba(255,255,255,0.98)',
-            borderTop: '1px solid #d1d5db',
-            boxShadow: '0 -8px 18px rgba(0,0,0,0.06)',
+            background: '#1d4ed8',
+            borderTop: '1px solid #1d4ed8',
+            boxShadow: '0 -8px 18px rgba(0,0,0,0.1)',
             padding: '8px 10px'
           }}
         >
           <div style={{ maxWidth: 980, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted)' }}>Mode:</span>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#fff' }}>Mode:</span>
             <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 type="button"
-                className={mrrType === 'reel' ? 'btn main small' : 'btn small'}
+                className={mrrType === 'reel' ? 'btn small' : 'btn small'}
                 disabled={!canChangePageMode}
-                title={canChangePageMode ? 'Switch to REEL MRR' : 'Mode can only be changed for a fresh editable MRR draft'}
+                title={canChangePageMode ? 'Switch to REEL' : 'Mode can only be changed for a fresh editable MRR draft'}
+                style={{ background: mrrType === 'reel' ? '#fff' : 'transparent', color: mrrType === 'reel' ? '#1d4ed8' : '#fff', borderColor: '#fff' }}
                 onClick={() => handlePageModeChange('reel')}
               >
-                REEL MRR
+                REEL
               </button>
               <button
                 type="button"
-                className={mrrType === 'other' ? 'btn main small' : 'btn small'}
+                className={mrrType === 'other' ? 'btn small' : 'btn small'}
                 disabled={!canChangePageMode}
-                title={canChangePageMode ? 'Switch to OTHER MRR' : 'Mode can only be changed for a fresh editable MRR draft'}
+                title={canChangePageMode ? 'Switch to OTHER' : 'Mode can only be changed for a fresh editable MRR draft'}
+                style={{ background: mrrType === 'other' ? '#fff' : 'transparent', color: mrrType === 'other' ? '#1d4ed8' : '#fff', borderColor: '#fff' }}
                 onClick={() => handlePageModeChange('other')}
               >
-                OTHER MRR
+                OTHER
               </button>
             </div>
           </div>

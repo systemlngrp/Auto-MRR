@@ -422,7 +422,7 @@ export default function PoDetailsPage({
 
   if (view === 'form') {
     return (
-      <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '40px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '840px', padding: '40px' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -659,7 +659,7 @@ export default function PoDetailsPage({
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px' }}>
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
@@ -720,9 +720,9 @@ export default function PoDetailsPage({
             <thead>
               <tr>
                 {activeColumns.map(([key, label, width]) => (
-                  <th key={key} style={{ width, fontSize: '12px' }}>{label}</th>
+                  <th key={key} style={{ width, fontSize: '12px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>{label}</th>
                 ))}
-                <th style={{ width: '150px', fontSize: '12px' }}>Actions</th>
+                <th style={{ width: '150px', fontSize: '12px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold' }}>Actions</th>
               </tr>
             </thead>
             <tbody>

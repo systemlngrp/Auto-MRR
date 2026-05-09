@@ -108,7 +108,7 @@ export default function PurchaseRequestsPage({
   const [view, setView] = useState('list'); // list | form
   const [formData, setFormData] = useState(blankPr());
   const [items, setItems] = useState([blankItemRow()]);
-  const [itemMasterType, setItemMasterType] = useState('mrr'); // mrr | other (for dropdown)
+  const [itemMasterType, setItemMasterType] = useState('reel'); // reel | other (for dropdown)
   const [itemMaster, setItemMaster] = useState([]);
   const [lastPurchaseByKey, setLastPurchaseByKey] = useState({});
   const [errors, setErrors] = useState({});
@@ -423,14 +423,14 @@ export default function PurchaseRequestsPage({
 
   if (view === 'form') {
     const locked = String(formData.status || 'pending') !== 'pending' && !isApproveMode;
-    const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'mrr') === itemMasterType && String(it?.active || '1') !== '0');
-    const showErp = itemMasterType === 'mrr';
+    const itemOptions = itemMaster.filter((it) => (String(it?.item_type || 'reel') === itemMasterType || (itemMasterType === 'reel' && String(it?.item_type) === 'mrr')) && String(it?.active || '1') !== '0');
+    const showErp = itemMasterType === 'reel' || itemMasterType === 'mrr';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `pr-item-names-${itemMasterType}`;
     const busy = isSaving || isLoading;
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', paddingBottom: '96px', overflowY: 'auto' }}>
+      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
         {busy ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
@@ -439,7 +439,7 @@ export default function PurchaseRequestsPage({
         <div style={{ width: '100%', maxWidth: 'none', margin: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.pr_no ? `Indent - ${formData.pr_no}` : 'New Indent'}</div>
+              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#1d4ed8' }}>{formData.pr_no ? `Indent - ${formData.pr_no}` : 'New Indent'}</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -452,11 +452,11 @@ export default function PurchaseRequestsPage({
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requested By{requiredMark}</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Requested By{requiredMark}</div>
               <input disabled value={formData.requested_by} style={{ ...inputStyle('requested_by'), background: '#f9fafb' }} />
             </div>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requisition Date{requiredMark}</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Requisition Date{requiredMark}</div>
               <input
                 type="date"
                 disabled={locked}
@@ -466,7 +466,7 @@ export default function PurchaseRequestsPage({
               />
             </div>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Required Date{requiredMark}</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Required Date{requiredMark}</div>
               <input
                 type="date"
                 disabled={locked}
@@ -476,7 +476,7 @@ export default function PurchaseRequestsPage({
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Remark</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Remark</div>
               <input disabled={locked} value={formData.remark} onChange={(e) => setFormData((p) => ({ ...p, remark: e.target.value }))} style={inputStyle('remark')} />
             </div>
           </div>
@@ -489,16 +489,16 @@ export default function PurchaseRequestsPage({
                   disabled={locked}
                   value={itemMasterType}
                   onChange={(e) => {
-                    const nextType = String(e.target.value || 'mrr');
+                    const nextType = String(e.target.value || 'reel');
                     setItemMasterType(nextType);
-                    if (nextType !== 'mrr') {
+                    if (nextType !== 'reel' && nextType !== 'mrr') {
                       setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
                     }
                   }}
                   style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #ffffff80', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111', height: '34px' }}
                 >
-                  <option value="mrr">MRR</option>
-                  <option value="other">Other MRR</option>
+                  <option value="reel">Reel</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
             </div>
@@ -506,18 +506,18 @@ export default function PurchaseRequestsPage({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                    {showErp ? <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>ERP{requiredMark}</th> : null}
-                    {!locked ? <th style={{ width: '46px', padding: '6px 6px', borderBottom: '1px solid #1d4ed8' }} /> : null}
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Item{requiredMark}</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Description</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Unit</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Qty{requiredMark}</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Rate</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Date</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Rate</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Remark</th>
-                    {!locked ? <th style={{ padding: '6px 10px', borderBottom: '1px solid #1d4ed8' }} /> : null}
+                    {showErp ? <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>ERP{requiredMark}</th> : null}
+                    {!locked ? <th style={{ width: '46px', padding: '6px 6px', borderBottom: '1px solid #000' }} /> : null}
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Item{requiredMark}</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Unit</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Qty{requiredMark}</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Rate</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Date</th>
+                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Rate</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Remark</th>
+                    {!locked ? <th style={{ padding: '6px 10px', borderBottom: '1px solid #000' }} /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -640,13 +640,11 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
         {!locked ? (
-          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#1d4ed8', color: '#fff', padding: '8px 18px', zIndex: 10010, borderTop: '1px solid #1d4ed8', boxShadow: '0 -10px 30px rgba(0,0,0,0.12)' }}>
-            <div style={{ maxWidth: '1300px', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
-              <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#1d4ed8', borderRadius: '12px' }}>
-                {busy ? 'Saving...' : 'Save PR'}
-              </button>
-            </div>
+          <div style={{ marginTop: '14px', background: '#1d4ed8', color: '#fff', padding: '10px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
+            <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#000', borderRadius: '12px' }}>
+              {busy ? 'Saving...' : 'Save PR'}
+            </button>
           </div>
         ) : null}
       </div>
@@ -663,7 +661,7 @@ export default function PurchaseRequestsPage({
         fontWeight: 900,
         background: tab === key ? '#1d4ed8' : '#fff',
         borderColor: tab === key ? '#1d4ed8' : '#d1d5db',
-        color: tab === key ? '#fff' : '#111827'
+        color: tab === key ? '#fff' : '#1d4ed8'
       }}
     >
       {label}
@@ -683,7 +681,7 @@ export default function PurchaseRequestsPage({
         <div style={{ width: 'min(1300px, 100%)', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#111827' }}>{isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests'}</div>
+            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests'}</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -706,7 +704,7 @@ export default function PurchaseRequestsPage({
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>DATE RANGE</div>
+            <div style={{ fontSize: '12px', fontWeight: 1000, color: '#1d4ed8' }}>DATE RANGE</div>
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ ...inputStyle('search'), width: '160px', borderRadius: '10px' }} />
             <span style={{ fontSize: '12px', color: '#6b7280' }}>to</span>
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ ...inputStyle('search'), width: '160px', borderRadius: '10px' }} />
@@ -716,7 +714,7 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #1d4ed8', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 24px rgba(17, 24, 39, 0.06)' }}>
+        <div style={{ background: '#fff', border: '1px solid #000', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 24px rgba(17, 24, 39, 0.06)' }}>
           {status ? (
             <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
               {status}
@@ -753,7 +751,7 @@ export default function PurchaseRequestsPage({
                         : statusText === 'rejected'
                           ? '#fee2e2'
                           : '#f3f4f6',
-                    color: '#111827'
+                    color: '#1d4ed8'
                   };
                   return (
                       <tr
@@ -761,12 +759,12 @@ export default function PurchaseRequestsPage({
                         onClick={() => setSelectedPrNo(prNo)}
                         style={{ background: isSelected ? '#fee2e2' : '#fff', cursor: 'pointer' }}
                       >
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8', fontWeight: 1000, color: '#1d4ed8' }}>{prNo}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8' }}>{row.requested_by || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8' }}>{row.requisition_date || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8' }}>{row.required_date || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', fontWeight: 1000, color: '#000' }}>{prNo}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.requested_by || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.requisition_date || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.required_date || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
                           {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
                             <>
@@ -833,17 +831,17 @@ export default function PurchaseRequestsPage({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(245, 247, 251, 0.92)',
+            background: '#1d4ed8',
             backdropFilter: 'blur(6px)',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid #1d4ed8',
             padding: '10px 18px',
             zIndex: 10010
           }}
         >
           <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Selected: <span style={{ color: '#111827', fontWeight: 800 }}>{selectedPrNo}</span></div>
+            <div style={{ fontSize: '12px', color: '#fff' }}>Selected: <span style={{ color: '#fff', fontWeight: 800 }}>{selectedPrNo}</span></div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800 }}>Clear</button>
+              <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800, background: '#fff', color: '#1d4ed8' }}>Clear</button>
             </div>
           </div>
         </div>

@@ -160,7 +160,7 @@ export default function GateEntryPage({
   const labelStyle = {
     fontSize: '13px',
     fontWeight: '700',
-    color: '#374151',
+    color: '#1d4ed8',
     marginBottom: '6px',
     display: 'block'
   };
@@ -186,7 +186,7 @@ export default function GateEntryPage({
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'rgba(216, 209, 196, 0.98)', overflowY: 'auto', padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', overflowY: 'auto', padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '700px', padding: '40px' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
