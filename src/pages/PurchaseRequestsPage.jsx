@@ -61,6 +61,14 @@ function getRowDepartment(row) {
   ).trim();
 }
 
+function inferPrNoFromPoNo(poNo) {
+  const text = String(poNo || '').trim();
+  if (!text) return '';
+  if (/^PO\b/i.test(text)) return text.replace(/^PO\b/i, 'PR');
+  if (/^PO-/i.test(text)) return text.replace(/^PO-/i, 'PR-');
+  return '';
+}
+
 export default function PurchaseRequestsPage({
   selectedFirm,
   deps,
@@ -116,8 +124,8 @@ export default function PurchaseRequestsPage({
         const pos = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
         map = {};
         (Array.isArray(pos) ? pos : []).forEach((row) => {
-          const prNo = String(row?.pr_no || '').trim();
           const poNo = String(row?.po_no || '').trim();
+          const prNo = String(row?.pr_no || '').trim() || inferPrNoFromPoNo(poNo);
           if (prNo && poNo && !map[prNo]) map[prNo] = poNo;
         });
       }

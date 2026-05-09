@@ -51,6 +51,14 @@ function isoToDdmmyyyy(value) {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+function inferPrNoFromPoNo(poNo) {
+  const text = String(poNo || '').trim();
+  if (!text) return '';
+  if (/^PO\b/i.test(text)) return text.replace(/^PO\b/i, 'PR');
+  if (/^PO-/i.test(text)) return text.replace(/^PO-/i, 'PR-');
+  return '';
+}
+
 export default function PurchaseOrdersPage({
   selectedFirm,
   deps,
@@ -107,7 +115,10 @@ export default function PurchaseOrdersPage({
         const prs = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
         const poPrNoSet = new Set(
           nextPos
-            .map((row) => String(row?.pr_no || '').trim())
+            .map((row) => {
+              const poNo = String(row?.po_no || '').trim();
+              return String(row?.pr_no || '').trim() || inferPrNoFromPoNo(poNo);
+            })
             .filter(Boolean)
         );
         const approved = (Array.isArray(prs) ? prs : [])
