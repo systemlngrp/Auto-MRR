@@ -56,7 +56,9 @@ export default function PurchaseOrdersPage({
   deps,
   onBack,
   initialPrNo,
+  initialPoNo,
   onInitialPrConsumed,
+  onInitialPoConsumed,
   mode = 'make_po', // make_po | approve_po
   currentUser
 }) {
@@ -88,6 +90,7 @@ export default function PurchaseOrdersPage({
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const initialPrHandledRef = useRef('');
+  const initialPoHandledRef = useRef('');
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve_po';
@@ -162,6 +165,18 @@ export default function PurchaseOrdersPage({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrNo, selectedFirm]);
+
+  useEffect(() => {
+    const poNo = String(initialPoNo || '').trim();
+    if (!poNo || !selectedFirm) return;
+    if (initialPoHandledRef.current === poNo) return;
+    initialPoHandledRef.current = poNo;
+    (async () => {
+      await openEdit(poNo);
+      if (typeof onInitialPoConsumed === 'function') onInitialPoConsumed();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPoNo, selectedFirm]);
 
   const addSupplierQuick = async () => {
     if (!selectedFirm || !saveSupplierMaster) return;
@@ -583,7 +598,7 @@ export default function PurchaseOrdersPage({
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#111827' }}>{isApproveMode ? 'Approve PO' : 'Make PO'}</div>
+            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#111827' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -595,7 +610,7 @@ export default function PurchaseOrdersPage({
 
         {!isApproveMode ? (
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Approved Purchase Requests (Make PO)</div>
+            <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Approved Purchase Requests (PO)</div>
             <div style={{ marginTop: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {approvedPrs.length ? approvedPrs.map((pr) => (
                 <button key={pr.pr_no} type="button" className="btn small" onClick={() => openNewFromPr(pr.pr_no)}>

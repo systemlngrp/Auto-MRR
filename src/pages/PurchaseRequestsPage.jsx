@@ -56,6 +56,7 @@ export default function PurchaseRequestsPage({
   onBack,
   onOpenNewItem,
   onMakePoFromPr,
+  onOpenPoFromPr,
   mode = 'manage', // 'manage' | 'approve'
   currentUser
 }) {
@@ -64,6 +65,7 @@ export default function PurchaseRequestsPage({
     fetchLastPurchaseInfo,
     fetchPurchaseRequests,
     fetchPurchaseRequestDetails,
+    fetchPurchaseOrders,
     savePurchaseRequest,
     approvePurchaseRequest
   } = deps;
@@ -83,6 +85,7 @@ export default function PurchaseRequestsPage({
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [selectedPrNo, setSelectedPrNo] = useState('');
+  const [poByPrNo, setPoByPrNo] = useState({});
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve';
@@ -94,6 +97,18 @@ export default function PurchaseRequestsPage({
     try {
       const data = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
       setRows(Array.isArray(data) ? data : []);
+      if (fetchPurchaseOrders) {
+        const pos = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
+        const map = {};
+        (Array.isArray(pos) ? pos : []).forEach((row) => {
+          const prNo = String(row?.pr_no || '').trim();
+          const poNo = String(row?.po_no || '').trim();
+          if (prNo && poNo && !map[prNo]) map[prNo] = poNo;
+        });
+        setPoByPrNo(map);
+      } else {
+        setPoByPrNo({});
+      }
       setStatus('');
     } catch (err) {
       setStatus(err?.message || 'Could not load purchase requests.');
@@ -329,7 +344,7 @@ export default function PurchaseRequestsPage({
         <div style={{ width: '100%', maxWidth: 'none', margin: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.pr_no ? `Purchase Requisition - ${formData.pr_no}` : 'New Purchase Requisition'}</div>
+              <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.pr_no ? `Indent - ${formData.pr_no}` : 'New Indent'}</div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -622,7 +637,20 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
-                          {!isApproveMode && statusText === 'approved' && typeof onMakePoFromPr === 'function' ? (
+                          {!isApproveMode && statusText === 'approved' && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn small"
+                                onClick={(e) => { e.stopPropagation(); onOpenPoFromPr(poByPrNo[prNo], prNo); }}
+                                disabled={isSaving}
+                                style={{ background: '#7c3aed', borderColor: '#7c3aed', color: '#fff' }}
+                              >
+                                Open PO
+                              </button>{' '}
+                            </>
+                          ) : null}
+                          {!isApproveMode && statusText === 'approved' && !poByPrNo[prNo] && typeof onMakePoFromPr === 'function' ? (
                             <>
                               <button
                                 type="button"

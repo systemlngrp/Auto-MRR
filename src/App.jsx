@@ -2150,6 +2150,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
   const [itemMasterReturnStep, setItemMasterReturnStep] = useState(3);
   const [poPrefillPrNo, setPoPrefillPrNo] = useState('');
+  const [poPrefillPoNo, setPoPrefillPoNo] = useState('');
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
@@ -3396,25 +3397,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             {canSeeMenu('purchase_requests') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(14); }}>
                 <span style={sideIconStyle} />
-                <span>Purchase Requisition</span>
-              </button>
-            ) : null}
-            {canSeeMenu('purchase_approval') ? (
-              <button type="button" style={sideButtonStyle} onClick={() => { setStep(15); }}>
-                <span style={sideIconStyle} />
-                <span>Approval of Purchase</span>
+                <span>Indent</span>
               </button>
             ) : null}
             {canSeeMenu('make_po') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(16); }}>
                 <span style={sideIconStyle} />
-                <span>Make PO</span>
-              </button>
-            ) : null}
-            {canSeeMenu('approve_po') ? (
-              <button type="button" style={sideButtonStyle} onClick={() => { setStep(17); }}>
-                <span style={sideIconStyle} />
-                <span>Approve PO</span>
+                <span>PO</span>
               </button>
             ) : null}
             {canSeeMenu('suppliers') ? (
@@ -4726,6 +4715,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             setPoPrefillPrNo(String(prNo || '').trim());
             setStep(16);
           }}
+          onOpenPoFromPr={(poNo) => {
+            setPoPrefillPoNo(String(poNo || '').trim());
+            setStep(16);
+          }}
           onOpenNewItem={() => {
             setItemMasterReturnStep(14);
             setStep(13);
@@ -4735,6 +4728,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             fetchLastPurchaseInfo,
             fetchPurchaseRequests,
             fetchPurchaseRequestDetails,
+            fetchPurchaseOrders,
             savePurchaseRequest,
             approvePurchaseRequest
           }}
@@ -4779,7 +4773,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           currentUser={currentUser}
           mode="make_po"
           initialPrNo={poPrefillPrNo}
+          initialPoNo={poPrefillPoNo}
           onInitialPrConsumed={() => setPoPrefillPrNo('')}
+          onInitialPoConsumed={() => setPoPrefillPoNo('')}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
