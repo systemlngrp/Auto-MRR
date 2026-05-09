@@ -2291,12 +2291,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   };
   const isReelMrrType = (value) => String(value || '').trim().toLowerCase() === 'reel';
   const isOtherMrrEntryTypeRejection = (value) => String(value || '').trim().toLowerCase() === 'rejection';
+  // Debit Note inputs are shown/required only for REEL MRR approvals when weight diff > 40 kg.
+  // OTHER MRR "Rejection" requires Debit Note only when rejecting (handled at reject action).
   const isGroupedApprovalDebitNoteRequired = (row) => (
     String(row?.pending_stage || '').trim() === 'pending_accounts_approval' &&
-    (
-      (isReelMrrType(row?.mrr_type) && getGroupedApprovalWeightDifference(row) > 40) ||
-      (String(row?.mrr_type || '').trim().toLowerCase() === 'other' && isOtherMrrEntryTypeRejection(row?.mrr_entry_type))
-    )
+    isReelMrrType(row?.mrr_type) &&
+    getGroupedApprovalWeightDifference(row) > 40
   );
   const getGroupedApprovalDraft = (row) => {
     const rowKey = getGroupedApprovalRowKey(row);
@@ -5153,10 +5153,9 @@ function App() {
   const isApprovalMode = ['pending_plant_head_approval', 'pending_accounts_approval', 'pending_md_approval', 'pending_tally_posting'].includes(approvalStage);
   const approvalMrrType = String(geData?.mrr_type || mrrType || '').trim().toLowerCase();
   const approvalEntryType = normalizeOtherMrrEntryType(geData?.mrr_entry_type || invoice.mrr_entry_type || '').toLowerCase();
-  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && (
-    (approvalMrrType === 'reel' && accountsWeightDifference > 40) ||
-    (approvalMrrType === 'other' && approvalEntryType === 'rejection')
-  );
+  // Shown/required in UI only for REEL MRR approvals when weight diff > 40 kg.
+  // OTHER MRR "Rejection" requires Debit Note only when rejecting (validated on reject click).
+  const shouldRequireAccountsDebitNote = approvalStage === 'pending_accounts_approval' && (approvalMrrType === 'reel' && accountsWeightDifference > 40);
   const shouldRequireAccountsDebitNoteForDecision = (decision) => {
     if (approvalStage !== 'pending_accounts_approval') return false;
     if (approvalMrrType === 'reel') return decision === 'approve' && accountsWeightDifference > 40;

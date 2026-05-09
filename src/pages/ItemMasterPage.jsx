@@ -353,7 +353,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ margin: 0, fontSize: '26px', fontWeight: 1000, color: '#111827' }}>Item Master</div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
+            <div style={{ marginTop: '4px', fontSize: '14px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
@@ -364,25 +364,25 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
               {isLoading ? 'Loading...' : `Items: ${filteredItems.length}`}
             </div>
-            {status ? <div style={{ fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
+            {status ? <div style={{ fontSize: '14px', color: '#6b7280' }}>{status}</div> : null}
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>ERP Code</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item Name</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Size</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>GSM</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>BF</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Active</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Action</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>ERP Code</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Item Name</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Size</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>GSM</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>BF</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Unit</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Active</th>
+                  <th style={{ textAlign: 'right', padding: '12px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '14px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
