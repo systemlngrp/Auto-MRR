@@ -79,6 +79,9 @@ export default function PurchaseRequestsPage({
   deps,
   onBack,
   onOpenNewItem,
+  createdItem,
+  createdItemContext,
+  onCreatedItemConsumed,
   onMakePoFromPr,
   onOpenPoFromPr,
   mode = 'manage', // 'manage' | 'approve'
@@ -156,6 +159,50 @@ export default function PurchaseRequestsPage({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm]);
+
+  useEffect(() => {
+    if (!createdItem || !createdItemContext) return;
+    const ctx = createdItemContext || {};
+    if (ctx?.source !== 'purchase_request_item') return;
+    const rowIndex = Number(ctx?.rowIndex);
+    if (!Number.isFinite(rowIndex) || rowIndex < 0) return;
+    const type = String(ctx?.itemType || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr';
+    const savedType = String(createdItem?.item_type || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr';
+    if (type !== savedType) return;
+
+    setItemMasterType(type);
+    setItems((prev) => {
+      const next = [...prev];
+      const row = { ...(next[rowIndex] || blankItemRow()) };
+      if (type === 'mrr') {
+        row.erp_code = String(createdItem?.erp_code || '').trim();
+        row.item_name = String(createdItem?.item_name || '').trim();
+        if (!String(row.description || '').trim()) row.description = String(createdItem?.item_name || '').trim();
+        if (!String(row.unit || '').trim()) row.unit = String(createdItem?.unit || 'PCS').trim();
+      } else {
+        row.item_name = String(createdItem?.item_name || '').trim();
+        if (!String(row.description || '').trim()) row.description = String(createdItem?.item_name || '').trim();
+        if (!String(row.unit || '').trim()) row.unit = String(createdItem?.unit || 'PCS').trim();
+      }
+      next[rowIndex] = row;
+      return next;
+    });
+    hydrateLastPurchase(rowIndex, type === 'mrr' ? String(createdItem?.erp_code || '').trim() : String(createdItem?.item_name || '').trim());
+
+    // refresh item master list so the new item appears in dropdowns/datalist
+    (async () => {
+      if (!selectedFirm || !fetchItems) return;
+      try {
+        const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
+        setItemMaster(Array.isArray(data) ? data : []);
+      } catch {
+        setItemMaster([]);
+      }
+    })();
+
+    if (typeof onCreatedItemConsumed === 'function') onCreatedItemConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createdItem, createdItemContext]);
 
   useEffect(() => {
     async function loadItems() {
@@ -514,7 +561,7 @@ export default function PurchaseRequestsPage({
                             title="New Item"
                             aria-label="New Item"
                             onClick={() => {
-                              if (typeof onOpenNewItem === 'function') onOpenNewItem();
+                              if (typeof onOpenNewItem === 'function') onOpenNewItem({ source: 'purchase_request_item', rowIndex: idx, itemType: itemMasterType });
                             }}
                             style={{ width: '28px', height: '28px', borderRadius: '999px', fontWeight: 1000, padding: 0, lineHeight: '28px' }}
                           >

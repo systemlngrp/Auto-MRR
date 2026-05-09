@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 function buildMrrItemName(erp, size, unit, gsm, bf) {
   const erpText = String(erp || '').trim();
@@ -14,8 +14,11 @@ function buildMrrItemName(erp, size, unit, gsm, bf) {
   return `${erpText}${rhs ? ` - ${rhs}` : ''}`.trim();
 }
 
-export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
+export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItemType = '', onSaved }) {
   const { fetchItems, saveItems } = deps;
+  const autoOpenNew = Boolean(String(initialItemType || '').trim());
+  const requestedItemType = String(initialItemType || '').trim().toLowerCase() === 'other' ? 'other' : String(initialItemType || '').trim() ? 'mrr' : '';
+  const autoOpenedRef = useRef(false);
 
   const digitsOnly = (value) => String(value || '').replace(/[^\d]/g, '');
   const decimalOnly = (value) => {
@@ -26,7 +29,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
   };
 
   const blankItem = () => ({
-    item_type: 'mrr', // 'mrr' | 'other'
+    item_type: String(initialItemType || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr', // 'mrr' | 'other'
     erp_code: '',
     item_name: '',
     size: '',
@@ -61,13 +64,16 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
 
   const filteredItems = useMemo(() => {
     const query = String(search || '').trim().toLowerCase();
-    if (!query) return items;
-    return items.filter((item) => {
+    const typeFiltered = requestedItemType
+      ? items.filter((item) => String(item?.item_type || 'mrr').trim().toLowerCase() === requestedItemType)
+      : items;
+    if (!query) return typeFiltered;
+    return typeFiltered.filter((item) => {
       const code = String(item?.erp_code || '').toLowerCase();
       const name = String(item?.item_name || '').toLowerCase();
       return code.includes(query) || name.includes(query);
     });
-  }, [items, search]);
+  }, [items, search, requestedItemType]);
 
   useEffect(() => {
     async function loadItems() {
@@ -126,6 +132,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
     setView('form');
   };
 
+  useEffect(() => {
+    if (!autoOpenNew) return;
+    if (autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    openNew();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
+
   const openEdit = (index) => {
     const row = items[index] || {};
     setEditingIndex(index);
@@ -176,7 +190,16 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack }) {
       const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
       setItems(Array.isArray(data) ? data : []);
       setStatus('Saved.');
-      setView('list');
+      if (typeof onSaved === 'function') {
+        try {
+          onSaved(payload);
+        } catch {
+          // ignore
+        }
+        onBack?.();
+      } else {
+        setView('list');
+      }
     } catch (err) {
       setStatus(err?.message || 'Could not save item.');
     } finally {

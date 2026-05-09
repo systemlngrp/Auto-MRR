@@ -2151,6 +2151,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [itemMasterReturnStep, setItemMasterReturnStep] = useState(3);
   const [poPrefillPrNo, setPoPrefillPrNo] = useState('');
   const [poPrefillPoNo, setPoPrefillPoNo] = useState('');
+  const [itemMasterCreateContext, setItemMasterCreateContext] = useState(null);
+  const [lastCreatedItem, setLastCreatedItem] = useState(null);
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
@@ -4726,9 +4728,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         <ItemMasterPage
           selectedFirm={tempFirm}
+          initialItemType={String(itemMasterCreateContext?.itemType || '').trim()}
           deps={{
             fetchItems,
             saveItems
+          }}
+          onSaved={(item) => {
+            setLastCreatedItem(item || null);
           }}
           onBack={() => setStep(itemMasterReturnStep || 3)}
         />
@@ -4752,9 +4758,16 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             setPoPrefillPoNo(String(poNo || '').trim());
             setStep(16);
           }}
-          onOpenNewItem={() => {
+          onOpenNewItem={(ctx) => {
             setItemMasterReturnStep(14);
+            setItemMasterCreateContext(ctx || null);
             setStep(13);
+          }}
+          createdItem={lastCreatedItem}
+          createdItemContext={itemMasterCreateContext}
+          onCreatedItemConsumed={() => {
+            setLastCreatedItem(null);
+            setItemMasterCreateContext(null);
           }}
           deps={{
             fetchItems,
