@@ -2149,6 +2149,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const isAdmin = currentUserRoleText === 'admin';
   const [step, setStep] = useState(() => getOverlayBootStep(menuBootConfig, isAuthenticated, initialFirm));
   const [itemMasterReturnStep, setItemMasterReturnStep] = useState(3);
+  const [poPrefillPrNo, setPoPrefillPrNo] = useState('');
   const [tempFirm, setTempFirm] = useState(initialFirm);
   const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
@@ -4721,6 +4722,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="manage"
+          onMakePoFromPr={(prNo) => {
+            setPoPrefillPrNo(String(prNo || '').trim());
+            setStep(16);
+          }}
           onOpenNewItem={() => {
             setItemMasterReturnStep(14);
             setStep(13);
@@ -4773,6 +4778,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="make_po"
+          initialPrNo={poPrefillPrNo}
+          onInitialPrConsumed={() => setPoPrefillPrNo('')}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,

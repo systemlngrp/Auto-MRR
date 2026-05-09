@@ -55,6 +55,7 @@ export default function PurchaseRequestsPage({
   deps,
   onBack,
   onOpenNewItem,
+  onMakePoFromPr,
   mode = 'manage', // 'manage' | 'approve'
   currentUser
 }) {
@@ -621,13 +622,26 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
+                          {!isApproveMode && statusText === 'approved' && typeof onMakePoFromPr === 'function' ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn small"
+                                onClick={(e) => { e.stopPropagation(); onMakePoFromPr(prNo); }}
+                                disabled={isSaving}
+                                style={{ background: '#f97316', borderColor: '#f97316', color: '#fff' }}
+                              >
+                                Make PO
+                              </button>{' '}
+                            </>
+                          ) : null}
                           {statusText === 'pending' ? (
                             <>
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'approve'); }} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'reject'); }} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
                             </>
                           ) : null}
-                      </td>
+                        </td>
                     </tr>
                   );
                 })}

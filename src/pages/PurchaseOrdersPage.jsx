@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const blankItemRow = () => ({
   supplier: '',
@@ -55,6 +55,8 @@ export default function PurchaseOrdersPage({
   selectedFirm,
   deps,
   onBack,
+  initialPrNo,
+  onInitialPrConsumed,
   mode = 'make_po', // make_po | approve_po
   currentUser
 }) {
@@ -85,6 +87,7 @@ export default function PurchaseOrdersPage({
   const [items, setItems] = useState([blankItemRow()]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const initialPrHandledRef = useRef('');
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve_po';
@@ -147,6 +150,18 @@ export default function PurchaseOrdersPage({
     }
     loadSuppliers();
   }, [fetchSuppliers, selectedFirm]);
+
+  useEffect(() => {
+    const prNo = String(initialPrNo || '').trim();
+    if (!prNo || !selectedFirm) return;
+    if (initialPrHandledRef.current === prNo) return;
+    initialPrHandledRef.current = prNo;
+    (async () => {
+      await openNewFromPr(prNo);
+      if (typeof onInitialPrConsumed === 'function') onInitialPrConsumed();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrNo, selectedFirm]);
 
   const addSupplierQuick = async () => {
     if (!selectedFirm || !saveSupplierMaster) return;
