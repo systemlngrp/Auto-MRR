@@ -406,8 +406,8 @@ export default function PurchaseOrdersPage({
     const itemNameListId = `po-item-names-${itemType}`;
     const supplierListId = 'po-suppliers';
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
-        <div style={{ width: 'min(1100px, 100%)', margin: '0 auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
+      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: 0, overflowY: 'auto' }}>
+        <div style={{ width: '100%', margin: 0, background: '#fff', border: 0, borderRadius: 0, padding: '18px', minHeight: '100vh', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.po_no ? `Purchase Order - ${formData.po_no}` : 'New Purchase Order'}</div>
