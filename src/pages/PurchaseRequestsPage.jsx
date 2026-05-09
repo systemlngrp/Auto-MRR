@@ -716,21 +716,22 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>{isLoading ? 'Loading...' : `Showing ${filteredRows.length} entries`}</div>
-            {status ? <div style={{ fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
-          </div>
+        <div style={{ background: '#fff', border: '1px solid #1d4ed8', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 24px rgba(17, 24, 39, 0.06)' }}>
+          {status ? (
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
+              {status}
+            </div>
+          ) : null}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px', border: '1px solid #1d4ed8' }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderRight: '1px solid #ffffff33' }}>PR</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderRight: '1px solid #ffffff33' }}>Requested By</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderRight: '1px solid #ffffff33' }}>Requisition Date</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderRight: '1px solid #ffffff33' }}>Required Date</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', borderRight: '1px solid #ffffff33' }}>Status</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>PR</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Requested By</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Requisition Date</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Required Date</th>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Status</th>
+                  <th style={{ textAlign: 'right', padding: '12px 12px', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -810,6 +811,16 @@ export default function PurchaseRequestsPage({
                 ) : null}
               </tbody>
             </table>
+          </div>
+          <div style={{ padding: '10px 12px', borderTop: '1px solid #1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+              {filteredRows.length ? `Showing 1 to ${filteredRows.length} of ${filteredRows.length} entries` : 'Showing 0 entries'}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button type="button" className="btn small" disabled style={{ padding: '6px 10px', fontWeight: 900, opacity: 0.55 }}>{'<'}</button>
+              <button type="button" className="btn small" style={{ padding: '6px 10px', fontWeight: 1000, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff' }}>1</button>
+              <button type="button" className="btn small" disabled style={{ padding: '6px 10px', fontWeight: 900, opacity: 0.55 }}>{'>'}</button>
+            </div>
           </div>
         </div>
         </div>
