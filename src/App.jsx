@@ -3882,6 +3882,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                       if (String(ge.pending_stage || activeStage.key).trim() === 'pending_md_approval' && !String(approvalDraft.md_approval_remark || '').trim()) {
                                         throw new Error(`MD Approval Remark is required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
                                       }
+                                      if (String(ge.pending_stage || activeStage.key).trim() === 'pending_accounts_approval') {
+                                        const geMrrType = String(ge?.mrr_type || '').trim().toLowerCase();
+                                        const geEntryType = normalizeOtherMrrEntryType(ge?.mrr_entry_type || '').toLowerCase();
+                                        if (geMrrType === 'other' && geEntryType === 'rejection') {
+                                          if (!approvalDraft.debit_note || !approvalDraft.debit_note_date || !approvalDraft.debit_note_amount) {
+                                            throw new Error(`Debit Note, Debit Note Date, and Debit Note Amount are required for ${ge.mrr_number || ge.mrr_no || 'this MRR'}.`);
+                                          }
+                                          const mrrDate = firstFilled(ge?.date, ge?.entry_date, '');
+                                          const cmp = compareInputDates(approvalDraft.debit_note_date, mrrDate);
+                                          if (cmp !== null && cmp <= 0) {
+                                            throw new Error('Debit Note Date must be greater than MRR Date.');
+                                          }
+                                        }
+                                      }
                                       setApprovingPendingKey(rowKey);
                                       await approvePendingStage({
                                         decision: 'reject',
@@ -4229,6 +4243,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     let plantHeadRemarkInput = '';
                                     let accountsRemarkInput = '';
                                     let mdRemarkInput = '';
+                                    let debitNoteInput = '';
+                                    let debitNoteDateInput = '';
+                                    let debitNoteAmountInput = '';
                                     if (pendingFilter === 'pending_plant_head_approval') {
                                       plantHeadRemarkInput = window.prompt('Enter Plant Head Reject Remark') || '';
                                       if (!String(plantHeadRemarkInput).trim()) throw new Error('Plant Head Remark is required for rejection.');
@@ -4236,6 +4253,19 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                     if (pendingFilter === 'pending_accounts_approval') {
                                       accountsRemarkInput = window.prompt('Enter Accounts Reject Remark') || '';
                                       if (!String(accountsRemarkInput).trim()) throw new Error('Accounts Remark is required for rejection.');
+                                      const geMrrType = String(ge?.mrr_type || '').trim().toLowerCase();
+                                      const geEntryType = normalizeOtherMrrEntryType(ge?.mrr_entry_type || '').toLowerCase();
+                                      if (geMrrType === 'other' && geEntryType === 'rejection') {
+                                        debitNoteInput = window.prompt('Enter Debit Note') || '';
+                                        debitNoteDateInput = window.prompt('Enter Debit Note Date (DD/MM/YYYY)') || '';
+                                        debitNoteAmountInput = window.prompt('Enter Debit Note Amount') || '';
+                                        if (!String(debitNoteInput).trim() || !String(debitNoteDateInput).trim() || !String(debitNoteAmountInput).trim()) {
+                                          throw new Error('Debit Note, Debit Note Date, and Debit Note Amount are required for OTHER MRR Rejection.');
+                                        }
+                                        const mrrDate = firstFilled(ge?.date, ge?.entry_date, '');
+                                        const cmp = compareInputDates(debitNoteDateInput, mrrDate);
+                                        if (cmp !== null && cmp <= 0) throw new Error('Debit Note Date must be greater than MRR Date.');
+                                      }
                                     }
                                     if (pendingFilter === 'pending_md_approval') {
                                       mdRemarkInput = window.prompt('Enter MD Reject Remark') || '';
@@ -4251,6 +4281,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                       plantHeadRemark: plantHeadRemarkInput,
                                       accountsRemark: accountsRemarkInput,
                                       mdApprovalRemark: mdRemarkInput,
+                                      debitNote: debitNoteInput,
+                                      debitNoteDate: debitNoteDateInput,
+                                      debitNoteAmount: debitNoteAmountInput,
                                       mrrSheetName: getSheetName(tempFirm.mrr, tempType),
                                       helperSheetName: getSheetName(tempFirm.helper, tempType),
                                       spreadsheetId: tempFirm?.spreadsheetId,
@@ -5124,6 +5157,12 @@ function App() {
     (approvalMrrType === 'reel' && accountsWeightDifference > 40) ||
     (approvalMrrType === 'other' && approvalEntryType === 'rejection')
   );
+  const shouldRequireAccountsDebitNoteForDecision = (decision) => {
+    if (approvalStage !== 'pending_accounts_approval') return false;
+    if (approvalMrrType === 'reel') return decision === 'approve' && accountsWeightDifference > 40;
+    if (approvalMrrType === 'other' && approvalEntryType === 'rejection') return decision === 'reject';
+    return false;
+  };
   const isDataEntryLocked = isApprovalMode || isMrrSavedLocked;
   const canChangePageMode = !!selectedFirm && !isApprovalMode && !isMrrSavedLocked;
   const showBottomModeSwitch = false;
@@ -5977,7 +6016,7 @@ function App() {
       showPopup('MRR No. missing for approval.', 'error');
       return;
     }
-    if (decision === 'approve' && shouldRequireAccountsDebitNote) {
+    if (shouldRequireAccountsDebitNoteForDecision(decision)) {
       if (!String(accountsDebitNote || '').trim() || !String(accountsDebitNoteDate || '').trim() || !String(accountsDebitNoteAmount || '').trim()) {
         showPopup(
           approvalMrrType === 'other'

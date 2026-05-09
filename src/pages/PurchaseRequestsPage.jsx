@@ -96,19 +96,28 @@ export default function PurchaseRequestsPage({
     setStatus('Loading purchase requests...');
     try {
       const data = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
-      setRows(Array.isArray(data) ? data : []);
+      const rawRows = Array.isArray(data) ? data : [];
+      let map = {};
       if (fetchPurchaseOrders) {
         const pos = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
-        const map = {};
+        map = {};
         (Array.isArray(pos) ? pos : []).forEach((row) => {
           const prNo = String(row?.pr_no || '').trim();
           const poNo = String(row?.po_no || '').trim();
           if (prNo && poNo && !map[prNo]) map[prNo] = poNo;
         });
-        setPoByPrNo(map);
-      } else {
-        setPoByPrNo({});
       }
+      setPoByPrNo(map);
+      setRows(
+        rawRows.map((row) => {
+          const prNo = String(row?.pr_no || '').trim();
+          const statusText = String(row?.status || '').toLowerCase();
+          if (statusText === 'approved' && prNo && map[prNo]) {
+            return { ...row, status: 'complete' };
+          }
+          return row;
+        })
+      );
       setStatus('');
     } catch (err) {
       setStatus(err?.message || 'Could not load purchase requests.');
@@ -621,7 +630,13 @@ export default function PurchaseRequestsPage({
                     fontSize: '11px',
                     fontWeight: 900,
                     border: '1px solid #e5e7eb',
-                    background: statusText === 'approved' ? '#e0f2fe' : statusText === 'rejected' ? '#fee2e2' : '#f3f4f6',
+                    background: statusText === 'approved'
+                      ? '#e0f2fe'
+                      : statusText === 'complete'
+                        ? '#dcfce7'
+                        : statusText === 'rejected'
+                          ? '#fee2e2'
+                          : '#f3f4f6',
                     color: '#111827'
                   };
                   return (
@@ -637,7 +652,7 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
-                          {!isApproveMode && statusText === 'approved' && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
+                          {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
                             <>
                               <button
                                 type="button"
