@@ -166,9 +166,8 @@ export default function PurchaseRequestsPage({
     if (ctx?.source !== 'purchase_request_item') return;
     const rowIndex = Number(ctx?.rowIndex);
     if (!Number.isFinite(rowIndex) || rowIndex < 0) return;
-    const type = String(ctx?.itemType || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr';
     const savedType = String(createdItem?.item_type || '').trim().toLowerCase() === 'other' ? 'other' : 'mrr';
-    if (type !== savedType) return;
+    const type = savedType;
 
     setItemMasterType(type);
     setItems((prev) => {
@@ -428,34 +427,36 @@ export default function PurchaseRequestsPage({
     const showErp = itemMasterType === 'mrr';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `pr-item-names-${itemMasterType}`;
+    const busy = isSaving || isLoading;
+    const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
+      <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', paddingBottom: '96px', overflowY: 'auto' }}>
+        {busy ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ width: '100%', maxWidth: 'none', margin: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{formData.pr_no ? `Indent - ${formData.pr_no}` : 'New Indent'}</div>
-              <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <button type="button" className="btn" onClick={() => setView('list')} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
-              {!locked ? (
-                <button type="button" className="btn main" disabled={isSaving} onClick={save} style={{ padding: '10px 14px', fontWeight: 900 }}>
-                  {isSaving ? 'Saving...' : 'Save PR'}
-                </button>
-              ) : null}
-            </div>
+            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button type="button" className="btn" onClick={() => setView('list')} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
+          </div>
+        </div>
 
           {errors.items ? <div style={{ marginTop: '10px', fontSize: '12px', color: '#b91c1c', fontWeight: 800 }}>{errors.items}</div> : null}
           {status ? <div style={{ marginTop: '10px', fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requested By</div>
-              <input disabled={locked} value={formData.requested_by} onChange={(e) => setFormData((p) => ({ ...p, requested_by: e.target.value }))} style={inputStyle('requested_by')} />
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requested By{requiredMark}</div>
+              <input disabled value={formData.requested_by} style={{ ...inputStyle('requested_by'), background: '#f9fafb' }} />
             </div>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requisition Date</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Requisition Date{requiredMark}</div>
               <input
                 type="date"
                 disabled={locked}
@@ -465,7 +466,7 @@ export default function PurchaseRequestsPage({
               />
             </div>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Required Date</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#374151', marginBottom: '6px' }}>Required Date{requiredMark}</div>
               <input
                 type="date"
                 disabled={locked}
@@ -481,8 +482,8 @@ export default function PurchaseRequestsPage({
           </div>
 
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111827' }}>Items</div>
+            <div style={{ padding: '10px 12px', background: '#1d4ed8', color: '#fff', borderBottom: '1px solid #1d4ed8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 1000, color: '#fff' }}>Items</div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <select
                   disabled={locked}
@@ -494,41 +495,29 @@ export default function PurchaseRequestsPage({
                       setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
                     }
                   }}
-                  style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '12px', fontWeight: 900, background: '#fff' }}
+                  style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #ffffff66', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111' }}
                 >
                   <option value="mrr">MRR</option>
                   <option value="other">Other MRR</option>
                 </select>
-                {!locked ? (
-                  <button
-                    type="button"
-                    className="btn small"
-                    title="Add item row"
-                    aria-label="Add item row"
-                    onClick={() => setItems((p) => [...p, blankItemRow()])}
-                    style={{ width: '34px', height: '34px', borderRadius: '999px', fontWeight: 1000, padding: 0 }}
-                  >
-                    +
-                  </button>
-                ) : null}
               </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
-                  <tr>
-                    {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>ERP</th> : null}
-                    {!locked ? <th style={{ width: '46px', padding: '8px 6px', borderBottom: '1px solid #e5e7eb' }} /> : null}
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Date</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Rate</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Remark</th>
-                    {!locked ? <th style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }} /> : null}
+                  <tr style={{ background: '#1d4ed8', color: '#fff' }}>
+                    {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>ERP{requiredMark}</th> : null}
+                    {!locked ? <th style={{ width: '46px', padding: '8px 6px', borderBottom: '1px solid #1d4ed8' }} /> : null}
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Item{requiredMark}</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Unit</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Qty{requiredMark}</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Last PO Date</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Last PO Rate</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #1d4ed8', color: '#fff' }}>Remark</th>
+                    {!locked ? <th style={{ padding: '8px 10px', borderBottom: '1px solid #1d4ed8' }} /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -542,6 +531,19 @@ export default function PurchaseRequestsPage({
                             onChange={(e) => {
                               const value = e.target.value;
                               setItem(idx, 'erp_code', value);
+                              const match = itemOptions.find((it) => String(it?.erp_code || '').trim() === String(value || '').trim());
+                              if (match) {
+                                setItems((prev) => {
+                                  const next = [...prev];
+                                  const nextRow = { ...(next[idx] || blankItemRow()) };
+                                  nextRow.erp_code = String(match.erp_code || '').trim();
+                                  nextRow.item_name = String(match.item_name || '').trim();
+                                  if (!String(nextRow.description || '').trim()) nextRow.description = String(match.item_name || '').trim();
+                                  nextRow.unit = String(match.unit || nextRow.unit || 'PCS').trim();
+                                  next[idx] = nextRow;
+                                  return next;
+                                });
+                              }
                               hydrateLastPurchase(idx, value);
                             }}
                             style={{ width: '140px' }}
@@ -583,8 +585,9 @@ export default function PurchaseRequestsPage({
                                 const next = [...prev];
                                 const nextRow = { ...(next[idx] || blankItemRow()) };
                                 nextRow.item_name = String(match.item_name || '').trim();
+                                if (showErp && String(match.erp_code || '').trim()) nextRow.erp_code = String(match.erp_code || '').trim();
                                 if (!String(nextRow.description || '').trim()) nextRow.description = String(match.item_name || '').trim();
-                                if (!String(nextRow.unit || '').trim()) nextRow.unit = String(match.unit || 'PCS').trim();
+                                nextRow.unit = String(match.unit || nextRow.unit || 'PCS').trim();
                                 next[idx] = nextRow;
                                 return next;
                               });
@@ -594,12 +597,13 @@ export default function PurchaseRequestsPage({
                           style={{ width: '220px' }}
                           placeholder="Select / search item"
                         />
+                        {errors[`item_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`item_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={locked} value={row.description} onChange={(e) => setItem(idx, 'description', e.target.value)} style={{ width: '240px' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={locked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
+                        <input disabled value={row.unit} style={{ width: '80px', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                         <input disabled={locked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
@@ -635,6 +639,19 @@ export default function PurchaseRequestsPage({
             </datalist>
           </div>
         </div>
+        {!locked ? (
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: '#1d4ed8', color: '#fff', padding: '12px 18px', zIndex: 10010, borderTop: '1px solid #1d4ed8' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '12px', fontWeight: 1000 }}>Actions</div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '10px 14px', fontWeight: 1000 }}>+ Item</button>
+                <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '10px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#1d4ed8' }}>
+                  {busy ? 'Saving...' : 'Save PR'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -656,9 +673,16 @@ export default function PurchaseRequestsPage({
     </button>
   );
 
+  const listBusy = isLoading || isSaving;
+
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+        {listBusy ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ width: 'min(1300px, 100%)', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
@@ -737,7 +761,7 @@ export default function PurchaseRequestsPage({
                       <tr
                         key={prNo}
                         onClick={() => setSelectedPrNo(prNo)}
-                        style={{ background: isSelected ? '#eff6ff' : '#fff', cursor: 'pointer' }}
+                        style={{ background: isSelected ? '#fee2e2' : '#fff', cursor: 'pointer' }}
                       >
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8', fontWeight: 1000, color: '#1d4ed8' }}>{prNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #1d4ed8', borderRight: '1px solid #1d4ed8' }}>{row.requested_by || '-'}</td>
