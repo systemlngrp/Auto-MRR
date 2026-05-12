@@ -7387,9 +7387,9 @@ function App() {
           <div className="toolbar no-print" style={{ marginTop: 14 }}>
             {!isOtherMrr && (
               <>
-                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked || invoicePhotoScanned} onClick={() => invoiceRef.current?.click()}>{invoicePhotoScanned ? 'Invoice Photo Scanned' : isScanning ? 'Reading Photos...' : 'Click Invoice Photos'}</button>
+                <button className="btn main" disabled={isScanning || isSaving || isDataEntryLocked || invoicePhotoScanned} onClick={() => invoiceRef.current?.click()}>{invoicePhotoScanned ? 'Invoice Photo Scanned' : isScanning ? 'Reading Photos...' : 'Choose Invoice Photo'}</button>
                 <input ref={invoiceRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('invoice', files); } catch (err) { setStatus(err?.message || 'Could not read invoice photos with Gemini'); } e.target.value = ''; }} />
-                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked || packingPhotoScanned} onClick={() => packingRef.current?.click()}>{packingPhotoScanned ? 'Packing Slip Scanned' : 'Click Packing Photos'}</button>
+                <button className="btn" disabled={isScanning || isSaving || isDataEntryLocked || packingPhotoScanned} onClick={() => packingRef.current?.click()}>{packingPhotoScanned ? 'Packing Slip Scanned' : 'Choose Packing Slip'}</button>
                 <input ref={packingRef} className="hidden" type="file" accept="image/*" multiple onChange={async (e) => { const files = Array.from(e.target.files || []); if (files.length) try { await scan('packing', files); } catch (err) { setStatus(err?.message || 'Could not read packing photos with Gemini'); } e.target.value = ''; }} />
               </>
             )}
@@ -7519,7 +7519,7 @@ function App() {
 
               {isOtherMrr ? (
                 <div className="wrap">
-                  <table className="table invoiceTable other-mrr-table" style={{ minWidth: "1700px" }}>
+                  <table className="table invoiceTable other-mrr-table">
                     <thead>
                       <tr>
                         <th style={{ width: "70px" }}>S.No</th>
@@ -7530,7 +7530,6 @@ function App() {
                         <th style={{ width: "120px" }}>PO RATE<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "130px" }}>PO QUANTITY<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "90px" }}>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th style={{ width: "220px" }}>Description</th>
                         <th style={{ width: "100px" }}>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "110px" }}>Qunatity<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
@@ -7643,7 +7642,6 @@ function App() {
                               ))}
                             </select>
                           </td>
-                          <td><input value={row.description || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td>
                           <td><input value={row.hsn || '48043100'} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td>
                           <td><input value={row.quantity || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'quantity', e.target.value)} /></td>
                           <td><input value={row.rate || ''} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'rate', e.target.value)} /></td>
@@ -7655,7 +7653,7 @@ function App() {
                     </tbody>
                     <tfoot>
                       <tr className="no-print">
-                        <td colSpan={13} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
+                        <td colSpan={12} style={{ padding: '8px', textAlign: 'center', background: '#fcfcfc', border: '1px solid var(--line)' }}>
                           <button 
                             className="btn main" 
                             onClick={addInvoiceRow}

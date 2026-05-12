@@ -73,6 +73,8 @@ export const styles = `
 
 * { box-sizing: border-box; }
 
+.hidden { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -386,6 +388,25 @@ th { font-weight: bold !important; background-color: #1d4ed8 !important; color: 
   color: #fff;
   border: 1px solid #111;
   font-weight: 900;
+}
+
+.app.mrr-classic .wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.app.mrr-classic .wrap table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed;
+}
+
+.app.mrr-classic .wrap td,
+.app.mrr-classic .wrap th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app.mrr-classic .sectionHead h2 {
