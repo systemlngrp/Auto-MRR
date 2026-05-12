@@ -4996,6 +4996,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
 function App() {
   const [browserPath, setBrowserPath] = useState(() => normalizeAppPath(getCurrentPathname()));
+  const isMrrRoute = browserPath === APP_ROUTES.mrr;
   const [activeTab, setActiveTab] = useState('invoice');
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -5061,6 +5062,14 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('mrr-classic-body', isMrrRoute);
+    return () => {
+      document.body.classList.remove('mrr-classic-body');
+    };
+  }, [isMrrRoute]);
 
   const handleRouteChange = (nextPath, options = {}) => {
     const normalizedTarget = normalizeAppPath(nextPath);
@@ -7165,7 +7174,7 @@ function App() {
   );
 
   return (
-    <div className="app" style={showBottomModeSwitch ? { paddingBottom: 64 } : undefined}>
+    <div className={`app${isMrrRoute ? ' mrr-classic' : ''}`} style={showBottomModeSwitch ? { paddingBottom: 64 } : undefined}>
       <style>{styles}</style>
       <style>{labelStyles}</style>
       <style>{printGridStyles}</style>
@@ -7361,7 +7370,7 @@ function App() {
                 </tr>
               </tbody>
             </table>
-            <div style={{ borderTop: '1px dashed #b6ad9e', padding: '8px 10px', fontSize: '11px', fontWeight: 700, background: '#fffdf7' }}>
+            <div className="ge-details" style={{ borderTop: '1px dashed #9a948c', padding: '8px 10px', fontSize: '11px', fontWeight: 700, background: '#efe9dd' }}>
               GE ENTRY Details:
               {' '}| Mode: <span style={{ color: 'var(--primary)' }}>{currentModeLabel}</span>
               {' '}GE No: <span style={{ color: 'var(--primary)' }}>{geData?.ge_no || invoice.ge_no || packing.ge_no || '-'}</span>

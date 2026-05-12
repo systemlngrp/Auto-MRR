@@ -81,6 +81,10 @@ body {
   font-size: 13px;
 }
 
+body.mrr-classic-body {
+  background: #d9d3c7;
+}
+
 .bottom-back {
   position: fixed;
   left: 14px;
@@ -94,6 +98,11 @@ body {
   padding: 16px 12px 28px;
 }
 
+.app.mrr-classic {
+  max-width: 1320px;
+  padding-top: 10px;
+}
+
 .pageHeader {
   max-width: var(--sheet-width);
   margin: 0 auto 14px;
@@ -103,6 +112,14 @@ body {
   border-radius: 12px;
 }
 
+.app.mrr-classic .pageHeader {
+  border-radius: 0;
+  border: 1px solid #111;
+  background: #efe9dd;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+
 .pageHeader h1 {
   margin: 0 0 4px;
   font-size: 20px;
@@ -110,11 +127,22 @@ body {
   color: var(--primary);
 }
 
+.app.mrr-classic .pageHeader h1 {
+  font-size: 18px;
+  font-weight: 900;
+  color: #111;
+}
+
 .pageHeader p {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.app.mrr-classic .pageHeader p {
+  color: #111;
+  opacity: 0.75;
 }
 
 .toolbar, .actions {
@@ -164,6 +192,208 @@ body {
 .btn, button, input, select, textarea, table, th, td, label, span, div, p, h1, h2, h3, h4, h5, h6 { font-weight: 400; }
 table, th, td { color: #000 !important; }
 th { font-weight: bold !important; background-color: #1d4ed8 !important; color: #fff !important; }
+
+.app.mrr-classic table,
+.app.mrr-classic th,
+.app.mrr-classic td {
+  color: #111 !important;
+}
+
+.app.mrr-classic th {
+  background-color: #f4efe6 !important;
+  color: #111 !important;
+}
+
+.app.mrr-classic .help {
+  max-width: var(--sheet-width);
+  margin: 0 auto;
+}
+
+.app.mrr-classic .help .stats {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+  background: #efe9dd;
+}
+
+.app.mrr-classic .help .stats th,
+.app.mrr-classic .help .stats td {
+  border: 1px dotted #9a948c;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.app.mrr-classic .toolbar.no-print {
+  max-width: var(--sheet-width);
+  margin: 8px auto 0;
+}
+
+.app.mrr-classic .toolbar.no-print .btn {
+  border-radius: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.app.mrr-classic .toolbar.no-print .btn.main {
+  background: #111;
+  border-color: #111;
+}
+
+.app.mrr-classic .toolbar.no-print .btn.main:hover {
+  background: #000;
+  border-color: #000;
+}
+
+.app.mrr-classic .doc {
+  max-width: var(--sheet-width);
+  margin: 12px auto 0;
+}
+
+.app.mrr-classic .sheet {
+  border-radius: 0;
+  border: 1px solid #111;
+  box-shadow: none;
+  background: #fff;
+}
+
+.app.mrr-classic .sheet .hdr {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 110px;
+  border-bottom: 1px solid #111;
+  align-items: stretch;
+}
+
+.app.mrr-classic .sheet .hdr .logo,
+.app.mrr-classic .sheet .hdr .note {
+  background: #5b5b5b;
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.app.mrr-classic .sheet .hdr .co {
+  padding: 6px 10px;
+  text-align: center;
+  color: #111;
+}
+
+.app.mrr-classic .sheet .hdr h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app.mrr-classic .sheet .hdr p {
+  margin: 2px 0 0;
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.app.mrr-classic .sheet .title {
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #111;
+  padding: 6px 10px;
+  border-bottom: 1px solid #111;
+}
+
+.app.mrr-classic .sheet table.meta,
+.app.mrr-classic .sheet table.table,
+.app.mrr-classic .sheet table.packingTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.app.mrr-classic .sheet table.meta td,
+.app.mrr-classic .sheet table.table th,
+.app.mrr-classic .sheet table.table td,
+.app.mrr-classic .sheet table.packingTable th,
+.app.mrr-classic .sheet table.packingTable td {
+  border: 1px solid #111;
+}
+
+.app.mrr-classic .sheet table.meta td {
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.app.mrr-classic .sheet table.meta td:first-child {
+  width: 18%;
+  font-weight: 800;
+  background: #f5f5f5;
+}
+
+.app.mrr-classic .sheet table.meta input,
+.app.mrr-classic .sheet table.meta select,
+.app.mrr-classic .sheet table.table input,
+.app.mrr-classic .sheet table.table select,
+.app.mrr-classic .sheet table.packingTable input,
+.app.mrr-classic .sheet table.packingTable select,
+.app.mrr-classic .sheet textarea {
+  border: 1px solid #111;
+  border-radius: 0;
+  padding: 2px 4px;
+  font-size: 11px;
+  width: 100%;
+  background: #fff;
+  color: #111;
+}
+
+.app.mrr-classic .sheet .grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #111;
+}
+
+.app.mrr-classic .sheet .grid2 > *:first-child {
+  border-right: 1px solid #111;
+}
+
+.app.mrr-classic .sheet .table th {
+  font-size: 10px;
+  padding: 4px 6px;
+  background: #f5f5f5 !important;
+  color: #111 !important;
+  font-weight: 800 !important;
+}
+
+.app.mrr-classic .sheet .table td,
+.app.mrr-classic .sheet .packingTable td {
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.app.mrr-classic .sheet .packingTable th {
+  font-size: 10px;
+  padding: 4px 6px;
+  background: #f5f5f5 !important;
+  color: #111 !important;
+  font-weight: 800 !important;
+}
+
+.app.mrr-classic .sheet .addRowBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  border: 1px solid #111;
+  font-weight: 900;
+}
+
+.app.mrr-classic .sectionHead h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #111;
+}
 
 .btn {
   font-weight: 800;

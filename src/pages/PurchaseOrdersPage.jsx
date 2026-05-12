@@ -679,14 +679,3 @@ export default function PurchaseOrdersPage({
     </div>
   );
 }
-' }}>No entries found.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
