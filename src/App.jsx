@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+edimport React, { useEffect, useMemo, useRef, useState } from 'react';
 import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, fetchItems, saveItems, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
@@ -2230,7 +2230,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [allApprovalRows]);
   const pendingTableStyle = { width: '100%', tableLayout: 'fixed' };
-  const pendingHeaderCellStyle = { fontSize: '15px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', color: '#111', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
+  const pendingHeaderCellStyle = { fontSize: '15px', background: '#1d4ed8', color: '#fff', fontWeight: 700, padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '10px 10px', verticalAlign: 'top' };
   const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3%', minWidth: '36px' };
   const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'middle' };
