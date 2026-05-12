@@ -112,6 +112,11 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
   if (view === 'form') {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
+        {isLoading ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ width: 'min(1100px, 100%)', margin: '0 auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
@@ -157,6 +162,11 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+        {isLoading ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 800, color: '#1d4ed8' }}>Suppliers</div>

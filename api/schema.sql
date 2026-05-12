@@ -381,6 +381,7 @@ CREATE TABLE IF NOT EXISTS purchase_request_items (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,
   pr_id BIGINT UNSIGNED NOT NULL,
+  item_id BIGINT UNSIGNED DEFAULT NULL,
   row_sort INT NOT NULL DEFAULT 0,
   erp_code VARCHAR(120) DEFAULT NULL,
   item_name VARCHAR(255) DEFAULT NULL,
@@ -393,7 +394,8 @@ CREATE TABLE IF NOT EXISTS purchase_request_items (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_pr_items (firm_id, pr_id, row_sort)
+  KEY idx_pr_items (firm_id, pr_id, row_sort),
+  KEY idx_pr_items_item (firm_id, item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS purchase_orders (
@@ -422,6 +424,8 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,
   po_id BIGINT UNSIGNED NOT NULL,
+  pr_item_id BIGINT UNSIGNED DEFAULT NULL,
+  item_id BIGINT UNSIGNED DEFAULT NULL,
   row_sort INT NOT NULL DEFAULT 0,
   supplier_name VARCHAR(255) DEFAULT NULL,
   erp_code VARCHAR(120) DEFAULT NULL,
@@ -435,8 +439,18 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_po_items (firm_id, po_id, row_sort)
+  KEY idx_po_items (firm_id, po_id, row_sort),
+  KEY idx_po_items_pr_item (firm_id, pr_item_id),
+  KEY idx_po_items_item (firm_id, item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Migration helpers (safe to run multiple times on MariaDB/MySQL variants that support IF NOT EXISTS).
+ALTER TABLE purchase_request_items
+  ADD COLUMN IF NOT EXISTS item_id BIGINT UNSIGNED DEFAULT NULL AFTER pr_id;
+
+ALTER TABLE purchase_order_items
+  ADD COLUMN IF NOT EXISTS pr_item_id BIGINT UNSIGNED DEFAULT NULL AFTER po_id,
+  ADD COLUMN IF NOT EXISTS item_id BIGINT UNSIGNED DEFAULT NULL AFTER pr_item_id;
 
 CREATE TABLE IF NOT EXISTS app_sequences (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

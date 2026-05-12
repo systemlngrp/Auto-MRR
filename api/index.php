@@ -609,15 +609,128 @@ function poTableForSheet(string $sheetName): string
     return strcasecmp($sheetName, 'OTHER PO') === 0 ? 'other_po_rows' : 'reel_po_rows';
 }
 
-function tableColumns(string $tableName): array
+function tableColumns(string $tableName, bool $forceRefresh = false): array
 {
     static $cache = [];
-    if (isset($cache[$tableName])) {
+    if (!$forceRefresh && isset($cache[$tableName])) {
         return $cache[$tableName];
     }
     $stmt = db()->query("DESCRIBE {$tableName}");
     $cache[$tableName] = array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     return $cache[$tableName];
+}
+
+function constraintExists(PDO $pdo, string $tableName, string $constraintName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND CONSTRAINT_NAME = :constraint_name
+            LIMIT 1
+        ");
+        $stmt->execute(['table_name' => $tableName, 'constraint_name' => $constraintName]);
+        return (bool)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function ensurePurchaseRelations(PDO $pdo): void
+{
+    // Columns
+    $prItemCols = tableColumns('purchase_request_items');
+    if (!in_array('item_id', $prItemCols, true)) {
+        $pdo->exec("ALTER TABLE purchase_request_items ADD COLUMN item_id BIGINT UNSIGNED DEFAULT NULL AFTER pr_id");
+        tableColumns('purchase_request_items', true);
+    }
+
+    $poItemCols = tableColumns('purchase_order_items');
+    if (!in_array('pr_item_id', $poItemCols, true)) {
+        $pdo->exec("ALTER TABLE purchase_order_items ADD COLUMN pr_item_id BIGINT UNSIGNED DEFAULT NULL AFTER po_id");
+        tableColumns('purchase_order_items', true);
+        $poItemCols = tableColumns('purchase_order_items');
+    }
+    if (!in_array('item_id', $poItemCols, true)) {
+        $pdo->exec("ALTER TABLE purchase_order_items ADD COLUMN item_id BIGINT UNSIGNED DEFAULT NULL AFTER pr_item_id");
+        tableColumns('purchase_order_items', true);
+    }
+
+    // Foreign keys (best effort, only add if missing).
+    // Use stable names so we can check existence.
+    if (!constraintExists($pdo, 'purchase_request_items', 'fk_pr_items_pr')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_request_items ADD CONSTRAINT fk_pr_items_pr FOREIGN KEY (pr_id) REFERENCES purchase_requests(id) ON DELETE CASCADE");
+        } catch (Throwable $e) {
+        }
+    }
+    if (!constraintExists($pdo, 'purchase_request_items', 'fk_pr_items_item')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_request_items ADD CONSTRAINT fk_pr_items_item FOREIGN KEY (item_id) REFERENCES item_master(id)");
+        } catch (Throwable $e) {
+        }
+    }
+    if (!constraintExists($pdo, 'purchase_orders', 'fk_pos_pr')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_orders ADD CONSTRAINT fk_pos_pr FOREIGN KEY (pr_id) REFERENCES purchase_requests(id) ON DELETE SET NULL");
+        } catch (Throwable $e) {
+        }
+    }
+    if (!constraintExists($pdo, 'purchase_order_items', 'fk_po_items_po')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_order_items ADD CONSTRAINT fk_po_items_po FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE CASCADE");
+        } catch (Throwable $e) {
+        }
+    }
+    if (!constraintExists($pdo, 'purchase_order_items', 'fk_po_items_pr_item')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_order_items ADD CONSTRAINT fk_po_items_pr_item FOREIGN KEY (pr_item_id) REFERENCES purchase_request_items(id) ON DELETE SET NULL");
+        } catch (Throwable $e) {
+        }
+    }
+    if (!constraintExists($pdo, 'purchase_order_items', 'fk_po_items_item')) {
+        try {
+            $pdo->exec("ALTER TABLE purchase_order_items ADD CONSTRAINT fk_po_items_item FOREIGN KEY (item_id) REFERENCES item_master(id)");
+        } catch (Throwable $e) {
+        }
+    }
+}
+
+function resolveItemId(PDO $pdo, string $firmId, string $itemType, string $erpCode, string $itemName): int
+{
+    $type = $itemType !== '' ? $itemType : 'mrr';
+    $code = trim($erpCode);
+    $name = trim($itemName);
+    if ($code === '' && $name === '') return 0;
+
+    if ($code !== '') {
+        $stmt = $pdo->prepare("
+            SELECT id FROM item_master
+            WHERE firm_id = :firm_id
+              AND item_type = :item_type
+              AND erp_code = :erp_code
+            LIMIT 1
+        ");
+        $stmt->execute(['firm_id' => $firmId, 'item_type' => $type, 'erp_code' => $code]);
+        $id = (int)($stmt->fetchColumn() ?: 0);
+        if ($id > 0) return $id;
+    }
+
+    if ($name !== '') {
+        $stmt = $pdo->prepare("
+            SELECT id FROM item_master
+            WHERE firm_id = :firm_id
+              AND item_type = :item_type
+              AND item_name = :item_name
+            LIMIT 1
+        ");
+        $stmt->execute(['firm_id' => $firmId, 'item_type' => $type, 'item_name' => $name]);
+        return (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    return 0;
 }
 
 function hydrateMrrParentRow(array $row): array
@@ -2081,6 +2194,7 @@ try {
         $hasBf = in_array('bf_value', $cols, true);
 
         $select = [
+            'id',
             $hasType ? 'item_type' : "'mrr' AS item_type",
             'erp_code',
             'item_name',
@@ -2101,6 +2215,7 @@ try {
         $rows = $stmt->fetchAll();
         $items = array_map(static function (array $row): array {
             return [
+                'id' => (string)($row['id'] ?? ''),
                 'item_type' => trim((string)($row['item_type'] ?? 'mrr')) ?: 'mrr',
                 'erp_code' => trim((string)($row['erp_code'] ?? '')),
                 'item_name' => trim((string)($row['item_name'] ?? '')),
@@ -2154,15 +2269,20 @@ try {
         if (!$pr) {
             jsonOut(['ok' => false, 'error' => 'Purchase request not found.'], 404);
         }
+        $priCols = tableColumns('purchase_request_items');
+        $hasItemId = in_array('item_id', $priCols, true);
+        $itemsSelect = "id, row_sort, " . ($hasItemId ? "item_id, " : "") . "erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
         $itemsStmt = $pdo->prepare("
-            SELECT row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
+            SELECT {$itemsSelect}
             FROM purchase_request_items
             WHERE firm_id = :firm_id AND pr_id = :pr_id
             ORDER BY row_sort ASC, id ASC
         ");
         $itemsStmt->execute(['firm_id' => $firmId, 'pr_id' => (int)$pr['id']]);
-        $items = array_map(static function (array $row): array {
+        $items = array_map(static function (array $row) use ($hasItemId): array {
             return [
+                'pr_item_id' => (string)($row['id'] ?? ''),
+                'item_id' => $hasItemId ? (string)($row['item_id'] ?? '') : '',
                 'erp_code' => trim((string)($row['erp_code'] ?? '')),
                 'item_name' => trim((string)($row['item_name'] ?? '')),
                 'description' => trim((string)($row['description_text'] ?? '')),
@@ -2200,10 +2320,12 @@ try {
             $select = 'po_no, pr_id, supplier_name, po_date, po_details, status_text, created_by, approved_by, approved_at, po_type';
         }
         $stmt = db()->prepare("
-            SELECT {$select}
-            FROM purchase_orders
-            WHERE firm_id = :firm_id
-            ORDER BY id DESC
+            SELECT {$select}, pr.pr_no AS pr_no
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr
+              ON pr.id = po.pr_id AND pr.firm_id = po.firm_id
+            WHERE po.firm_id = :firm_id
+            ORDER BY po.id DESC
         ");
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
@@ -2211,6 +2333,7 @@ try {
             return [
                 'po_no' => trim((string)($row['po_no'] ?? '')),
                 'pr_id' => (string)($row['pr_id'] ?? ''),
+                'pr_no' => trim((string)($row['pr_no'] ?? '')),
                 'supplier' => trim((string)($row['supplier_name'] ?? '')),
                 'po_date' => trim((string)($row['po_date'] ?? '')),
                 'po_details' => $hasPoDetails ? trim((string)($row['po_details'] ?? '')) : '',
@@ -2238,15 +2361,24 @@ try {
         }
         $poiCols = tableColumns('purchase_order_items');
         $hasItemSupplier = in_array('supplier_name', $poiCols, true);
+        $hasPrItemId = in_array('pr_item_id', $poiCols, true);
+        $hasItemId = in_array('item_id', $poiCols, true);
         $itemsStmt = $pdo->prepare("
-            SELECT row_sort, " . ($hasItemSupplier ? "supplier_name, " : "") . "erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
+            SELECT id, row_sort, "
+              . ($hasItemSupplier ? "supplier_name, " : "")
+              . ($hasPrItemId ? "pr_item_id, " : "")
+              . ($hasItemId ? "item_id, " : "")
+              . "erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text
             FROM purchase_order_items
             WHERE firm_id = :firm_id AND po_id = :po_id
             ORDER BY row_sort ASC, id ASC
         ");
         $itemsStmt->execute(['firm_id' => $firmId, 'po_id' => (int)$po['id']]);
-        $items = array_map(static function (array $row) use ($hasItemSupplier): array {
+        $items = array_map(static function (array $row) use ($hasItemSupplier, $hasPrItemId, $hasItemId): array {
             return [
+                'po_item_id' => (string)($row['id'] ?? ''),
+                'pr_item_id' => $hasPrItemId ? (string)($row['pr_item_id'] ?? '') : '',
+                'item_id' => $hasItemId ? (string)($row['item_id'] ?? '') : '',
                 'supplier' => $hasItemSupplier ? trim((string)($row['supplier_name'] ?? '')) : '',
                 'erp_code' => trim((string)($row['erp_code'] ?? '')),
                 'item_name' => trim((string)($row['item_name'] ?? '')),
@@ -2960,6 +3092,11 @@ try {
         $pr = is_array($payload['purchase_request'] ?? null) ? $payload['purchase_request'] : [];
         $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
         $pdo = db();
+        ensurePurchaseRelations($pdo);
+        $defaultItemType = strtolower(trim((string)($payload['item_type'] ?? $pr['item_type'] ?? 'mrr'))) ?: 'mrr';
+        if ($defaultItemType !== 'reel' && $defaultItemType !== 'mrr' && $defaultItemType !== 'other') {
+            $defaultItemType = 'mrr';
+        }
 
         $prNo = trim((string)($pr['pr_no'] ?? ''));
         $department = trim((string)($pr['department'] ?? $pr['department_name'] ?? ''));
@@ -3033,18 +3170,16 @@ try {
         // Replace items
         $del = $pdo->prepare("DELETE FROM purchase_request_items WHERE firm_id = :firm_id AND pr_id = :pr_id");
         $del->execute(['firm_id' => $firmId, 'pr_id' => $prId]);
-        $ins = $pdo->prepare("
-            INSERT INTO purchase_request_items (
-                firm_id, pr_id, row_sort, erp_code, item_name, description_text, unit_value,
-                qty_value, rate_value, amount_value, remark_text
-            ) VALUES (
-                :firm_id, :pr_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value,
-                :qty_value, :rate_value, :amount_value, :remark_text
-            )
-        ");
+        $priCols = tableColumns('purchase_request_items');
+        $hasItemId = in_array('item_id', $priCols, true);
+        $insertCols = "firm_id, pr_id, " . ($hasItemId ? "item_id, " : "") . "row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+        $insertVals = ":firm_id, :pr_id, " . ($hasItemId ? ":item_id, " : "") . ":row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+        $ins = $pdo->prepare("INSERT INTO purchase_request_items ({$insertCols}) VALUES ({$insertVals})");
         $rowSort = 0;
         foreach ($items as $item) {
             if (!is_array($item)) continue;
+            $itemType = strtolower(trim((string)($item['item_type'] ?? $defaultItemType))) ?: 'mrr';
+            if ($itemType !== 'reel' && $itemType !== 'mrr' && $itemType !== 'other') $itemType = $defaultItemType;
             $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
             $code = trim((string)($item['erp_code'] ?? ''));
             $name = trim((string)($item['item_name'] ?? ''));
@@ -3055,9 +3190,22 @@ try {
             $amount = trim((string)($item['amount'] ?? ''));
             $unit = trim((string)($item['unit'] ?? ''));
             $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
-            $ins->execute([
+
+            $resolvedItemId = 0;
+            if ($hasItemId) {
+                $resolvedItemId = (int)($item['item_id'] ?? 0);
+                if ($resolvedItemId <= 0) {
+                    $resolvedItemId = resolveItemId($pdo, $firmId, $itemType, $code, $name);
+                }
+                if ($resolvedItemId <= 0) {
+                    jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
+                }
+            }
+
+            $params = [
                 'firm_id' => $firmId,
                 'pr_id' => $prId,
+                'item_id' => $resolvedItemId > 0 ? $resolvedItemId : null,
                 'row_sort' => $rowSort,
                 'erp_code' => $code !== '' ? $code : null,
                 'item_name' => $name !== '' ? $name : null,
@@ -3067,7 +3215,11 @@ try {
                 'rate_value' => $rate !== '' ? $rate : null,
                 'amount_value' => $amount !== '' ? $amount : null,
                 'remark_text' => $remarkItem !== '' ? $remarkItem : null,
-            ]);
+            ];
+            if (!$hasItemId) {
+                unset($params['item_id']);
+            }
+            $ins->execute($params);
         }
 
         writeBackendLog('save_purchase_request_success', [
@@ -3134,6 +3286,7 @@ try {
         $po = is_array($payload['purchase_order'] ?? null) ? $payload['purchase_order'] : [];
         $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
         $pdo = db();
+        ensurePurchaseRelations($pdo);
 
         $cols = tableColumns('purchase_orders');
         $hasPoDetails = in_array('po_details', $cols, true);
@@ -3148,6 +3301,8 @@ try {
 
         $poiCols = tableColumns('purchase_order_items');
         $hasItemSupplier = in_array('supplier_name', $poiCols, true);
+        $hasPrItemId = in_array('pr_item_id', $poiCols, true);
+        $hasItemId = in_array('item_id', $poiCols, true);
         if (!$hasItemSupplier) {
             try {
                 $pdo->exec("ALTER TABLE purchase_order_items ADD COLUMN supplier_name VARCHAR(255) DEFAULT NULL AFTER row_sort");
@@ -3174,10 +3329,16 @@ try {
 
         $prId = null;
         if ($prNo !== '') {
-            $stmt = $pdo->prepare("SELECT id FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
+            $stmt = $pdo->prepare("SELECT id, status_text FROM purchase_requests WHERE firm_id = :firm_id AND pr_no = :pr_no LIMIT 1");
             $stmt->execute(['firm_id' => $firmId, 'pr_no' => $prNo]);
             $prRow = $stmt->fetch();
-            if ($prRow) $prId = (int)$prRow['id'];
+            if ($prRow) {
+                $prId = (int)$prRow['id'];
+                $prStatus = strtolower(trim((string)($prRow['status_text'] ?? 'pending'))) ?: 'pending';
+                if ($prStatus !== 'approved') {
+                    jsonOut(['ok' => false, 'error' => 'Only approved Purchase Request can create PO.'], 400);
+                }
+            }
         }
 
         if ($poNo === '') {
@@ -3264,16 +3425,29 @@ try {
 
         $del = $pdo->prepare("DELETE FROM purchase_order_items WHERE firm_id = :firm_id AND po_id = :po_id");
         $del->execute(['firm_id' => $firmId, 'po_id' => $poId]);
-        $insertCols = "firm_id, po_id, row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
-        $insertVals = ":firm_id, :po_id, :row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+        $insertCols = "firm_id, po_id, "
+            . ($hasPrItemId ? "pr_item_id, " : "")
+            . ($hasItemId ? "item_id, " : "")
+            . "row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+        $insertVals = ":firm_id, :po_id, "
+            . ($hasPrItemId ? ":pr_item_id, " : "")
+            . ($hasItemId ? ":item_id, " : "")
+            . ":row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
         if ($hasItemSupplier) {
-            $insertCols = "firm_id, po_id, row_sort, supplier_name, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
-            $insertVals = ":firm_id, :po_id, :row_sort, :supplier_name, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+            $insertCols = "firm_id, po_id, "
+                . ($hasPrItemId ? "pr_item_id, " : "")
+                . ($hasItemId ? "item_id, " : "")
+                . "row_sort, supplier_name, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+            $insertVals = ":firm_id, :po_id, "
+                . ($hasPrItemId ? ":pr_item_id, " : "")
+                . ($hasItemId ? ":item_id, " : "")
+                . ":row_sort, :supplier_name, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
         }
         $ins = $pdo->prepare("INSERT INTO purchase_order_items ({$insertCols}) VALUES ({$insertVals})");
         $rowSort = 0;
         foreach ($items as $item) {
             if (!is_array($item)) continue;
+            $prItemId = $hasPrItemId ? (int)($item['pr_item_id'] ?? 0) : 0;
             $itemSupplier = trim((string)($item['supplier'] ?? $item['supplier_name'] ?? ''));
             $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
             $code = trim((string)($item['erp_code'] ?? ''));
@@ -3285,9 +3459,23 @@ try {
             $amount = trim((string)($item['amount'] ?? ''));
             $unit = trim((string)($item['unit'] ?? ''));
             $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
+
+            $resolvedItemId = 0;
+            if ($hasItemId) {
+                $resolvedItemId = (int)($item['item_id'] ?? 0);
+                if ($resolvedItemId <= 0) {
+                    $resolvedItemId = resolveItemId($pdo, $firmId, $poType, $code, $name);
+                }
+                if ($resolvedItemId <= 0) {
+                    jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
+                }
+            }
+
             $params = [
                 'firm_id' => $firmId,
                 'po_id' => $poId,
+                'pr_item_id' => $prItemId > 0 ? $prItemId : null,
+                'item_id' => $resolvedItemId > 0 ? $resolvedItemId : null,
                 'row_sort' => $rowSort,
                 'supplier_name' => $itemSupplier !== '' ? $itemSupplier : null,
                 'erp_code' => $code !== '' ? $code : null,
@@ -3301,6 +3489,12 @@ try {
             ];
             if (!$hasItemSupplier) {
                 unset($params['supplier_name']);
+            }
+            if (!$hasPrItemId) {
+                unset($params['pr_item_id']);
+            }
+            if (!$hasItemId) {
+                unset($params['item_id']);
             }
             $ins->execute($params);
         }

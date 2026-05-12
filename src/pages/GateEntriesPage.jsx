@@ -58,6 +58,12 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px' }}>
+      {isLoading ? (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <p style={{ marginTop: '10px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>Loading...</p>
+        </div>
+      ) : null}
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>

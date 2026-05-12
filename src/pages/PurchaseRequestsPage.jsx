@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 const blankItemRow = () => ({
+  item_id: '',
+  pr_item_id: '',
   erp_code: '',
   item_name: '',
   description: '',
@@ -173,6 +175,7 @@ export default function PurchaseRequestsPage({
     setItems((prev) => {
       const next = [...prev];
       const row = { ...(next[rowIndex] || blankItemRow()) };
+      row.item_id = String(createdItem?.id || '').trim();
       if (type === 'mrr') {
         row.erp_code = String(createdItem?.erp_code || '').trim();
         row.item_name = String(createdItem?.item_name || '').trim();
@@ -270,6 +273,8 @@ export default function PurchaseRequestsPage({
       setItems(loadedItems.length ? loadedItems.map((item) => ({
         ...blankItemRow(),
         ...item,
+        item_id: String(item?.item_id || '').trim(),
+        pr_item_id: String(item?.pr_item_id || '').trim(),
         amount: item?.amount || formatAmount(toNumber(item?.qty) * toNumber(item?.rate))
       })) : [blankItemRow()]);
       setErrors({});
@@ -293,9 +298,22 @@ export default function PurchaseRequestsPage({
       if (key === 'erp_code') {
         const match = itemMaster.find((it) => String(it?.item_type || 'mrr') === itemMasterType && String(it?.erp_code || '').trim() === String(value || '').trim());
         if (match) {
+          row.item_id = String(match.id || '').trim();
           if (!String(row.item_name || '').trim()) row.item_name = String(match.item_name || '').trim();
           if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
           if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
+        }
+      }
+      if (key === 'item_name') {
+        const shouldShowErp = itemMasterType === 'reel' || itemMasterType === 'mrr';
+        const match = itemMaster.find((it) => String(it?.item_type || 'mrr') === itemMasterType && String(it?.item_name || '').trim() === String(value || '').trim());
+        if (match) {
+          row.item_id = String(match.id || '').trim();
+          if (shouldShowErp && String(match.erp_code || '').trim()) row.erp_code = String(match.erp_code || '').trim();
+          if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
+          if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
+        } else {
+          row.item_id = '';
         }
       }
       next[index] = row;
@@ -342,6 +360,9 @@ export default function PurchaseRequestsPage({
     const meaningfulItems = items.filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''));
     if (!meaningfulItems.length) next.items = 'At least 1 item required';
     meaningfulItems.forEach((it, idx) => {
+      if (!String(it.item_id || '').trim()) {
+        next[`item_${idx}`] = 'Select item from Item Master';
+      }
       if (!String(it.description || it.item_name || it.erp_code || '').trim()) {
         next[`item_${idx}`] = 'Item description required';
       }
@@ -363,6 +384,9 @@ export default function PurchaseRequestsPage({
       const meaningfulItems = items
         .filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''))
         .map((it) => ({
+          item_id: String(it.item_id || '').trim(),
+          pr_item_id: String(it.pr_item_id || '').trim(),
+          item_type: String(itemMasterType || 'mrr'),
           erp_code: String(it.erp_code || '').trim(),
           item_name: String(it.item_name || '').trim(),
           description: String(it.description || '').trim(),
@@ -382,7 +406,7 @@ export default function PurchaseRequestsPage({
         created_by: userEmail
       };
 
-      const resp = await savePurchaseRequest(prPayload, meaningfulItems, { spreadsheetId: selectedFirm.spreadsheetId, userEmail });
+      const resp = await savePurchaseRequest(prPayload, meaningfulItems, { spreadsheetId: selectedFirm.spreadsheetId, userEmail, item_type: itemMasterType });
       const prNo = String(resp?.pr_no || prPayload.pr_no || '').trim();
       setStatus(prNo ? `Saved ${prNo}` : 'Saved.');
       setView('list');

@@ -527,6 +527,7 @@ export async function savePurchaseRequest(pr = {}, items = [], options = {}) {
     action: 'save_purchase_request',
     firm_id: getFirmKey(options),
     spreadsheetId: getFirmKey(options),
+    item_type: String(options.item_type || '').trim(),
     purchase_request: pr,
     items
   };
@@ -582,6 +583,7 @@ export async function savePurchaseOrder(po = {}, items = [], options = {}) {
     action: 'save_purchase_order',
     firm_id: getFirmKey(options),
     spreadsheetId: getFirmKey(options),
+    item_type: String(options.item_type || '').trim(),
     purchase_order: po,
     items
   };

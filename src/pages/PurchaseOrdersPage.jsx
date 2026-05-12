@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const blankItemRow = () => ({
+  item_id: '',
+  pr_item_id: '',
   supplier: '',
   erp_code: '',
   item_name: '',
@@ -222,9 +224,22 @@ export default function PurchaseOrdersPage({
         const type = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
         const match = itemMaster.find((it) => String(it?.item_type || 'reel') === type && String(it?.erp_code || '').trim() === String(value || '').trim());
         if (match) {
+          row.item_id = String(match.id || '').trim();
           if (!String(row.item_name || '').trim()) row.item_name = String(match.item_name || '').trim();
           if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
           if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
+        }
+      }
+      if (key === 'item_name') {
+        const type = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
+        const match = itemMaster.find((it) => String(it?.item_type || 'reel') === type && String(it?.item_name || '').trim() === String(value || '').trim());
+        if (match) {
+          row.item_id = String(match.id || '').trim();
+          if (type === 'reel' && String(match.erp_code || '').trim()) row.erp_code = String(match.erp_code || '').trim();
+          if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
+          if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
+        } else {
+          row.item_id = '';
         }
       }
       next[index] = row;
@@ -242,6 +257,7 @@ export default function PurchaseOrdersPage({
       next.items = 'Supplier required for each item';
     }
     meaningfulItems.forEach((it, idx) => {
+      if (!String(it.item_id || '').trim()) next[`item_${idx}`] = 'Select item from Item Master';
       if (!String(it.description || it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item description required';
       if (!String(it.qty || '').trim()) next[`qty_${idx}`] = 'Qty required';
     });
@@ -256,15 +272,22 @@ export default function PurchaseOrdersPage({
     try {
       const payload = await fetchPurchaseRequestDetails(prNo, { spreadsheetId: selectedFirm.spreadsheetId });
       const prItems = Array.isArray(payload?.items) ? payload.items : [];
+      const prStatus = String(payload?.purchase_request?.status || '').trim().toLowerCase();
+      if (prStatus && prStatus !== 'approved') {
+        throw new Error('Only approved Purchase Request can create PO.');
+      }
       setFormData({
         ...blankPo(),
         pr_no: prNo,
         po_type: 'reel',
-        po_date: new Date().toLocaleDateString('en-GB') // DD/MM/YYYY
+        po_date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
+        status: 'pending'
       });
       setItems(prItems.length ? prItems.map((it) => ({
         ...blankItemRow(),
         ...it,
+        item_id: String(it?.item_id || '').trim(),
+        pr_item_id: String(it?.pr_item_id || '').trim(),
         supplier: String(it?.supplier || '').trim(),
         amount: it?.amount || formatAmount(toNumber(it?.qty) * toNumber(it?.rate))
       })) : [blankItemRow()]);
@@ -295,6 +318,8 @@ export default function PurchaseOrdersPage({
       setItems(loadedItems.length ? loadedItems.map((item) => ({
         ...blankItemRow(),
         ...item,
+        item_id: String(item?.item_id || '').trim(),
+        pr_item_id: String(item?.pr_item_id || '').trim(),
         supplier: String(item?.supplier || '').trim(),
         amount: item?.amount || formatAmount(toNumber(item?.qty) * toNumber(item?.rate))
       })) : [blankItemRow()]);
@@ -318,6 +343,9 @@ export default function PurchaseOrdersPage({
         .filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''))
         .map((it) => ({
           supplier: String(it.supplier || '').trim(),
+          item_id: String(it.item_id || '').trim(),
+          pr_item_id: String(it.pr_item_id || '').trim(),
+          item_type: String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel',
           erp_code: String(it.erp_code || '').trim(),
           item_name: String(it.item_name || '').trim(),
           description: String(it.description || '').trim(),
@@ -345,7 +373,7 @@ export default function PurchaseOrdersPage({
         created_by: userEmail
       };
 
-      const resp = await savePurchaseOrder(poPayload, meaningfulItems, { spreadsheetId: selectedFirm.spreadsheetId, userEmail });
+      const resp = await savePurchaseOrder(poPayload, meaningfulItems, { spreadsheetId: selectedFirm.spreadsheetId, userEmail, item_type: poPayload.po_type });
       const poNo = String(resp?.po_no || poPayload.po_no || '').trim();
       setStatus(poNo ? `Saved ${poNo}` : 'Saved.');
       setView('list');
@@ -385,6 +413,7 @@ export default function PurchaseOrdersPage({
 
   if (view === 'form') {
     const locked = isApproveMode || String(formData.status || 'draft') === 'approved';
+    const isFromIndent = !!String(formData.pr_no || '').trim();
     const itemType = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
     const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'reel') === itemType && String(it?.active || '1') !== '0');
     const showErp = itemType === 'reel';
@@ -393,6 +422,11 @@ export default function PurchaseOrdersPage({
     const supplierListId = 'po-suppliers';
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: 0, overflowY: 'auto' }}>
+        {isLoading ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ width: '100%', margin: 0, background: '#fff', border: 0, borderRadius: 0, padding: '18px', minHeight: '100vh', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
@@ -403,8 +437,12 @@ export default function PurchaseOrdersPage({
               <button type="button" className="btn" onClick={() => setView('list')} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
               {!locked ? (
                 <>
-                  <button type="button" className="btn" disabled={isSaving} onClick={() => save('draft')} style={{ padding: '10px 14px', fontWeight: 900 }}>Save Draft</button>
-                  <button type="button" className="btn main" disabled={isSaving} onClick={() => save('pending')} style={{ padding: '10px 14px', fontWeight: 900 }}>Submit for Approval</button>
+                  {!isFromIndent ? (
+                    <button type="button" className="btn" disabled={isSaving} onClick={() => save('draft')} style={{ padding: '10px 14px', fontWeight: 900 }}>Save Draft</button>
+                  ) : null}
+                  <button type="button" className="btn main" disabled={isSaving} onClick={() => save('pending')} style={{ padding: '10px 14px', fontWeight: 900 }}>
+                    {isFromIndent ? 'Save Pending PO' : 'Submit for Approval'}
+                  </button>
                 </>
               ) : null}
             </div>
@@ -593,6 +631,11 @@ export default function PurchaseOrdersPage({
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+        {isLoading ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
