@@ -84,7 +84,6 @@ export default function ProfileMenu({
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
           width: variant === 'pill' ? '100%' : '46px',
           height: variant === 'pill' ? '38px' : '46px',
           padding: variant === 'pill' ? '2px 10px' : '0',

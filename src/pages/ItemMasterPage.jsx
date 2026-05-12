@@ -479,11 +479,3 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     </div>
   );
 }
-      </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
