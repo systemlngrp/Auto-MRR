@@ -54,6 +54,15 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
 
+  const computeNextErpCode = (sourceItems = []) => {
+    let maxCode = 0;
+    (Array.isArray(sourceItems) ? sourceItems : []).forEach((it) => {
+      const c = parseInt(String(it?.erp_code || '').trim(), 10);
+      if (!isNaN(c) && c > maxCode) maxCode = c;
+    });
+    return maxCode > 0 ? String(maxCode + 1) : '1';
+  };
+
   const normalizedExistingUniqueKeys = useMemo(() => {
     const set = new Set();
     items.forEach((item, index) => {
@@ -131,17 +140,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
   const openNew = () => {
     setEditingIndex(-1);
-    
-    // Auto ERP Last + 1 logic
-    let maxCode = 0;
-    items.forEach(it => {
-      const c = parseInt(String(it.erp_code || '').trim(), 10);
-      if (!isNaN(c) && c > maxCode) maxCode = c;
-    });
-
     setFormData({
       ...blankItem(),
-      erp_code: maxCode > 0 ? String(maxCode + 1) : ''
+      erp_code: computeNextErpCode(items)
     });
     setErrors({});
     setStatus('');
@@ -265,6 +266,15 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
+    useEffect(() => {
+      if (!isNewItem) return;
+      if (!isReelType) return;
+      if (String(formData.erp_code || '').trim()) return;
+      if (!items.length) return;
+      setFormData((prev) => ({ ...prev, erp_code: computeNextErpCode(items) }));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isNewItem, isReelType, items.length]);
+
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: 'min(720px, 100%)', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '22px' }}>
@@ -279,12 +289,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               <select value={formData.item_type} onChange={(e) => {
                 const nextType = String(e.target.value || 'reel');
                 const makeNextErp = () => {
-                  let maxCode = 0;
-                  items.forEach((it) => {
-                    const c = parseInt(String(it?.erp_code || '').trim(), 10);
-                    if (!isNaN(c) && c > maxCode) maxCode = c;
-                  });
-                  return maxCode > 0 ? String(maxCode + 1) : '';
+                  return computeNextErpCode(items);
                 };
                 setFormData((p) => ({
                   ...p,
