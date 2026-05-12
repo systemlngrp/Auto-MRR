@@ -67,7 +67,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const set = new Set();
     items.forEach((item, index) => {
       if (index === editingIndex) return;
-      const type = String(item?.item_type || 'reel').trim().toLowerCase() || 'mrr';
+      const type = String(item?.item_type || 'reel').trim().toLowerCase() === 'other' ? 'other' : 'reel';
       const code = String(item?.erp_code || '').trim().toLowerCase();
       const name = String(item?.item_name || '').trim().toLowerCase();
       if (code) set.add(`${type}:erp:${code}`);
@@ -186,7 +186,10 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   };
 
   const doSave = async () => {
-    if (!selectedFirm) return;
+    if (!selectedFirm) {
+      setStatus('Please select firm first.');
+      return;
+    }
     if (!validate()) return;
 
     setIsSaving(true);
@@ -200,7 +203,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         size: String(formData.size || '').trim(),
         gsm: String(formData.gsm || '').trim(),
         bf: String(formData.bf || '').trim(),
-        unit: String(formData.unit || '').trim() || 'KG',
+        unit: String(formData.unit || '').trim() || 'CM',
         active: String(formData.active || '1') === '0' ? '0' : '1'
       };
 
@@ -371,7 +374,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <div style={{ gridColumn: 'span 1' }} />
                 <div style={{ gridColumn: 'span 2' }}>
                   <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
-                  <input value={mrrItemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f9fafb' }} />
+                  <input value={itemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f9fafb' }} />
                 </div>
               </>
             ) : (
@@ -392,7 +395,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
           <div style={{ marginTop: '24px', padding: '16px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
             {status ? <div style={{ marginRight: 'auto', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>{status}</div> : null}
-            <button type="button" className="btn main" disabled={isSaving} onClick={doSave} style={{ padding: '10px 16px', fontWeight: 900 }}>
+            <button
+              type="button"
+              className="btn main"
+              disabled={isSaving || !selectedFirm}
+              title={!selectedFirm ? 'Select firm first' : ''}
+              onClick={doSave}
+              style={{ padding: '10px 16px', fontWeight: 900 }}
+            >
               {isSaving ? 'Saving...' : 'Save Item'}
             </button>
           </div>
@@ -462,6 +472,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   </tr>
                 ) : null}
               </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+      </tbody>
             </table>
           </div>
         </div>

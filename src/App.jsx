@@ -156,6 +156,7 @@ const FIRMS = [
   }
 ];
 const AUTH_STORAGE_KEY = 'mrr_auth_user';
+const FIRM_SELECTION_STORAGE_KEY = 'mrr_selected_firm';
 
 const getSheetName = (base, type) => {
   if (typeof base === 'object' && base !== null) {
@@ -6053,6 +6054,11 @@ function App() {
     setSelectedFirm(firm);
     setMrrType(type);
     setIsFirmSelected(true);
+    try {
+      localStorage.setItem(FIRM_SELECTION_STORAGE_KEY, JSON.stringify({ firmId: firm?.id || '', type: type || 'reel' }));
+    } catch {
+      // ignore
+    }
     setTriggerPendingModal(openPending);
     if (pendingItem) {
       const geNo = pendingItem.ge_entry || pendingItem.ge_no || pendingItem.ge_entry_no || '';
@@ -6108,6 +6114,11 @@ function App() {
     if (!firm) return;
     setSelectedFirm(firm);
     setMrrType(type || 'reel');
+    try {
+      localStorage.setItem(FIRM_SELECTION_STORAGE_KEY, JSON.stringify({ firmId: firm?.id || '', type: type || 'reel' }));
+    } catch {
+      // ignore
+    }
   };
 
   const handleUserLogin = (user) => {
@@ -6126,6 +6137,11 @@ function App() {
     setMenuBootConfig(null);
     setIsMrrSavedLocked(false);
     setLastSavedRecord(null);
+    try {
+      localStorage.removeItem(FIRM_SELECTION_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
@@ -6136,6 +6152,32 @@ function App() {
     setShowGeModal(false);
     setPendingGEs([]);
     setMenuBootConfig(null);
+    try {
+      localStorage.removeItem(FIRM_SELECTION_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (selectedFirm || isFirmSelected) return;
+    try {
+      const raw = localStorage.getItem(FIRM_SELECTION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const firmId = String(parsed?.firmId || '').trim();
+      const type = String(parsed?.type || 'reel').trim() || 'reel';
+      if (!firmId) return;
+      const firm = FIRMS.find((f) => String(f?.id || '').trim() === firmId);
+      if (!firm) return;
+      setSelectedFirm(firm);
+      setMrrType(type);
+      setIsFirmSelected(true);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   useEffect(() => {
