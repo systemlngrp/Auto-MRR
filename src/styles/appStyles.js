@@ -133,8 +133,8 @@ body {
 .status.error { color: var(--bad); }
 
 .spinner {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--line-soft);
   border-top-color: var(--primary);
   border-radius: 50%;

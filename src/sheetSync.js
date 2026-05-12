@@ -1,4 +1,4 @@
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = Math.max(15000, Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS || 120000));
 
 export const HELPER_SHEET_NAME = 'HELPER SHEET';
 export const PO_SHEET_NAME = 'PO DETAILS';
@@ -65,26 +65,37 @@ function ensureBackendUrl(source) {
 }
 
 function withTimeout(ms = REQUEST_TIMEOUT_MS) {
+  const timeoutMs = Number(ms);
+  const effectiveMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : REQUEST_TIMEOUT_MS;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
+  const timer = setTimeout(() => controller.abort(), effectiveMs);
   return {
     signal: controller.signal,
+    timeoutMs: effectiveMs,
     clear: () => clearTimeout(timer)
   };
 }
 
 async function fetchJson(url, options = {}) {
-  const { signal, clear } = withTimeout(options.timeoutMs);
+  const { signal, clear, timeoutMs } = withTimeout(options.timeoutMs);
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal,
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        ...(options.headers || {})
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        signal,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...(options.headers || {})
+        }
+      });
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || /aborted/i.test(String(err.message || '')))) {
+        throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`);
       }
-    });
+      throw err;
+    }
     const text = await response.text();
     const contentType = String(response.headers.get('content-type') || '').toLowerCase();
     let payload = null;

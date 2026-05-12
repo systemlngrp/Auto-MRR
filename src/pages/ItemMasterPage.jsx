@@ -157,6 +157,17 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNew]);
 
+  useEffect(() => {
+    if (view !== 'form') return;
+    if (editingIndex >= 0) return;
+    const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
+    if (!isReelType) return;
+    if (String(formData.erp_code || '').trim()) return;
+    if (!items.length) return;
+    setFormData((prev) => ({ ...prev, erp_code: computeNextErpCode(items) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, editingIndex, formData.item_type, formData.erp_code, items.length]);
+
   const openEdit = (index) => {
     const row = items[index] || {};
     setEditingIndex(index);
@@ -266,14 +277,6 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
-    useEffect(() => {
-      if (!isNewItem) return;
-      if (!isReelType) return;
-      if (String(formData.erp_code || '').trim()) return;
-      if (!items.length) return;
-      setFormData((prev) => ({ ...prev, erp_code: computeNextErpCode(items) }));
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isNewItem, isReelType, items.length]);
 
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
