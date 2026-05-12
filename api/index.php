@@ -3341,176 +3341,219 @@ try {
             }
         }
 
-        if ($poNo === '') {
-            $fy = fiscalYearText(new DateTimeImmutable('now'));
-            $prefix = 'PO-' . $fy . '/';
-            $seq = nextSequenceNumber($firmId, $prefix, 'purchase_orders', 'po_no');
-            $poNo = $prefix . str_pad((string)$seq, 5, '0', STR_PAD_LEFT);
-        }
-
-        writeBackendLog('save_purchase_order_start', array_merge(
-            ['trace_id' => $traceId, 'action' => 'save_purchase_order', 'po_no' => $poNo],
-            loggerContextSummary($payload)
-        ));
-
-        $check = $pdo->prepare("SELECT id, status_text FROM purchase_orders WHERE firm_id = :firm_id AND po_no = :po_no LIMIT 1");
-        $check->execute(['firm_id' => $firmId, 'po_no' => $poNo]);
-        $existing = $check->fetch();
-
-        if ($existing) {
-            $status = trim((string)($existing['status_text'] ?? 'draft')) ?: 'draft';
-            if (strcasecmp($status, 'approved') === 0) {
-                jsonOut(['ok' => false, 'error' => 'Approved PO cannot be edited.'], 400);
-            }
-            $updateSql = "
-                UPDATE purchase_orders
-                SET pr_id = :pr_id,
-                    po_type = :po_type,
-                    supplier_name = :supplier,
-                    po_date = :po_date,
-            ";
-            if ($hasPoDetails) {
-                $updateSql .= "    po_details = :po_details,\n";
-            }
-            $updateSql .= "
-                    status_text = :status_text,
-                    remark_text = :remark_text,
-                    created_by = COALESCE(NULLIF(:created_by, ''), created_by),
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = :id
-            ";
-            $update = $pdo->prepare($updateSql);
-            $params = [
-                'pr_id' => $prId,
-                'po_type' => $poType,
-                'supplier' => $supplier !== '' ? $supplier : null,
-                'po_date' => $poDate !== '' ? $poDate : null,
-                'po_details' => $poDetails !== '' ? $poDetails : null,
-                'status_text' => $desiredStatus,
-                'remark_text' => $remark !== '' ? $remark : null,
-                'created_by' => $createdBy,
-                'id' => (int)$existing['id'],
-            ];
-            if (!$hasPoDetails) {
-                unset($params['po_details']);
-            }
-            $update->execute($params);
-            $poId = (int)$existing['id'];
-        } else {
-            $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, status_text, remark_text, created_by";
-            $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :status_text, :remark_text, :created_by";
-            if ($hasPoDetails) {
-                $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, po_details, status_text, remark_text, created_by";
-                $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :po_details, :status_text, :remark_text, :created_by";
-            }
-            $insert = $pdo->prepare("INSERT INTO purchase_orders ({$insertCols}) VALUES ({$insertVals})");
-            $params = [
-                'firm_id' => $firmId,
-                'po_no' => $poNo,
-                'pr_id' => $prId,
-                'po_type' => $poType,
-                'supplier' => $supplier !== '' ? $supplier : null,
-                'po_date' => $poDate !== '' ? $poDate : null,
-                'po_details' => $poDetails !== '' ? $poDetails : null,
-                'status_text' => $desiredStatus,
-                'remark_text' => $remark !== '' ? $remark : null,
-                'created_by' => $createdBy !== '' ? $createdBy : null,
-            ];
-            if (!$hasPoDetails) {
-                unset($params['po_details']);
-            }
-            $insert->execute($params);
-            $poId = (int)$pdo->lastInsertId();
-        }
-
-        $del = $pdo->prepare("DELETE FROM purchase_order_items WHERE firm_id = :firm_id AND po_id = :po_id");
-        $del->execute(['firm_id' => $firmId, 'po_id' => $poId]);
-        $insertCols = "firm_id, po_id, "
-            . ($hasPrItemId ? "pr_item_id, " : "")
-            . ($hasItemId ? "item_id, " : "")
-            . "row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
-        $insertVals = ":firm_id, :po_id, "
-            . ($hasPrItemId ? ":pr_item_id, " : "")
-            . ($hasItemId ? ":item_id, " : "")
-            . ":row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
-        if ($hasItemSupplier) {
-            $insertCols = "firm_id, po_id, "
-                . ($hasPrItemId ? "pr_item_id, " : "")
-                . ($hasItemId ? "item_id, " : "")
-                . "row_sort, supplier_name, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
-            $insertVals = ":firm_id, :po_id, "
-                . ($hasPrItemId ? ":pr_item_id, " : "")
-                . ($hasItemId ? ":item_id, " : "")
-                . ":row_sort, :supplier_name, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
-        }
-        $ins = $pdo->prepare("INSERT INTO purchase_order_items ({$insertCols}) VALUES ({$insertVals})");
-        $rowSort = 0;
+        $meaningful = [];
         foreach ($items as $item) {
             if (!is_array($item)) continue;
-            $prItemId = $hasPrItemId ? (int)($item['pr_item_id'] ?? 0) : 0;
-            $itemSupplier = trim((string)($item['supplier'] ?? $item['supplier_name'] ?? ''));
             $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
             $code = trim((string)($item['erp_code'] ?? ''));
             $name = trim((string)($item['item_name'] ?? ''));
             $qty = trim((string)($item['qty'] ?? $item['quantity'] ?? ''));
             if ($desc === '' && $code === '' && $name === '' && $qty === '') continue;
-            $rowSort++;
-            $rate = trim((string)($item['rate'] ?? ''));
-            $amount = trim((string)($item['amount'] ?? ''));
-            $unit = trim((string)($item['unit'] ?? ''));
-            $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
+            $meaningful[] = $item;
+        }
+        if (!count($meaningful)) {
+            jsonOut(['ok' => false, 'error' => 'At least 1 item required.'], 400);
+        }
 
-            $resolvedItemId = 0;
-            if ($hasItemId) {
-                $resolvedItemId = (int)($item['item_id'] ?? 0);
-                if ($resolvedItemId <= 0) {
-                    $resolvedItemId = resolveItemId($pdo, $firmId, $poType, $code, $name);
-                }
-                if ($resolvedItemId <= 0) {
-                    jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
-                }
+        // Group items by supplier (each supplier => separate PO number).
+        $groups = [];
+        foreach ($meaningful as $item) {
+            $itemSupplier = trim((string)($item['supplier'] ?? $item['supplier_name'] ?? ''));
+            if ($itemSupplier === '') {
+                jsonOut(['ok' => false, 'error' => 'Supplier required for each PO item.'], 400);
+            }
+            if (!isset($groups[$itemSupplier])) $groups[$itemSupplier] = [];
+            $groups[$itemSupplier][] = $item;
+        }
+        // If a header supplier is given, keep single group only.
+        if ($supplier !== '') {
+            $groups = [$supplier => $meaningful];
+        }
+
+        $createdPoNos = [];
+        $totalSavedItems = 0;
+
+        foreach ($groups as $supplierKey => $groupItems) {
+            $currentPoNo = $poNo;
+            // For multi-supplier split, always generate new PO numbers (ignore client-provided po_no).
+            if (count($groups) > 1) {
+                $currentPoNo = '';
+            }
+            if ($currentPoNo === '') {
+                $fy = fiscalYearText(new DateTimeImmutable('now'));
+                $prefix = 'PO-' . $fy . '/';
+                $seq = nextSequenceNumber($firmId, $prefix, 'purchase_orders', 'po_no');
+                $currentPoNo = $prefix . str_pad((string)$seq, 5, '0', STR_PAD_LEFT);
             }
 
-            $params = [
-                'firm_id' => $firmId,
-                'po_id' => $poId,
-                'pr_item_id' => $prItemId > 0 ? $prItemId : null,
-                'item_id' => $resolvedItemId > 0 ? $resolvedItemId : null,
-                'row_sort' => $rowSort,
-                'supplier_name' => $itemSupplier !== '' ? $itemSupplier : null,
-                'erp_code' => $code !== '' ? $code : null,
-                'item_name' => $name !== '' ? $name : null,
-                'description_text' => $desc !== '' ? $desc : null,
-                'unit_value' => $unit !== '' ? $unit : null,
-                'qty_value' => $qty !== '' ? $qty : null,
-                'rate_value' => $rate !== '' ? $rate : null,
-                'amount_value' => $amount !== '' ? $amount : null,
-                'remark_text' => $remarkItem !== '' ? $remarkItem : null,
-            ];
-            if (!$hasItemSupplier) {
-                unset($params['supplier_name']);
+            writeBackendLog('save_purchase_order_start', array_merge(
+                ['trace_id' => $traceId, 'action' => 'save_purchase_order', 'po_no' => $currentPoNo],
+                loggerContextSummary($payload)
+            ));
+
+            $check = $pdo->prepare("SELECT id, status_text FROM purchase_orders WHERE firm_id = :firm_id AND po_no = :po_no LIMIT 1");
+            $check->execute(['firm_id' => $firmId, 'po_no' => $currentPoNo]);
+            $existing = $check->fetch();
+
+            if ($existing) {
+                $status = trim((string)($existing['status_text'] ?? 'draft')) ?: 'draft';
+                if (strcasecmp($status, 'approved') === 0) {
+                    jsonOut(['ok' => false, 'error' => 'Approved PO cannot be edited.'], 400);
+                }
+                $updateSql = "
+                    UPDATE purchase_orders
+                    SET pr_id = :pr_id,
+                        po_type = :po_type,
+                        supplier_name = :supplier,
+                        po_date = :po_date,
+                ";
+                if ($hasPoDetails) {
+                    $updateSql .= "    po_details = :po_details,\n";
+                }
+                $updateSql .= "
+                        status_text = :status_text,
+                        remark_text = :remark_text,
+                        created_by = COALESCE(NULLIF(:created_by, ''), created_by),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                ";
+                $update = $pdo->prepare($updateSql);
+                $params = [
+                    'pr_id' => $prId,
+                    'po_type' => $poType,
+                    'supplier' => $supplierKey !== '' ? $supplierKey : null,
+                    'po_date' => $poDate !== '' ? $poDate : null,
+                    'po_details' => $poDetails !== '' ? $poDetails : null,
+                    'status_text' => $desiredStatus,
+                    'remark_text' => $remark !== '' ? $remark : null,
+                    'created_by' => $createdBy,
+                    'id' => (int)$existing['id'],
+                ];
+                if (!$hasPoDetails) {
+                    unset($params['po_details']);
+                }
+                $update->execute($params);
+                $poId = (int)$existing['id'];
+            } else {
+                $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, status_text, remark_text, created_by";
+                $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :status_text, :remark_text, :created_by";
+                if ($hasPoDetails) {
+                    $insertCols = "firm_id, po_no, pr_id, po_type, supplier_name, po_date, po_details, status_text, remark_text, created_by";
+                    $insertVals = ":firm_id, :po_no, :pr_id, :po_type, :supplier, :po_date, :po_details, :status_text, :remark_text, :created_by";
+                }
+                $insert = $pdo->prepare("INSERT INTO purchase_orders ({$insertCols}) VALUES ({$insertVals})");
+                $params = [
+                    'firm_id' => $firmId,
+                    'po_no' => $currentPoNo,
+                    'pr_id' => $prId,
+                    'po_type' => $poType,
+                    'supplier' => $supplierKey !== '' ? $supplierKey : null,
+                    'po_date' => $poDate !== '' ? $poDate : null,
+                    'po_details' => $poDetails !== '' ? $poDetails : null,
+                    'status_text' => $desiredStatus,
+                    'remark_text' => $remark !== '' ? $remark : null,
+                    'created_by' => $createdBy !== '' ? $createdBy : null,
+                ];
+                if (!$hasPoDetails) {
+                    unset($params['po_details']);
+                }
+                $insert->execute($params);
+                $poId = (int)$pdo->lastInsertId();
             }
-            if (!$hasPrItemId) {
-                unset($params['pr_item_id']);
+
+            $del = $pdo->prepare("DELETE FROM purchase_order_items WHERE firm_id = :firm_id AND po_id = :po_id");
+            $del->execute(['firm_id' => $firmId, 'po_id' => $poId]);
+
+            $insertCols = "firm_id, po_id, "
+                . ($hasPrItemId ? "pr_item_id, " : "")
+                . ($hasItemId ? "item_id, " : "")
+                . "row_sort, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+            $insertVals = ":firm_id, :po_id, "
+                . ($hasPrItemId ? ":pr_item_id, " : "")
+                . ($hasItemId ? ":item_id, " : "")
+                . ":row_sort, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
+            if ($hasItemSupplier) {
+                $insertCols = "firm_id, po_id, "
+                    . ($hasPrItemId ? "pr_item_id, " : "")
+                    . ($hasItemId ? "item_id, " : "")
+                    . "row_sort, supplier_name, erp_code, item_name, description_text, unit_value, qty_value, rate_value, amount_value, remark_text";
+                $insertVals = ":firm_id, :po_id, "
+                    . ($hasPrItemId ? ":pr_item_id, " : "")
+                    . ($hasItemId ? ":item_id, " : "")
+                    . ":row_sort, :supplier_name, :erp_code, :item_name, :description_text, :unit_value, :qty_value, :rate_value, :amount_value, :remark_text";
             }
-            if (!$hasItemId) {
-                unset($params['item_id']);
+            $ins = $pdo->prepare("INSERT INTO purchase_order_items ({$insertCols}) VALUES ({$insertVals})");
+
+            $rowSort = 0;
+            foreach ($groupItems as $item) {
+                $prItemId = $hasPrItemId ? (int)($item['pr_item_id'] ?? 0) : 0;
+                $desc = trim((string)($item['description'] ?? $item['description_text'] ?? ''));
+                $code = trim((string)($item['erp_code'] ?? ''));
+                $name = trim((string)($item['item_name'] ?? ''));
+                $qty = trim((string)($item['qty'] ?? $item['quantity'] ?? ''));
+                if ($desc === '' && $code === '' && $name === '' && $qty === '') continue;
+                $rowSort++;
+                $rate = trim((string)($item['rate'] ?? ''));
+                $amount = trim((string)($item['amount'] ?? ''));
+                $unit = trim((string)($item['unit'] ?? ''));
+                $remarkItem = trim((string)($item['remark'] ?? $item['remark_text'] ?? ''));
+
+                $resolvedItemId = 0;
+                if ($hasItemId) {
+                    $resolvedItemId = (int)($item['item_id'] ?? 0);
+                    if ($resolvedItemId <= 0) {
+                        $resolvedItemId = resolveItemId($pdo, $firmId, $poType, $code, $name);
+                    }
+                    if ($resolvedItemId <= 0) {
+                        jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
+                    }
+                }
+
+                $params = [
+                    'firm_id' => $firmId,
+                    'po_id' => $poId,
+                    'pr_item_id' => $prItemId > 0 ? $prItemId : null,
+                    'item_id' => $resolvedItemId > 0 ? $resolvedItemId : null,
+                    'row_sort' => $rowSort,
+                    'supplier_name' => $supplierKey !== '' ? $supplierKey : null,
+                    'erp_code' => $code !== '' ? $code : null,
+                    'item_name' => $name !== '' ? $name : null,
+                    'description_text' => $desc !== '' ? $desc : null,
+                    'unit_value' => $unit !== '' ? $unit : null,
+                    'qty_value' => $qty !== '' ? $qty : null,
+                    'rate_value' => $rate !== '' ? $rate : null,
+                    'amount_value' => $amount !== '' ? $amount : null,
+                    'remark_text' => $remarkItem !== '' ? $remarkItem : null,
+                ];
+                if (!$hasItemSupplier) {
+                    unset($params['supplier_name']);
+                }
+                if (!$hasPrItemId) {
+                    unset($params['pr_item_id']);
+                }
+                if (!$hasItemId) {
+                    unset($params['item_id']);
+                }
+                $ins->execute($params);
             }
-            $ins->execute($params);
+
+            $createdPoNos[] = $currentPoNo;
+            $totalSavedItems += $rowSort;
         }
 
         writeBackendLog('save_purchase_order_success', [
             'trace_id' => $traceId,
             'firm_id' => $firmId,
-            'po_no' => $poNo,
-            'saved_items' => $rowSort,
+            'po_nos' => $createdPoNos,
+            'saved_items' => $totalSavedItems,
         ]);
 
         jsonOut([
             'ok' => true,
             'trace_id' => $traceId,
-            'po_no' => $poNo,
-            'savedItems' => $rowSort,
+            'po_no' => $createdPoNos[0] ?? '',
+            'po_nos' => $createdPoNos,
+            'savedItems' => $totalSavedItems,
         ]);
     }
 

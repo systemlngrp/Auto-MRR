@@ -374,8 +374,10 @@ export default function PurchaseOrdersPage({
       };
 
       const resp = await savePurchaseOrder(poPayload, meaningfulItems, { spreadsheetId: selectedFirm.spreadsheetId, userEmail, item_type: poPayload.po_type });
+      const poNos = Array.isArray(resp?.po_nos) ? resp.po_nos.map((v) => String(v || '').trim()).filter(Boolean) : [];
       const poNo = String(resp?.po_no || poPayload.po_no || '').trim();
-      setStatus(poNo ? `Saved ${poNo}` : 'Saved.');
+      const message = poNos.length > 1 ? `Saved POs: ${poNos.join(', ')}` : (poNo ? `Saved ${poNo}` : 'Saved.');
+      setStatus(message);
       setView('list');
       await load();
     } catch (err) {
