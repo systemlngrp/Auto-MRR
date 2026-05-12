@@ -607,7 +607,8 @@ export default function PurchaseOrdersPage({
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {tabButton('all', 'All')}
-          {tabButton(isApproveMode ? 'pending' : 'draft', isApproveMode ? 'Pending' : 'Draft')}
+          {tabButton('draft', 'Draft')}
+          {tabButton('pending', 'Pending')}
           {tabButton('approved', 'Approved')}
           {tabButton('rejected', 'Rejected')}
         </div>
@@ -632,9 +633,7 @@ export default function PurchaseOrdersPage({
                 {filteredPos
                   .filter((row) => {
                     if (tab === 'all') return true;
-                    const statusText = String(row?.status || '').toLowerCase();
-                    if (!isApproveMode && tab === 'draft') return statusText === 'draft' || statusText === 'pending';
-                    return statusText === tab;
+                    return String(row?.status || '').toLowerCase() === tab;
                   })
                   .map((row) => {
                     const poNo = String(row?.po_no || '').trim();
@@ -670,6 +669,17 @@ export default function PurchaseOrdersPage({
                 {!filteredPos.length ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>
