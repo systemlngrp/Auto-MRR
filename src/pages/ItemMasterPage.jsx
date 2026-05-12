@@ -276,7 +276,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   if (view === 'form') {
     const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
     const isNewItem = editingIndex < 0;
-    const mrrItemNamePreview = isReelType
+    const itemNamePreview = isReelType
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
