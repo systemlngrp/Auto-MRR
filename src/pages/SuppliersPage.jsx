@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 const blankSupplier = () => ({
   id: '',
   supplier_name: '',
-  supplier_code: '',
   phone_no: '',
   gstin: '',
   active: '1'
@@ -43,10 +42,8 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
   const filteredRows = useMemo(() => {
     const q = String(search || '').trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) => {
-      return [r?.supplier_name, r?.supplier_code, r?.phone_no, r?.gstin]
-        .some((v) => String(v || '').toLowerCase().includes(q));
-    });
+    return rows.filter((r) => [r?.supplier_name, r?.phone_no, r?.gstin]
+      .some((v) => String(v || '').toLowerCase().includes(q)));
   }, [rows, search]);
 
   const inputStyle = (field) => ({
@@ -95,7 +92,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
         {
           id: String(formData.id || '').trim(),
           supplier_name: String(formData.supplier_name || '').trim(),
-          supplier_code: String(formData.supplier_code || '').trim(),
+          supplier_code: '',
           phone_no: String(formData.phone_no || '').trim(),
           gstin: String(formData.gstin || '').trim(),
           active: String(formData.active || '1') === '0' ? '0' : '1'
@@ -135,10 +132,6 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Name *</div>
               <input value={formData.supplier_name} onChange={(e) => setFormData((p) => ({ ...p, supplier_name: e.target.value }))} style={inputStyle('supplier_name')} />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Code</div>
-              <input value={formData.supplier_code} onChange={(e) => setFormData((p) => ({ ...p, supplier_code: e.target.value }))} style={inputStyle('supplier_code')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Phone</div>
@@ -185,19 +178,17 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Code</th>
-                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Name</th>
-                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Phone</th>
-                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GSTIN</th>
-                                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Active</th>
-                                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
-                                </tr>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Name</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Phone</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GSTIN</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Active</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
+                </tr>
               </thead>
               <tbody>
                 {filteredRows.map((row) => (
                   <tr key={String(row?.id || row?.supplier_name || '')}>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>{row?.supplier_name || '-'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.supplier_code || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.phone_no || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.gstin || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(row?.active ?? '1') === '0' ? 'No' : 'Yes'}</td>
@@ -208,7 +199,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
                 ))}
                 {!filteredRows.length ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                    <td colSpan={5} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -219,4 +210,3 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
     </div>
   );
 }
-

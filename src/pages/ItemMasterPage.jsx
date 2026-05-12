@@ -260,6 +260,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
   if (view === 'form') {
     const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
+    const isNewItem = editingIndex < 0;
     const mrrItemNamePreview = isReelType
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
@@ -277,11 +278,21 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type{requiredMark}</div>
               <select value={formData.item_type} onChange={(e) => {
                 const nextType = String(e.target.value || 'reel');
+                const makeNextErp = () => {
+                  let maxCode = 0;
+                  items.forEach((it) => {
+                    const c = parseInt(String(it?.erp_code || '').trim(), 10);
+                    if (!isNaN(c) && c > maxCode) maxCode = c;
+                  });
+                  return maxCode > 0 ? String(maxCode + 1) : '';
+                };
                 setFormData((p) => ({
                   ...p,
                   item_type: nextType,
                   // Clear type-specific fields to reduce mistakes.
-                  ...(nextType === 'other' ? { erp_code: '', size: '', gsm: '', bf: '' } : {})
+                  ...(nextType === 'other'
+                    ? { erp_code: '', size: '', gsm: '', bf: '' }
+                    : (isNewItem ? { erp_code: makeNextErp() } : {}))
                 }));
               }} style={inputStyle('item_type')}>
                 <option value="reel">Reel</option>
@@ -297,7 +308,8 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   pattern="[0-9]*"
                   onChange={(e) => setFormData((p) => ({ ...p, erp_code: digitsOnly(e.target.value) }))}
                   style={smallNumericStyle('erp_code')}
-                  placeholder="Required for Reel"
+                  disabled={isNewItem}
+                  readOnly={isNewItem}
                 />
                 {errors.erp_code ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.erp_code}</div> : null}
               </div>
@@ -323,7 +335,6 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                     pattern="[0-9]*[.]?[0-9]*"
                     onChange={(e) => setFormData((p) => ({ ...p, size: decimalOnly(e.target.value) }))}
                     style={smallNumericStyle('size')}
-                    placeholder="Required for Reel"
                   />
                   {errors.size ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.size}</div> : null}
                 </div>
@@ -335,7 +346,6 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                     pattern="[0-9]*"
                     onChange={(e) => setFormData((p) => ({ ...p, gsm: digitsOnly(e.target.value) }))}
                     style={smallNumericStyle('gsm')}
-                    placeholder="Required for Reel"
                   />
                   {errors.gsm ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.gsm}</div> : null}
                 </div>
@@ -347,7 +357,6 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                     pattern="[0-9]*"
                     onChange={(e) => setFormData((p) => ({ ...p, bf: digitsOnly(e.target.value) }))}
                     style={smallNumericStyle('bf')}
-                    placeholder="Required for MRR"
                   />
                   {errors.bf ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.bf}</div> : null}
                 </div>
@@ -360,7 +369,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             ) : (
               <div style={{ gridColumn: 'span 2' }}>
                 <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name{requiredMark}</div>
-                <input value={formData.item_name} onChange={(e) => setFormData((p) => ({ ...p, item_name: e.target.value }))} style={inputStyle('item_name')} placeholder="Required for Other" />
+                <input value={formData.item_name} onChange={(e) => setFormData((p) => ({ ...p, item_name: e.target.value }))} style={inputStyle('item_name')} />
                 {errors.item_name ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.item_name}</div> : null}
               </div>
             )}
@@ -373,9 +382,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             </div>
           </div>
 
-          <div style={{ marginTop: '24px', padding: '16px', background: '#1d4ed8', borderRadius: '12px', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
-            {status ? <div style={{ marginRight: 'auto', fontSize: '12px', color: '#fff', fontWeight: 700 }}>{status}</div> : null}
-            <button type="button" className="btn" disabled={isSaving} onClick={doSave} style={{ padding: '10px 16px', fontWeight: 900, background: '#fff', color: '#1d4ed8', borderColor: '#fff' }}>
+          <div style={{ marginTop: '24px', padding: '16px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+            {status ? <div style={{ marginRight: 'auto', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>{status}</div> : null}
+            <button type="button" className="btn main" disabled={isSaving} onClick={doSave} style={{ padding: '10px 16px', fontWeight: 900 }}>
               {isSaving ? 'Saving...' : 'Save Item'}
             </button>
           </div>

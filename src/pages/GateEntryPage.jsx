@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+fiximport React, { useEffect, useRef, useState } from 'react';
 export default function GateEntryPage({
   onSave,
   onBack,
@@ -197,9 +197,6 @@ export default function GateEntryPage({
                 style={inputStyle('supplier')} 
                 placeholder="Search or Select Supplier..." 
               />
-              <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6b7280', fontSize: '10px' }}>
-                ▼
-              </div>
               <datalist id="ge-suppliers">
                 {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
               </datalist>

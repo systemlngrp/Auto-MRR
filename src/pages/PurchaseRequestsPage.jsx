@@ -100,7 +100,7 @@ export default function PurchaseRequestsPage({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [rows, setRows] = useState([]);
-  const [tab, setTab] = useState('all'); // all | pending | approved | rejected
+  const [tab, setTab] = useState('pending'); // all | pending | approved | rejected
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
   const [toDate, setToDate] = useState(''); // YYYY-MM-DD
