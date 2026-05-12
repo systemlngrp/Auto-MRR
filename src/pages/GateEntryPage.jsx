@@ -36,6 +36,8 @@ export default function GateEntryPage({
   const [isSaving, setIsSaving] = useState(false);
   const isMountedRef = useRef(true);
 
+  const isNewEntry = !getGateEntryNo(initialData) && !geNo;
+
   useEffect(() => () => {
     isMountedRef.current = false;
   }, []);
@@ -59,7 +61,7 @@ export default function GateEntryPage({
         const otherListPromise = fetchUniqueSuppliers(firm, getSheetName(firm?.po, 'other') || 'OTHER PO').catch(() => []);
         const [baseList, otherList] = await Promise.all([baseListPromise, otherListPromise]);
         const merged = [...new Set([...(baseList || []), ...(otherList || [])].map((v) => String(v || '').trim()).filter(Boolean))];
-        setSuppliers(merged);
+        setSuppliers(merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
       } catch (err) {
         console.error('Failed to load suppliers:', err);
       } finally {
@@ -68,26 +70,6 @@ export default function GateEntryPage({
     }
     loadSuppliers();
   }, [fetchUniqueSuppliers, firm, getSheetName]);
-
-  useEffect(() => {
-    async function loadNextGeNo() {
-      if (!firm || (getGateEntryNo(initialData) || geNo || data.ge_no) && data.mrr_no) return;
-      try {
-        const prefix = `${getFirmCode(firm)}/${getFinancialYearLabel(data.date || defaultDate)}/`;
-        const mrrSheet = getSheetName(firm?.mrr, mrrType) || 'MRR FORM';
-        const latest = await fetchLatestMrrGe(mrrSheet, firm, null, prefix, 'GE ENTRY');
-        const nextGeNo = formatGateEntryNumber(firm, data.date || defaultDate, Number(latest?.ge || 0) + 1);
-        setData((prev) => ({
-          ...prev,
-          ge_no: prev.ge_no || geNo || getGateEntryNo(initialData) || nextGeNo,
-          mrr_no: prev.mrr_no || geNo || getGateEntryNo(initialData) || nextGeNo
-        }));
-      } catch (err) {
-        console.error('Failed to load next GE/MRR No:', err);
-      }
-    }
-    loadNextGeNo();
-  }, [data.date, data.ge_no, data.mrr_no, defaultDate, fetchLatestMrrGe, firm, formatGateEntryNumber, geNo, getFinancialYearLabel, getFirmCode, getGateEntryNo, getSheetName, initialData, mrrType]);
 
   const handleFileChange = async (index, file) => {
     if (!file) return;
@@ -199,52 +181,48 @@ export default function GateEntryPage({
           <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{firm?.name || ''}</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label style={labelStyle}>GE No (Auto-Increment)</label>
-              <input value={data.ge_no || ''} readOnly style={{ ...inputStyle('ge_no'), background: '#f3f4f6', cursor: 'not-allowed' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>MRR No (Auto-Increment)</label>
-              <input value={data.mrr_no || ''} readOnly style={{ ...inputStyle('mrr_no'), background: '#f3f4f6', cursor: 'not-allowed' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Date</label>
-              <input value={data.date || defaultDate} readOnly style={{ ...inputStyle('date'), background: '#f3f4f6', cursor: 'not-allowed' }} />
-            </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 32px' }}>
+          <div>
+            <label style={labelStyle}>Date</label>
+            <input value={data.date || defaultDate} readOnly style={{ ...inputStyle('date'), background: '#f3f4f6', cursor: 'not-allowed' }} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label style={labelStyle}>Supplier Name <span style={{ color: '#b91c1c' }}>*</span></label>
+          <div>
+            <label style={labelStyle}>Supplier Name <span style={{ color: '#b91c1c' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
               <input 
                 list="ge-suppliers" 
                 value={data.supplier} 
                 onChange={(e) => { setData({ ...data, supplier: e.target.value }); setErrors({ ...errors, supplier: '' }); }} 
                 style={inputStyle('supplier')} 
-                placeholder="Search supplier..." 
+                placeholder="Search or Select Supplier..." 
               />
+              <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6b7280', fontSize: '10px' }}>
+                ▼
+              </div>
               <datalist id="ge-suppliers">
                 {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
               </datalist>
-              {errorMsg(errors.supplier)}
             </div>
-            <div>
-              <label style={labelStyle}>Invoice No <span style={{ color: '#b91c1c' }}>*</span></label>
-              <input value={data.invoice_no} onChange={(e) => { setData({ ...data, invoice_no: e.target.value }); setErrors({ ...errors, invoice_no: '' }); }} style={inputStyle('invoice_no')} placeholder="INV-001" />
-              {errorMsg(errors.invoice_no)}
-            </div>
-            <div>
-              <label style={labelStyle}>Invoice Value <span style={{ color: '#b91c1c' }}>*</span></label>
-              <input type="number" step="0.01" value={data.total_value} onChange={(e) => { setData({ ...data, total_value: e.target.value }); setErrors({ ...errors, total_value: '' }); }} style={inputStyle('total_value')} placeholder="0.00" />
-              {errorMsg(errors.total_value)}
-            </div>
-            <div>
-              <label style={labelStyle}>Truck No <span style={{ color: '#b91c1c' }}>*</span></label>
-              <input value={data.truck_no} onChange={(e) => { setData({ ...data, truck_no: e.target.value }); setErrors({ ...errors, truck_no: '' }); }} style={inputStyle('truck_no')} placeholder="AS-01-XXXX" />
-              {errorMsg(errors.truck_no)}
-            </div>
+            {errorMsg(errors.supplier)}
+          </div>
+
+          <div>
+            <label style={labelStyle}>Invoice No <span style={{ color: '#b91c1c' }}>*</span></label>
+            <input value={data.invoice_no} onChange={(e) => { setData({ ...data, invoice_no: e.target.value }); setErrors({ ...errors, invoice_no: '' }); }} style={inputStyle('invoice_no')} placeholder="INV-001" />
+            {errorMsg(errors.invoice_no)}
+          </div>
+
+          <div>
+            <label style={labelStyle}>Invoice Value <span style={{ color: '#b91c1c' }}>*</span></label>
+            <input type="number" step="0.01" value={data.total_value} onChange={(e) => { setData({ ...data, total_value: e.target.value }); setErrors({ ...errors, total_value: '' }); }} style={inputStyle('total_value')} placeholder="0.00" />
+            {errorMsg(errors.total_value)}
+          </div>
+
+          <div>
+            <label style={labelStyle}>Truck No <span style={{ color: '#b91c1c' }}>*</span></label>
+            <input value={data.truck_no} onChange={(e) => { setData({ ...data, truck_no: e.target.value }); setErrors({ ...errors, truck_no: '' }); }} style={inputStyle('truck_no')} placeholder="AS-01-XXXX" />
+            {errorMsg(errors.truck_no)}
           </div>
         </div>
 

@@ -94,21 +94,22 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
         </div>
 
         <div className="wrap" style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: '4px' }}>
-          <table className="table" style={{ minWidth: '1000px' }}>
+          <table className="table" style={{ minWidth: '1100px' }}>
             <thead>
               <tr>
-                <th style={{ ...headerCellStyle, width: '180px' }}>GE No</th>
-                <th style={{ ...headerCellStyle, width: '120px' }}>Date</th>
+                <th style={{ ...headerCellStyle, width: '160px' }}>GE No</th>
+                <th style={{ ...headerCellStyle, width: '160px' }}>MRR No</th>
+                <th style={{ ...headerCellStyle, width: '110px' }}>Date</th>
                 <th style={{ ...headerCellStyle, width: '220px' }}>Supplier</th>
-                <th style={{ ...headerCellStyle, width: '150px' }}>Truck No</th>
-                <th style={{ ...headerCellStyle, width: '150px' }}>Invoice No</th>
-                <th style={{ ...headerCellStyle, width: '190px' }}>Actions</th>
+                <th style={{ ...headerCellStyle, width: '140px' }}>Truck No</th>
+                <th style={{ ...headerCellStyle, width: '140px' }}>Invoice No</th>
+                <th style={{ ...headerCellStyle, width: '180px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 && !isLoading ? (
                 <tr>
-                  <td colSpan="6" style={{ ...bodyCellStyle, textAlign: 'center', padding: '60px', color: '#6b7280' }}>
+                  <td colSpan="7" style={{ ...bodyCellStyle, textAlign: 'center', padding: '60px', color: '#6b7280' }}>
                     <div style={{ fontSize: '40px', marginBottom: '16px' }}>🚛</div>
                     <div style={{ fontWeight: '700' }}>No gate entries found.</div>
                   </td>
@@ -117,6 +118,7 @@ export default function GateEntriesPage({ selectedFirm, deps, onBack, onAdd, onE
               {filteredRows.map((row, index) => (
                 <tr key={index}>
                   <td style={{ ...bodyCellStyle, fontWeight: 800 }}>{row.ge_no}</td>
+                  <td style={{ ...bodyCellStyle, fontWeight: 700 }}>{row.mrr || row.mrr_no || ''}</td>
                   <td style={bodyCellStyle}>{row.date}</td>
                   <td style={bodyCellStyle}>{row.supplier}</td>
                   <td style={bodyCellStyle}>{row.truck_no}</td>

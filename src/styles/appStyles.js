@@ -77,8 +77,15 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
+}
+
+.bottom-back {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 10010;
 }
 
 .app {

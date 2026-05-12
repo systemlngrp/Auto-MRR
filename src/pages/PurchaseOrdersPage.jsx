@@ -102,6 +102,7 @@ export default function PurchaseOrdersPage({
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve_po';
+  const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
 
   const load = async () => {
     if (!selectedFirm) return;
@@ -432,7 +433,7 @@ export default function PurchaseOrdersPage({
               </select>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Date</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Date{requiredMark}</div>
               <input
                 type="date"
                 disabled={locked}
@@ -442,7 +443,7 @@ export default function PurchaseOrdersPage({
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Details</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Details{requiredMark}</div>
               <input
                 disabled={locked}
                 value={formData.po_details}
@@ -472,11 +473,11 @@ export default function PurchaseOrdersPage({
                 <thead>
                   <tr>
                     {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>ERP</th> : null}
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Supplier</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Supplier{requiredMark}</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description{requiredMark}</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Qty{requiredMark}</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Remark</th>

@@ -13,6 +13,10 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     { key: 'approvals', label: 'Approvals' },
     { key: 'review', label: 'Review' },
     { key: 'po_details', label: 'PO Details' },
+    { key: 'item_master', label: 'Item Master' },
+    { key: 'purchase_requests', label: 'Indent' },
+    { key: 'make_po', label: 'PO' },
+    { key: 'suppliers', label: 'Suppliers' },
     { key: 'users', label: 'Users' },
     { key: 'download_label', label: 'Download Label' }
   ];
@@ -28,10 +32,11 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   });
 
   const [users, setUsers] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState(['Admin', 'Accounts', 'MD', 'Plant Head', 'Security', 'Plant MRR']);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [formData, setFormData] = useState(blankUser());
   const [errors, setErrors] = useState({});
-  const [view, setView] = useState(initialView); // respects prop
+  const [view, setView] = useState(initialView);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -43,6 +48,16 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     }
     setView('list');
   };
+
+  useEffect(() => {
+    if (users.length > 0) {
+      const rolesInUse = users.map(u => String(u.role || '').trim()).filter(Boolean);
+      setAvailableRoles(prev => {
+        const combined = [...new Set([...prev, ...rolesInUse])];
+        return combined.sort((a, b) => a.localeCompare(b));
+      });
+    }
+  }, [users]);
 
   useEffect(() => {
     if (initialView === 'form') {
@@ -200,7 +215,6 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     }
   };
 
-  // Shared UI Primitives
   const inputStyle = (fieldName) => ({
     width: '100%',
     boxSizing: 'border-box',
@@ -304,19 +318,35 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                 </div>
                 <div>
                   <label style={labelStyle}>Role <span style={{ color: '#b91c1c' }}>*</span></label>
-                  <select 
-                    value={formData.role} 
-                    onChange={(e) => { setFormData({ ...formData, role: e.target.value }); setErrors({ ...errors, role: '' }); }} 
-                    style={inputStyle('role')}
-                  >
-                    <option value="">Select Role...</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Accounts">Accounts</option>
-                    <option value="MD">MD</option>
-                    <option value="Plant Head">Plant Head</option>
-                    <option value="Security">Security</option>
-                    <option value="Plant MRR">Plant MRR</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select 
+                      value={formData.role} 
+                      onChange={(e) => { setFormData({ ...formData, role: e.target.value }); setErrors({ ...errors, role: '' }); }} 
+                      style={{ ...inputStyle('role'), flex: 1 }}
+                    >
+                      <option value="">Select Role...</option>
+                      {availableRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <button 
+                      type="button" 
+                      className="btn main" 
+                      title="Add New Role"
+                      style={{ width: '40px', padding: 0, fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => {
+                        const newRole = window.prompt('Enter new role name:');
+                        if (newRole && newRole.trim()) {
+                          const r = newRole.trim();
+                          if (!availableRoles.includes(r)) {
+                            setAvailableRoles(prev => [...prev, r].sort());
+                          }
+                          setFormData({ ...formData, role: r });
+                          setErrors({ ...errors, role: '' });
+                        }
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
                   {errorMsg(errors.role)}
                 </div>
                 <div>
@@ -432,20 +462,9 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900' }}>GLOBAL USERS</h2>
-            <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shared across all firms</p>
+            <h2 style={{ margin: 0, fontSize: '32px', letterSpacing: '0.03em', fontWeight: '900' }}>Users</h2>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              value={view === 'form' ? 'form' : 'list'}
-              onChange={(e) => handleSetView(e.target.value)}
-              disabled={isLoading || isSaving}
-              style={{ border: '1px solid #d1d5db', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, background: '#fff' }}
-              title="Switch Users view"
-            >
-              <option value="list">List View</option>
-              <option value="form">Add User</option>
-            </select>
             <button className="btn" onClick={onBack} disabled={isLoading || isSaving} style={{ padding: '10px 20px' }}>{'← Back'}</button>
             <button 
               className="btn main" 
@@ -479,15 +498,6 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
               </tr>
             </thead>
             <tbody>
-              {false && (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '16px' }}>📁</div>
-                    <div style={{ fontWeight: '700' }}>No users found.</div>
-                    <div style={{ fontSize: '12px' }}>Click "+ Add New User" to create the first one.</div>
-                  </td>
-                </tr>
-              )}
               {users.map((user, index) => (
                 <tr key={user.login_id || index} style={{ background: index % 2 === 1 ? '#fbfbfb' : '#fff' }}>
                   <td style={{ ...bodyCellStyle, fontWeight: 900 }}>{user.login_id}</td>

@@ -40,7 +40,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     size: '',
     gsm: '',
     bf: '',
-    unit: 'KG',
+    unit: 'CM',
     active: '1'
   });
 
@@ -107,13 +107,13 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const gsm = String(formData.gsm || '').trim();
     const bf = String(formData.bf || '').trim();
 
-    if (type === 'mrr') {
-      if (!erp) nextErrors.erp_code = 'ERP Code is required for MRR';
-      if (!size) nextErrors.size = 'Size is required for MRR';
-      if (!gsm) nextErrors.gsm = 'GSM is required for MRR';
-      if (!bf) nextErrors.bf = 'BF is required for MRR';
-      if (erp && normalizedExistingUniqueKeys.has(`mrr:erp:${erp.toLowerCase()}`)) {
-        nextErrors.erp_code = 'ERP Code already exists (MRR)';
+    if (type === 'mrr' || type === 'reel') {
+      if (!erp) nextErrors.erp_code = 'ERP Code is required for Reel';
+      if (!size) nextErrors.size = 'Size is required for Reel';
+      if (!gsm) nextErrors.gsm = 'GSM is required for Reel';
+      if (!bf) nextErrors.bf = 'BF is required for Reel';
+      if (erp && normalizedExistingUniqueKeys.has(`reel:erp:${erp.toLowerCase()}`)) {
+        nextErrors.erp_code = 'ERP Code already exists (Reel)';
       }
     } else {
       if (!name) nextErrors.item_name = 'Item Name is required for Other';
@@ -131,7 +131,18 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
   const openNew = () => {
     setEditingIndex(-1);
-    setFormData(blankItem());
+    
+    // Auto ERP Last + 1 logic
+    let maxCode = 0;
+    items.forEach(it => {
+      const c = parseInt(String(it.erp_code || '').trim(), 10);
+      if (!isNaN(c) && c > maxCode) maxCode = c;
+    });
+
+    setFormData({
+      ...blankItem(),
+      erp_code: maxCode > 0 ? String(maxCode + 1) : ''
+    });
     setErrors({});
     setStatus('');
     setView('form');
@@ -252,6 +263,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const mrrItemNamePreview = isReelType
       ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
       : '';
+    const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: 'min(720px, 100%)', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '22px' }}>
@@ -262,7 +274,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={{ gridColumn: 'span 1' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type</div>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type{requiredMark}</div>
               <select value={formData.item_type} onChange={(e) => {
                 const nextType = String(e.target.value || 'reel');
                 setFormData((p) => ({
@@ -278,7 +290,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             </div>
             {isReelType ? (
               <div style={{ gridColumn: 'span 1' }}>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code</div>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code{requiredMark}</div>
                 <input
                   value={formData.erp_code}
                   inputMode="numeric"
@@ -304,7 +316,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             {isReelType ? (
               <>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Size</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Size{requiredMark}</div>
                   <input
                     value={formData.size}
                     inputMode="decimal"
@@ -316,7 +328,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   {errors.size ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.size}</div> : null}
                 </div>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>GSM</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>GSM{requiredMark}</div>
                   <input
                     value={formData.gsm}
                     inputMode="numeric"
@@ -328,7 +340,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   {errors.gsm ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.gsm}</div> : null}
                 </div>
                 <div style={{ gridColumn: 'span 1' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>BF</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>BF{requiredMark}</div>
                   <input
                     value={formData.bf}
                     inputMode="numeric"
@@ -343,14 +355,11 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <div style={{ gridColumn: 'span 2' }}>
                   <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
                   <input value={mrrItemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f9fafb' }} />
-                  <div style={{ marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>
-                    Auto: <code>ERP- SIZE UNIT * GSM * BF</code>
-                  </div>
                 </div>
               </>
             ) : (
               <div style={{ gridColumn: 'span 2' }}>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name{requiredMark}</div>
                 <input value={formData.item_name} onChange={(e) => setFormData((p) => ({ ...p, item_name: e.target.value }))} style={inputStyle('item_name')} placeholder="Required for Other" />
                 {errors.item_name ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.item_name}</div> : null}
               </div>

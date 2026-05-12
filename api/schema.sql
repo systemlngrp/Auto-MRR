@@ -437,3 +437,13 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
   PRIMARY KEY (id),
   KEY idx_po_items (firm_id, po_id, row_sort)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS app_sequences (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  seq_name VARCHAR(120) NOT NULL,
+  last_value INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_firm_seq (firm_id, seq_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -29,7 +29,7 @@ export default function PoDetailsPage({
     reel_details: '',
     description: '',
     hsn: '',
-    unit: 'Kgs',
+    unit: 'CM',
     rate: '',
     quantity: '',
     status: '',
@@ -516,7 +516,7 @@ export default function PoDetailsPage({
                     </div>
                     <div>
                       <label style={labelStyle}>Reel Specification Details</label>
-                      <input value={formData.reel_details} onChange={(e) => { const value = e.target.value; setManualFields((prev) => ({ ...prev, reel_details: String(value || '').trim() !== '' })); setFormData({ ...formData, reel_details: value }); }} style={inputStyle('reel_details')} placeholder="Auto: ERP - Size X GSM X BF" />
+                      <input value={formData.reel_details} onChange={(e) => { const value = e.target.value; setManualFields((prev) => ({ ...prev, reel_details: String(value || '').trim() !== '' })); setFormData({ ...formData, reel_details: value }); }} style={inputStyle('reel_details')} placeholder="Reel Specifications" />
                     </div>
                   </div>
                 </div>

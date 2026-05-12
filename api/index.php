@@ -404,6 +404,34 @@ function numericSuffixMax(array $values, string $prefix = ''): int
     return $max;
 }
 
+function getNextSequenceValue(string $firmId, string $seqName, int $initialValue = 0): int
+{
+    $pdo = db();
+    try {
+        $pdo->beginTransaction();
+        
+        // Ensure row exists
+        $stmt = $pdo->prepare("INSERT IGNORE INTO app_sequences (firm_id, seq_name, last_value) VALUES (:firm_id, :seq_name, :initial)");
+        $stmt->execute(['firm_id' => $firmId, 'seq_name' => $seqName, 'initial' => $initialValue]);
+
+        // Increment and get new value atomically
+        $stmt = $pdo->prepare("UPDATE app_sequences SET last_value = last_value + 1 WHERE firm_id = :firm_id AND seq_name = :seq_name");
+        $stmt->execute(['firm_id' => $firmId, 'seq_name' => $seqName]);
+
+        $stmt = $pdo->prepare("SELECT last_value FROM app_sequences WHERE firm_id = :firm_id AND seq_name = :seq_name");
+        $stmt->execute(['firm_id' => $firmId, 'seq_name' => $seqName]);
+        $val = (int)$stmt->fetchColumn();
+        
+        $pdo->commit();
+        return $val;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
 function fiscalYearText(DateTimeInterface $dt): string
 {
     // India FY: Apr-Mar. Example: May 2026 => "26-27"
@@ -1246,12 +1274,25 @@ function saveGeEntryAction(array $payload): array
     ));
 
     $pdo = db();
-    $stmt = $pdo->prepare("SELECT ge_no FROM ge_entries WHERE firm_id = :firm_id");
-    $stmt->execute(['firm_id' => $firmId]);
-    $maxNo = numericSuffixMax(array_column($stmt->fetchAll(), 'ge_no'));
     $geNo = value($geEntry, 'ge_no');
+    
     if ($geNo === '') {
-        $geNo = (string)($maxNo + 1);
+        // Fallback to atomic sequence if not provided by frontend
+        // We need a prefix. We can try to derive it from date or use a default.
+        $dateVal = value($geEntry, 'date');
+        $dt = $dateVal !== '' ? new DateTimeImmutable($dateVal) : new DateTimeImmutable('now');
+        $fy = fiscalYearText($dt);
+        // We don't have getFirmCode here, so we use firmId
+        $prefix = strtoupper($firmId) . '/' . $fy . '/';
+        
+        // Find current max to initialize sequence if needed
+        $stmt = $pdo->prepare("SELECT ge_no FROM ge_entries WHERE firm_id = :firm_id AND ge_no LIKE :prefix_like ORDER BY id DESC LIMIT 50");
+        $stmt->execute(['firm_id' => $firmId, 'prefix_like' => $prefix . '%']);
+        $vals = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $currentMax = numericSuffixMax($vals, $prefix);
+        
+        $seqVal = getNextSequenceValue($firmId, 'GE:' . $prefix, $currentMax);
+        $geNo = $prefix . str_pad((string)$seqVal, 4, '0', STR_PAD_LEFT);
     }
 
     $data = array_merge($geEntry, [
@@ -1919,21 +1960,42 @@ try {
         $geSheetName = trim((string)($_GET['geSheet'] ?? 'GE ENTRY')) ?: 'GE ENTRY';
         $prefix = trim((string)($_GET['prefix'] ?? ''));
 
-        $mrrRows = fetchSheetDataRows($firmId, $sheetName);
-        $geRows = fetchSheetDataRows($firmId, $geSheetName);
-        $mrrValues = [];
-        foreach ($mrrRows as $row) {
-            $mrrValues[] = $row['mrr_number'] ?? $row['mrr_no'] ?? '';
+        $pdo = db();
+        
+        // For GE: use atomic sequence for uniqueness if prefix is provided
+        $geVal = 0;
+        if ($prefix !== '') {
+            // Find current max to initialize sequence if not exists
+            $stmt = $pdo->prepare("SELECT ge_no FROM ge_entries WHERE firm_id = :firm_id AND ge_no LIKE :prefix_like ORDER BY id DESC LIMIT 50");
+            $stmt->execute(['firm_id' => $firmId, 'prefix_like' => $prefix . '%']);
+            $vals = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $currentMax = numericSuffixMax($vals, $prefix);
+            
+            // Get next value atomically
+            $geVal = getNextSequenceValue($firmId, 'GE:' . $prefix, $currentMax);
+            // Since frontend adds 1 to what we return, we return geVal - 1 
+            // OR we can change frontend. 
+            // The current frontend does: Number(latest?.ge || 0) + 1
+            // So if we return the "next" number, we should return geVal - 1.
+            $geVal = $geVal - 1;
         }
-        $geValues = [];
-        foreach ($geRows as $row) {
-            $geValues[] = $row['ge_no'] ?? '';
+
+        // For MRR: implementation same as GE if prefix provided
+        $mrrVal = 0;
+        if ($prefix !== '') {
+            $stmt = $pdo->prepare("SELECT mrr_number FROM app_records WHERE firm_id = :firm_id AND sheet_name = :sheet AND mrr_number LIKE :prefix_like ORDER BY id DESC LIMIT 50");
+            $stmt->execute(['firm_id' => $firmId, 'sheet' => $sheetName, 'prefix_like' => $prefix . '%']);
+            $vals = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $currentMax = numericSuffixMax($vals, $prefix);
+            
+            $mrrVal = getNextSequenceValue($firmId, 'MRR:' . $prefix, $currentMax);
+            $mrrVal = $mrrVal - 1;
         }
 
         jsonOut([
             'ok' => true,
-            'mrr' => numericSuffixMax($mrrValues, $prefix),
-            'ge' => numericSuffixMax($geValues, $prefix),
+            'mrr' => $mrrVal,
+            'ge' => $geVal,
         ]);
     }
 

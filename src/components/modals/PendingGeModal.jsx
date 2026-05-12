@@ -32,8 +32,8 @@ export default function PendingGeModal({ isOpen, onClose, pendingGEs, onSelect, 
                 <tr key={idx}>
                   <td className="c" style={pendingBodyCellStyle}>{idx + 1}</td>
                   <td style={pendingBodyCellStyle}>{ge.date}</td>
-                  <td className="c" style={pendingBodyCellStyle}>{ge.ge_entry || ge.ge_no}</td>
-                  <td className="c" style={pendingBodyCellStyle}>{ge.mrr_number || ge.mrr_no || ''}</td>
+                  <td className="c" style={pendingBodyCellStyle}>{ge.ge_no || ge.ge_entry}</td>
+                  <td className="c" style={pendingBodyCellStyle}>{ge.mrr || ge.mrr_number || ge.mrr_no || ''}</td>
                   <td style={pendingBodyCellStyle}>{ge.supplier_name || ge.supplier}</td>
                   <td style={pendingBodyCellStyle}>{ge.invoice_no}</td>
                   <td style={pendingBodyCellStyle}>{formatAmount(ge.total_value || ge.total_invocie_value || ge.invoice_basic_value || '')}</td>

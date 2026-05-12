@@ -429,6 +429,14 @@ export default function PurchaseRequestsPage({
     const itemNameListId = `pr-item-names-${itemMasterType}`;
     const busy = isSaving || isLoading;
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
+
+    const handleItemMasterTypeChange = (nextTypeRaw) => {
+      const nextType = String(nextTypeRaw || 'reel');
+      setItemMasterType(nextType);
+      if (nextType !== 'reel' && nextType !== 'mrr') {
+        setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
+      }
+    };
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
         {busy ? (
@@ -442,7 +450,17 @@ export default function PurchaseRequestsPage({
               <div style={{ fontSize: '22px', fontWeight: 1000, color: '#1d4ed8' }}>{formData.pr_no ? `Indent - ${formData.pr_no}` : 'New Indent'}</div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
           </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              disabled={locked}
+              value={itemMasterType}
+              onChange={(e) => handleItemMasterTypeChange(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111', height: '38px' }}
+              title="Item type"
+            >
+              <option value="reel">Reel</option>
+              <option value="other">Other</option>
+            </select>
             <button type="button" className="btn" onClick={() => setView('list')} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
           </div>
         </div>
@@ -484,23 +502,7 @@ export default function PurchaseRequestsPage({
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', background: '#1d4ed8', color: '#fff', borderBottom: '1px solid #1d4ed8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <div style={{ fontSize: '12px', fontWeight: 1000, color: '#fff' }}>Items</div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <select
-                  disabled={locked}
-                  value={itemMasterType}
-                  onChange={(e) => {
-                    const nextType = String(e.target.value || 'reel');
-                    setItemMasterType(nextType);
-                    if (nextType !== 'reel' && nextType !== 'mrr') {
-                      setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
-                    }
-                  }}
-                  style={{ padding: '6px 10px', borderRadius: '10px', border: '1px solid #ffffff80', fontSize: '12px', fontWeight: 900, background: '#fff', color: '#111', height: '34px' }}
-                >
-                  <option value="reel">Reel</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
+              <div />
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -637,16 +639,16 @@ export default function PurchaseRequestsPage({
             <datalist id={itemNameListId}>
               {itemNameOptions.map((name) => <option key={name} value={name} />)}
             </datalist>
+            {!locked ? (
+              <div style={{ background: '#fff', padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+                <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
+                <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff', borderRadius: '12px' }}>
+                  {busy ? 'Saving...' : 'Save PR'}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
-        {!locked ? (
-          <div style={{ marginTop: '14px', background: '#1d4ed8', color: '#fff', padding: '10px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-            <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
-            <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#fff', borderColor: '#fff', color: '#000', borderRadius: '12px' }}>
-              {busy ? 'Saving...' : 'Save PR'}
-            </button>
-          </div>
-        ) : null}
       </div>
     );
   }

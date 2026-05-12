@@ -213,7 +213,7 @@ const blankInvoiceRow = () => ({
   po_quantity: ''
 });
 const blankPackingRow = () => ({ mrr_no: '', ge_no: '', po_no: '', po_details: '', supplier_reel_no: '', erp_code: '', reel_details: '', item_name: '', reel_no: '', sort_no: '', party_order: '', bf: '', gsm: '', size: '', unit: 'CM', rate: '', po_rate: '', net_wt: '' });
-const blankPoRow = () => ({ sno: '', po_no: '', date: '', supplier: '', po_details: '', erp_code: '', size: '', gsm: '', bf: '', reel_details: '', unit: '', rate: '', quantity: '', status: '', quantity_received: '', pending: '', closed: '', rapc: '' });
+const blankPoRow = () => ({ sno: '', po_no: '', date: '', supplier: '', po_details: '', erp_code: '', size: '', gsm: '', bf: '', reel_details: '', unit: 'CM', rate: '', quantity: '', status: '', quantity_received: '', pending: '', closed: '', rapc: '' });
 
 const blankInvoice = {
   header: { ...defaultHeader(), note: '' },
@@ -2176,6 +2176,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [previewAllRows, setPreviewAllRows] = useState([]);
   const [isLoadingPreviewAll, setIsLoadingPreviewAll] = useState(false);
   const [isPreparingLabels, setIsPreparingLabels] = useState(false);
+  const [openMenuSection, setOpenMenuSection] = useState('mrr');
   const [directLabelPrintJob, setDirectLabelPrintJob] = useState(null);
   const [reviewPreview, setReviewPreview] = useState(null);
   const [isLoadingReviewPreview, setIsLoadingReviewPreview] = useState(false);
@@ -3034,6 +3035,20 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     </div>
   ) : null;
 
+  const stepLoadingOverlay = (active) => active ? (
+    <div
+      className="loading-overlay"
+      style={{
+        background: 'rgba(245, 247, 251, 0.65)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        zIndex: 10004
+      }}
+    >
+      <div className="spinner" />
+    </div>
+  ) : null;
+
   if (step === 1) {
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
@@ -3210,7 +3225,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       padding: '14px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px',
+      gap: '6px',
       overflowY: 'auto'
     };
 
@@ -3252,6 +3267,47 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       background: 'rgba(255,255,255,0.22)'
     };
 
+    const sectionLabelStyle = {
+      marginTop: '6px',
+      padding: '10px 10px 6px',
+      fontSize: '10px',
+      fontWeight: 1000,
+      letterSpacing: '0.12em',
+      color: '#6b7280'
+    };
+
+    const sectionDividerStyle = { height: 1, background: '#eef2f7', margin: '2px 0' };
+
+    const sectionHeaderStyle = {
+      width: '100%',
+      border: '1px solid transparent',
+      background: 'transparent',
+      padding: '6px 8px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '10px',
+      color: '#6b7280'
+    };
+    const sectionHeaderTextStyle = {
+      fontSize: '10px',
+      fontWeight: 1000,
+      letterSpacing: '0.12em',
+      color: '#6b7280'
+    };
+    const sectionChevronStyle = (isOpen) => ({
+      fontSize: '12px',
+      fontWeight: 1000,
+      color: '#9ca3af',
+      transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+      transition: 'transform 160ms ease'
+    });
+    const toggleSection = (key) => {
+      setOpenMenuSection((prev) => (prev === key ? '' : key));
+    };
+
     const mainStyle = {
       flex: 1,
       minWidth: 0,
@@ -3272,6 +3328,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
     return (
       <div style={shellStyle}>
+        {stepLoadingOverlay(isLoadingPreviewAll)}
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.06em', color: 'var(--muted)' }}>MRR &amp; REEL MANAGEMENT SYSTEM</div>
@@ -3286,21 +3343,16 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
         <div style={bodyStyle}>
           <div style={sidebarStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px 10px 8px' }}>
-              <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#2563eb', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 1000 }}>
-                IM
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Inventory Management</div>
-                <div style={{ marginTop: '2px', fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tempFirm?.name || 'Firm'}</div>
-              </div>
-            </div>
-
-            <button type="button" style={sideButtonActiveStyle} onClick={() => { /* dashboard */ }}>
-              <span style={sideIconActiveStyle} />
+            <button type="button" style={step === 3 ? sideButtonActiveStyle : sideButtonStyle} onClick={() => { setStep(3); }}>
+              <span style={step === 3 ? sideIconActiveStyle : sideIconStyle}>🏠</span>
               <span>Dashboard</span>
             </button>
-            {canSeeMenu('new_ge') ? (
+            <div style={sectionDividerStyle} />
+            <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('ge')}>
+              <span style={sectionHeaderTextStyle}>GE ENTRY</span>
+              <span style={sectionChevronStyle(openMenuSection === 'ge')}>{'\u203A'}</span>
+            </button>
+            {openMenuSection === 'ge' && canSeeMenu('new_ge') ? (
               <button
                 type="button"
                 style={sideButtonStyle}
@@ -3309,17 +3361,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(4);
                 }}
               >
-                <span style={sideIconStyle} />
-                <span>New GE Entry</span>
+                <span style={sideIconStyle}>🚚</span>
+                <span>New GE</span>
               </button>
             ) : null}
-            {canSeeMenu('ge_data') ? (
+            {openMenuSection === 'ge' && canSeeMenu('ge_data') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(11); }}>
-                <span style={sideIconStyle} />
-                <span>GE Entry Data</span>
+                <span style={sideIconStyle}>📋</span>
+                <span>Review GE</span>
               </button>
             ) : null}
-            {canSeeMenu('pending_mrr') ? (
+            <div style={sectionDividerStyle} />
+            <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('mrr')}>
+              <span style={sectionHeaderTextStyle}>MRR</span>
+              <span style={sectionChevronStyle(openMenuSection === 'mrr')}>{'\u203A'}</span>
+            </button>
+            {openMenuSection === 'mrr' && canSeeMenu('pending_mrr') ? (
               <button
                 type="button"
                 disabled={isLoadingPending}
@@ -3329,14 +3386,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>⏳</span>
                 <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
                   <span>Pending MRR</span>
-                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.pending_mrr)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', opacity: 0.85 }}>
+                    {isLoadingPending ? <span className="spinner" /> : null}
+                    <span>{menuCountText(pendingCounts.pending_mrr)}</span>
+                  </span>
                 </span>
               </button>
             ) : null}
-            {canSeeMenu('edit_mrr') ? (
+            {openMenuSection === 'mrr' && canSeeMenu('edit_mrr') ? (
               <button
                 type="button"
                 disabled={isLoadingEditMrr}
@@ -3346,14 +3406,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>📝</span>
                 <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
                   <span>Edit MRR</span>
-                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.edit_mrr)}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', opacity: 0.85 }}>
+                    {isLoadingEditMrr ? <span className="spinner" /> : null}
+                    <span>{menuCountText(pendingCounts.edit_mrr)}</span>
+                  </span>
                 </span>
               </button>
             ) : null}
-            {canSeeMenu('approvals') ? (
+            {openMenuSection === 'mrr' && canSeeMenu('approvals') ? (
               <button
                 type="button"
                 disabled={isLoadingAllApprovals}
@@ -3363,14 +3426,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(6);
                 }}
               >
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>✅</span>
                 <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
-                  <span>Approvals</span>
-                  <span style={{ opacity: 0.85 }}>{menuCountText(pendingCounts.all_approvals)}</span>
+                  <span>Approval</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', opacity: 0.85 }}>
+                    {isLoadingAllApprovals ? <span className="spinner" /> : null}
+                    <span>{menuCountText(pendingCounts.all_approvals)}</span>
+                  </span>
                 </span>
               </button>
             ) : null}
-            {canSeeMenu('review') ? (
+            {openMenuSection === 'mrr' && canSeeMenu('review') ? (
               <button
                 type="button"
                 style={sideButtonStyle}
@@ -3380,52 +3446,94 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   setStep(7);
                 }}
               >
-                <span style={sideIconStyle} />
-                <span>Review</span>
+                <span style={sideIconStyle}>🔍</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Review</span>
+                  {isLoadingPreviewAll ? <span className="spinner" /> : null}
+                </span>
               </button>
             ) : null}
-            {canSeeMenu('po_details') ? (
+            {openMenuSection === 'mrr' && canSeeMenu('download_label') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
+                <span style={sideIconStyle}>{'\u{1F3F7}\uFE0F'}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Download Label</span>
+                  {isPreparingLabels ? <span className="spinner" /> : null}
+                </span>
+              </button>
+            ) : null}
+
+            {canSeeMenu('po_details') && false ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>📄</span>
                 <span>PO Details</span>
               </button>
             ) : null}
-            {canSeeMenu('item_master') ? (
+            {canSeeMenu('item_master') && false ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(13); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>📦</span>
                 <span>Item Master</span>
               </button>
             ) : null}
-            {canSeeMenu('purchase_requests') ? (
+            <div style={sectionDividerStyle} />
+            <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('purchase')}>
+              <span style={sectionHeaderTextStyle}>PURCHASE</span>
+              <span style={sectionChevronStyle(openMenuSection === 'purchase')}>{'\u203A'}</span>
+            </button>
+            {openMenuSection === 'purchase' && canSeeMenu('purchase_requests') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(14); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>🛒</span>
                 <span>Indent</span>
               </button>
             ) : null}
-            {canSeeMenu('make_po') ? (
+            <div style={sectionDividerStyle} />
+            <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('po')}>
+              <span style={sectionHeaderTextStyle}>PO</span>
+              <span style={sectionChevronStyle(openMenuSection === 'po')}>{'\u203A'}</span>
+            </button>
+            {openMenuSection === 'po' && canSeeMenu('make_po') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(16); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>✍️</span>
                 <span>PO</span>
               </button>
             ) : null}
-            {canSeeMenu('suppliers') ? (
-              <button type="button" style={sideButtonStyle} onClick={() => { setStep(18); }}>
-                <span style={sideIconStyle} />
-                <span>Suppliers</span>
+            {false ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(8); }}>
+                <span style={sideIconStyle}>ðŸ“„</span>
+                <span>PO Details</span>
               </button>
             ) : null}
-            {canSeeMenu('users') ? (
+
+            <div style={sectionDividerStyle} />
+            <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('master')}>
+              <span style={sectionHeaderTextStyle}>MASTER</span>
+              <span style={sectionChevronStyle(openMenuSection === 'master')}>{'\u203A'}</span>
+            </button>
+
+            {openMenuSection === 'master' && canSeeMenu('item_master') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(13); }}>
+                <span style={sideIconStyle}>{'\u{1F4E6}'}</span>
+                <span>Item Master</span>
+              </button>
+            ) : null}
+            {openMenuSection === 'master' && canSeeMenu('suppliers') ? (
+              <button type="button" style={sideButtonStyle} onClick={() => { setStep(18); }}>
+                <span style={sideIconStyle}>🤝</span>
+                <span>Supplier</span>
+              </button>
+            ) : null}
+            {openMenuSection === 'master' && canSeeMenu('users') ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setStep(9); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>👥</span>
                 <span>Users</span>
               </button>
             ) : null}
 
-            <div style={{ marginTop: '6px', height: 1, background: '#eef2f7' }} />
+            <div style={{ display: 'none' }} />
 
-            {canSeeMenu('download_label') ? (
+            {canSeeMenu('download_label') && false ? (
               <button type="button" style={sideButtonStyle} onClick={() => { setLabelInitialMrr(''); setStep(5); }}>
-                <span style={sideIconStyle} />
+                <span style={sideIconStyle}>🏷️</span>
                 <span>Download Label</span>
               </button>
             ) : null}
@@ -3614,8 +3722,17 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
   if (step === 6) {
     const canViewAllFirmsApprovals = isAdmin;
+    const isStep6Loading = pendingFilter === 'all_approvals'
+      ? isLoadingAllApprovals
+      : pendingFilter === 'edit_mrr'
+        ? isLoadingEditMrr
+        : isLoadingPending;
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {stepLoadingOverlay(isStep6Loading)}
+        <div className="bottom-back no-print">
+          <button className="btn" onClick={() => setStep(3)}>{'< Back'}</button>
+        </div>
         <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '12px', marginBottom: '20px', width: '100%' }}>
              <h2 style={{ margin: 0, fontSize: '36px', letterSpacing: '0.03em' }}>
@@ -3645,16 +3762,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                    ))}
                  </select>
                ) : null}
-               <button
-                 className="btn"
-                 style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '11px', fontWeight: 700, height: '26px', lineHeight: 1 }}
-                 onClick={() => setStep(3)}
-               >
-                 {'< Back'}
-               </button>
                {/* Profile menu shown only on dashboard (step 3). */}
-             </div>
-          </div>
+              </div>
+           </div>
           {pendingFilter === 'all_approvals' ? (
             (() => {
               const stageGroups = [
@@ -4317,6 +4427,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   }
 
   if (step === 7) {
+    const isStep7Loading = isLoadingPreviewAll || isPreparingLabels;
     const headers = previewAllRows[0] || [];
     const bodyRows = previewAllRows.slice(1);
     const lowerHeaders = headers.map(h => String(h || '').toLowerCase());
@@ -4537,6 +4648,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
     return (
       <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {stepLoadingOverlay(isStep7Loading)}
+        <div className="bottom-back no-print">
+          <button className="btn" onClick={() => setStep(3)}>{'< Back'}</button>
+        </div>
         {isLoadingReviewPreview ? (
           <div className="loading-overlay" style={{ zIndex: 10005 }}>
             <div className="spinner" />
@@ -4599,13 +4714,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   <option value="pending">Only Pending Approval</option>
                 </select>
               </div>
-              <button
-                className="btn"
-                style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '11px', fontWeight: 700, height: '26px', lineHeight: 1 }}
-                onClick={() => setStep(3)}
-              >
-                {'< Back'}
-              </button>
               {/* Profile menu shown only on dashboard (step 3). */}
             </div>
           </div>
@@ -5787,7 +5895,55 @@ function App() {
       const allRows = Array.isArray(payload?.data)
         ? payload.data.map((row) => normalizePoRow(row))
         : sheetValuesToPoRows(payload?.values || []);
-      const rows = allRows.filter((row) => isPoOpenRow(row));
+      const sheetRows = allRows.filter((row) => isPoOpenRow(row));
+
+      // Also expose approved Purchase Orders (created from Indent flow) inside MRR PO dropdowns.
+      // These records may not yet exist in the PO DETAILS sheet, so we merge them in-memory.
+      let approvedPurchaseOrderRows = [];
+      try {
+        const purchaseOrders = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
+        approvedPurchaseOrderRows = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
+          .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved')
+          .filter((po) => String(po?.po_type || '').trim().toLowerCase() === String(mrrType || '').trim().toLowerCase())
+          .map((po) => ({
+            sno: '',
+            po_no: String(po?.po_no || '').trim(),
+            date: String(po?.po_date || '').trim(),
+            supplier: String(po?.supplier || '').trim(),
+            po_details: String(po?.po_details || '').trim(),
+            erp_code: '',
+            size: '',
+            gsm: '',
+            bf: '',
+            reel_details: '',
+            unit: '',
+            rate: '',
+            quantity: '',
+            status: String(po?.status || '').trim(),
+            quantity_received: '',
+            pending: '',
+            closed: '',
+            rapc: ''
+          }))
+          .filter((row) => row.po_no);
+      } catch {
+        approvedPurchaseOrderRows = [];
+      }
+
+      const seenPo = new Set();
+      const rows = [...sheetRows, ...approvedPurchaseOrderRows].filter((row) => {
+        const poNo = String(row?.po_no || '').trim();
+        if (!poNo) return false;
+        // Keep sheet rows first; avoid duplicate PO placeholders.
+        if (!seenPo.has(poNo)) {
+          seenPo.add(poNo);
+          return true;
+        }
+        // Allow multiple rows per PO when they come from sheet details.
+        // If this row looks like a placeholder (no details fields), drop it.
+        const hasDetails = [row?.po_details, row?.erp_code, row?.reel_details, row?.gsm, row?.size, row?.bf].some((v) => String(v || '').trim());
+        return hasDetails;
+      });
       const enrichedPacking = enrichPackingWithPoRows(packing, rows);
       setPoRows(rows);
       setPacking(enrichedPacking);
@@ -7344,6 +7500,8 @@ function App() {
                         return (
                         <tr key={i}>
                           <td className="c">{i + 1}</td>
+                          <td><input value={invoice.mrr_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
+                          <td><input value={invoice.ge_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
                           <td>
                             <input
                               list={`other-po-no-options-${i}`}
@@ -7479,17 +7637,49 @@ function App() {
                 <div className="wrap">
                   <table className="table invoiceTable">
                     <colgroup>
-                      <col style={{ width: "4.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "7.5%" }} /><col style={{ width: "10.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "5.5%" }} /><col style={{ width: "8%" }} /><col style={{ width: "4.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8.5%" }} /><col style={{ width: "4%" }} />
+                      <col style={{ width: "4%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "10.5%" }} />
+                      <col style={{ width: "7.5%" }} />
+                      <col style={{ width: "7.5%" }} />
+                      <col style={{ width: "10.5%" }} />
+                      <col style={{ width: "5.5%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "4.5%" }} />
+                      <col style={{ width: "5.5%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "4.5%" }} />
+                      <col style={{ width: "7%" }} />
+                      <col style={{ width: "8.5%" }} />
+                      <col style={{ width: "4%" }} />
                     </colgroup>
                     <thead>
                       <tr>
-                        <th>S.No</th><th>Description<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Sord</th><th>Party Order</th><th>GSM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Size<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Reels<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Weight<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Amount<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th><th>Action</th>
+                        <th>S.No</th>
+                        <th>MRR NO.</th>
+                        <th>GE NO.</th>
+                        <th>Description<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>HSN<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Sord</th>
+                        <th>Party Order</th>
+                        <th>GSM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Size<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Reels<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Weight<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Invoice Rate<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Amount<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoice.goods.map((row, i) => (
                         <tr key={i}>
                           <td className="c">{i + 1}</td>
+                          <td><input value={invoice.mrr_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
+                          <td><input value={invoice.ge_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
                           <td><input value={row.description} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'description', e.target.value)} /></td>
                           <td><input value={row.hsn} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'hsn', e.target.value)} /></td>
                           <td><input value={row.sort_no} readOnly={isDataEntryLocked} onChange={(e) => setInvRow(i, 'sort_no', e.target.value)} /></td>
