@@ -2234,7 +2234,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const pendingHeaderCellStyle = { fontSize: '13px', background: '#1d4ed8', color: '#fff', fontWeight: 800, padding: '8px 8px', textAlign: 'center', verticalAlign: 'middle' };
   const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 8px', verticalAlign: 'top' };
   const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3%', minWidth: '36px' };
-  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'middle' };
+  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'top' };
   const groupedIdHeaderStyle = { ...pendingHeaderCellStyle, width: '5.5%', minWidth: '72px' };
   const groupedIdCellStyle = { ...pendingBodyCellStyle, width: '5.5%', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.35 };
   const groupedFirmCellStyle = { ...pendingBodyCellStyle, width: '7%', maxWidth: '120px', wordBreak: 'break-word' };
@@ -3879,11 +3879,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                           <td style={groupedFirmCellStyle}>{ge.firm_name || firms.find((firm) => firm.id === ge.firm_id)?.name || '-'}</td>
                           <td style={groupedSupplierCellStyle}>{ge.supplier || ge.supplier_name}</td>
                           <td className="c" style={groupedQtyCellStyle}>{getGroupedApprovalTotalQty(ge) || '-'}</td>
-                          <td style={groupedItemsCellStyle}>
-                            <div style={{ maxHeight: '86px', overflowY: 'auto' }}>
-                              {getGroupedApprovalItems(ge) || '-'}
-                            </div>
-                          </td>
+                          <td style={groupedItemsCellStyle}>{getGroupedApprovalItems(ge) || '-'}</td>
                           <td className="r" style={groupedWeightCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalActualWeight(ge))}</td>
                           <td className="r" style={groupedWeightCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalInvoiceWeight(ge))}</td>
                           <td className="r" style={groupedDiffCellStyle}>{formatGroupedApprovalWeight(getGroupedApprovalWeightDifference(ge))}</td>
@@ -3895,7 +3891,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                           ) : null}
                           <td className="c" style={activeStage.key === 'pending_plant_head_approval' ? groupedActionCellWideStyle : groupedActionCellStyle}>
                             <div style={{ display: 'grid', gap: '8px', justifyItems: 'stretch' }}>
-                              <div style={{ maxHeight: '150px', overflowY: 'auto', paddingRight: '4px' }}>
                               <div style={{ display: 'grid', gap: '8px', justifyContent: 'stretch', alignItems: 'stretch' }}>
                               <button
                                 className="btn small"
@@ -4129,7 +4124,6 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                                 ) : null}
                               </div>
                             ) : null}
-                              </div>
                             </div>
                           </td>
                         </tr>

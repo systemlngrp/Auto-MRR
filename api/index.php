@@ -2315,9 +2315,9 @@ try {
     if ($action === 'get_purchase_orders') {
         $cols = tableColumns('purchase_orders');
         $hasPoDetails = in_array('po_details', $cols, true);
-        $select = 'po_no, pr_id, supplier_name, po_date, status_text, created_by, approved_by, approved_at, po_type';
+        $select = 'po.po_no, po.pr_id, po.supplier_name, po.po_date, po.status_text, po.created_by, po.approved_by, po.approved_at, po.po_type';
         if ($hasPoDetails) {
-            $select = 'po_no, pr_id, supplier_name, po_date, po_details, status_text, created_by, approved_by, approved_at, po_type';
+            $select = 'po.po_no, po.pr_id, po.supplier_name, po.po_date, po.po_details, po.status_text, po.created_by, po.approved_by, po.approved_at, po.po_type';
         }
         $stmt = db()->prepare("
             SELECT {$select}, pr.pr_no AS pr_no
