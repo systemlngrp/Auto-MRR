@@ -22,6 +22,8 @@ import SheetPlantPage from './pages/SheetPlantPage';
 import ReelPrintingPage from './pages/ReelPrintingPage';
 import ReelCloserPage from './pages/ReelCloserPage';
 import ReelReturnPage from './pages/ReelReturnPage';
+import ReelIssueDataPage from './pages/ReelIssueDataPage';
+import DpmJobsPage from './pages/DpmJobsPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3441,11 +3443,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onApprovals: () => { setPendingFilter('all_approvals'); setStep(6); },
               onReviewAll: async () => { setReportFilter('all'); await loadPreviewAllMrr(); setStep(7); },
               onDownloadLabel: () => { setLabelInitialMrr(''); setStep(5); },
-              onReelIssue: () => setStep(19),
-              onReelReturn: () => setStep(23),
-              onSheetPlant: () => setStep(20),
-              onReelPrinting: () => setStep(21),
-              onReelCloser: () => setStep(22),
+              onPendingReelIssueReturn: () => setStep(19),
+              onDpmJobs: () => setStep(25),
+              onPendingSheetPlant: () => setStep(20),
+              onPendingPrinting: () => setStep(21),
+              onPendingCloser: () => setStep(22),
+              onReelIssueData: () => setStep(24),
+              onReelReturnData: () => setStep(23),
               onIndent: () => setStep(14),
               onPo: () => setStep(16),
               onItemMaster: () => setStep(13),
@@ -5150,6 +5154,24 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <ReelReturnPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 24) {
+    return (
+      <>
+        {userBadge}
+        <ReelIssueDataPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 25) {
+    return (
+      <>
+        {userBadge}
+        <DpmJobsPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
       </>
     );
   }

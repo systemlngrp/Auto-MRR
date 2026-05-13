@@ -8,7 +8,7 @@ const baseCard = {
   padding: '16px'
 };
 
-export default function CsvTableViewer({ title, helpText, expectedHeaders, onDataLoaded }) {
+export default function CsvTableViewer({ title, helpText, expectedHeaders, onDataLoaded, showSchema = true }) {
   const inputRef = useRef(null);
   const [status, setStatus] = useState('');
   const [headers, setHeaders] = useState([]);
@@ -97,7 +97,7 @@ export default function CsvTableViewer({ title, helpText, expectedHeaders, onDat
         {status || schemaSummary || `Rows: ${filtered.length}${rows.length !== filtered.length ? ` (filtered from ${rows.length})` : ''}`}
       </div>
 
-      {Array.isArray(expectedHeaders) && expectedHeaders.length ? (
+      {showSchema && Array.isArray(expectedHeaders) && expectedHeaders.length ? (
         <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', background: '#f9fafb' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111' }}>Sheets Schema Columns</div>

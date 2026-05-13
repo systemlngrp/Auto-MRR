@@ -1,4 +1,16 @@
 export const REEL_SCHEMAS = {
+  dpm_jobs: {
+    sheetName: 'DPM JOBS',
+    headers: [
+      'S NO.',
+      'DATE',
+      'JOB No.',
+      'ERP',
+      'ITEM',
+      'PLAN QUANTITY',
+      'REQUIRED REEL'
+    ]
+  },
   reel_issue: {
     sheetName: 'ALL IN ONE - REEL ISSUE',
     headers: [
@@ -76,7 +88,7 @@ export const REEL_SCHEMAS = {
       'TOTAL REEL ISSUED',
       'TOTAL REEL RETURNED',
       'ACTUAL PAPER USED',
-      'CORRUGATION',
+      'Pending Corrugation',
       'ERP REEL CODE',
       'SELECT JOB FOR TRANSFER',
       'REEL NO FOR TRANSFER',

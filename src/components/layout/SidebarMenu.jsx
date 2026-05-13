@@ -135,34 +135,46 @@ export default function SidebarMenu({
         <span style={sectionHeaderTextStyle}>REEL</span>
         <span style={sectionChevronStyle(openMenuSection === 'reel')}>{'\u203A'}</span>
       </button>
-      {openMenuSection === 'reel' && canSeeMenu('reel_issue') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onReelIssue}>
-          <span style={sideIconStyle}>🔁</span>
-          <span>Reel Issue</span>
+      {openMenuSection === 'reel' && canSeeMenu('pending_reel_issue_return') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onPendingReelIssueReturn}>
+          <span style={sideIconStyle}>⏳</span>
+          <span>Pending Jobs (Issue &amp; Return)</span>
         </button>
       ) : null}
-      {openMenuSection === 'reel' && canSeeMenu('reel_return') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onReelReturn}>
-          <span style={sideIconStyle}>↩️</span>
-          <span>Reel Return</span>
+      {openMenuSection === 'reel' && canSeeMenu('dpm_jobs') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onDpmJobs}>
+          <span style={sideIconStyle}>🧾</span>
+          <span>DPM Jobs</span>
         </button>
       ) : null}
-      {openMenuSection === 'reel' && canSeeMenu('sheet_plant') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onSheetPlant}>
+      {openMenuSection === 'reel' && canSeeMenu('pending_sheet_plant') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onPendingSheetPlant}>
           <span style={sideIconStyle}>🏭</span>
-          <span>Sheet Plant</span>
+          <span>Pending Jobs (Sheet Plant)</span>
         </button>
       ) : null}
-      {openMenuSection === 'reel' && canSeeMenu('reel_printing') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onReelPrinting}>
+      {openMenuSection === 'reel' && canSeeMenu('pending_printing') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onPendingPrinting}>
           <span style={sideIconStyle}>🖨️</span>
-          <span>Printing</span>
+          <span>Pending Jobs (Printing)</span>
         </button>
       ) : null}
-      {openMenuSection === 'reel' && canSeeMenu('reel_closer') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onReelCloser}>
+      {openMenuSection === 'reel' && canSeeMenu('pending_closer') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onPendingCloser}>
           <span style={sideIconStyle}>🔒</span>
-          <span>Closer</span>
+          <span>Pending Jobs (Closer)</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_issue_data') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelIssueData}>
+          <span style={sideIconStyle}>📄</span>
+          <span>Reels Issue Data</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_return_data') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelReturnData}>
+          <span style={sideIconStyle}>📄</span>
+          <span>Reel Return Data</span>
         </button>
       ) : null}
 
