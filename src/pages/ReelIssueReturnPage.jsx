@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
-import { fetchSheetRange } from '../sheetSync';
+import { fetchSheetRange, saveReelIssue, saveReelReturn } from '../sheetSync';
 import { loadDpmJobs, updateDpmJobStage } from '../utils/dpmJobs';
 
 export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack }) {
@@ -13,6 +13,11 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
   const [loadError, setLoadError] = useState('');
   const loadRunRef = useRef(0);
   const [dpmJobs, setDpmJobs] = useState([]);
+
+  // Manual entry states
+  const [manualIssue, setManualIssue] = useState({ our_reel: '', weight: '' });
+  const [manualReturn, setManualReturn] = useState({ our_reel: '', weight: '' });
+  const [isSavingManual, setIsSavingManual] = useState(false);
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
@@ -185,6 +190,56 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
     };
   }, [activePendingJob, combinedPendingList, issueRows, returnRows, jobAggregates]);
 
+  const onManualIssue = async () => {
+    if (!activeDetail || isSavingManual) return;
+    const ourReel = String(manualIssue.our_reel || '').trim();
+    const weight = Number(manualIssue.weight);
+    if (!ourReel || !weight) {
+      alert('Enter Our Reel No and Weight.');
+      return;
+    }
+    setIsSavingManual(true);
+    try {
+      await saveReelIssue({
+        'JOB NO.': activeDetail.job,
+        'Date': new Date().toLocaleDateString('en-GB'),
+        'Our Reel Number': ourReel,
+        'Weight': String(weight)
+      }, selectedFirm);
+      setManualIssue({ our_reel: '', weight: '' });
+      await loadFromSheets();
+    } catch (err) {
+      alert(err?.message || 'Failed to save manual issue.');
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
+  const onManualReturn = async () => {
+    if (!activeDetail || isSavingManual) return;
+    const ourReel = String(manualReturn.our_reel || '').trim();
+    const weight = Number(manualReturn.weight);
+    if (!ourReel || !weight) {
+      alert('Select Reel and enter Return Weight.');
+      return;
+    }
+    setIsSavingManual(true);
+    try {
+      await saveReelReturn({
+        'JOB': activeDetail.job,
+        'Date': new Date().toLocaleDateString('en-GB'),
+        'Our Reel Number': ourReel,
+        'Weight': String(weight)
+      }, selectedFirm);
+      setManualReturn({ our_reel: '', weight: '' });
+      await loadFromSheets();
+    } catch (err) {
+      alert(err?.message || 'Failed to save manual return.');
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
   const onMoveToSheetPlant = () => {
     if (!activeDetail?.pendingRow?._dpm_id) {
       alert('Only DPM Jobs can be moved through stages automatically.');
@@ -341,12 +396,59 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                     Save & Move to Sheet Plant →
                   </button>
                 )}
-                <button type="button" className="btn" onClick={() => setActivePendingJob(null)} title="Go to Reel Issue">
-                  + Reel Issue
-                </button>
-                <button type="button" className="btn" onClick={() => setActivePendingJob(null)} title="Go to Reel Return">
-                  - Reel Return
-                </button>
+              </div>
+
+              <div style={{ marginTop: '20px', borderTop: '1px solid #eef2f7', paddingTop: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', marginBottom: '12px' }}>Manual Reel Operations</div>
+                
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>+ MANUAL REEL ISSUE</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <input
+                      placeholder="Our Reel No"
+                      value={manualIssue.our_reel}
+                      onChange={e => setManualIssue(p => ({ ...p, our_reel: e.target.value }))}
+                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Issue Weight"
+                      value={manualIssue.weight}
+                      onChange={e => setManualIssue(p => ({ ...p, weight: e.target.value }))}
+                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                  </div>
+                  <button type="button" className="btn main small" style={{ width: '100%', marginTop: '8px' }} disabled={isSavingManual} onClick={onManualIssue}>
+                    {isSavingManual ? 'Saving...' : 'Issue Reel'}
+                  </button>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>- MANUAL REEL RETURN</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <select
+                      value={manualReturn.our_reel}
+                      onChange={e => setManualReturn(p => ({ ...p, our_reel: e.target.value }))}
+                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                    >
+                      <option value="">Select Issued Reel</option>
+                      {activeDetail.issuedRowsForJob.map((r, idx) => {
+                        const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || r?.['Supplier Reel No.'] || '').trim();
+                        return reel ? <option key={idx} value={reel}>{reel}</option> : null;
+                      })}
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Return Weight"
+                      value={manualReturn.weight}
+                      onChange={e => setManualReturn(p => ({ ...p, weight: e.target.value }))}
+                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                  </div>
+                  <button type="button" className="btn main small" style={{ width: '100%', marginTop: '8px', background: '#dc2626' }} disabled={isSavingManual} onClick={onManualReturn}>
+                    {isSavingManual ? 'Saving...' : 'Return Reel'}
+                  </button>
+                </div>
               </div>
 
               <div style={{ marginTop: '16px', borderTop: '1px solid #eef2f7', paddingTop: '14px' }}>

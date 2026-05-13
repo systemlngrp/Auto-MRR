@@ -641,6 +641,38 @@ export async function saveGeEntryToSheets(geEntry = {}, options = {}) {
   });
 }
 
+export async function saveReelIssue(record = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_reel_issue',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    sheetName: options.sheetName || 'ALL IN ONE - REEL ISSUE',
+    record
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function saveReelReturn(record = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_reel_return',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    sheetName: options.sheetName || 'ALL IN ONE - REEL RETURN',
+    record
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function saveInvoiceToSheets(invoice = {}, packing = {}, _poRows = [], options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const payload = buildSavePayload('save_invoice', invoice, packing, options);
