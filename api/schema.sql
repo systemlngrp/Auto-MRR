@@ -461,3 +461,50 @@ CREATE TABLE IF NOT EXISTS app_sequences (
   PRIMARY KEY (id),
   UNIQUE KEY uniq_firm_seq (firm_id, seq_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reel-wise stock helpers (derived from reel_mrr_children + these tables)
+CREATE TABLE IF NOT EXISTS reel_issue_entries (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  job_no VARCHAR(120) NOT NULL,
+  our_reel_no VARCHAR(120) NOT NULL,
+  issue_weight DECIMAL(18,3) NOT NULL DEFAULT 0,
+  issue_date VARCHAR(40) DEFAULT NULL,
+  corrugation VARCHAR(120) DEFAULT NULL,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  supplier_name VARCHAR(255) DEFAULT NULL,
+  size_value VARCHAR(80) DEFAULT NULL,
+  gsm_value VARCHAR(80) DEFAULT NULL,
+  bf_value VARCHAR(80) DEFAULT NULL,
+  rate_value DECIMAL(18,2) DEFAULT NULL,
+  created_by VARCHAR(190) DEFAULT NULL,
+  extra_json LONGTEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_reel_issue_reel (firm_id, our_reel_no),
+  KEY idx_reel_issue_job (firm_id, job_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS reel_return_entries (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  job_no VARCHAR(120) NOT NULL,
+  our_reel_no VARCHAR(120) NOT NULL,
+  return_weight DECIMAL(18,3) NOT NULL DEFAULT 0,
+  return_date VARCHAR(40) DEFAULT NULL,
+  corrugation VARCHAR(120) DEFAULT NULL,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  supplier_name VARCHAR(255) DEFAULT NULL,
+  size_value VARCHAR(80) DEFAULT NULL,
+  gsm_value VARCHAR(80) DEFAULT NULL,
+  bf_value VARCHAR(80) DEFAULT NULL,
+  rate_value DECIMAL(18,2) DEFAULT NULL,
+  created_by VARCHAR(190) DEFAULT NULL,
+  extra_json LONGTEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_reel_return_reel (firm_id, our_reel_no),
+  KEY idx_reel_return_job (firm_id, job_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

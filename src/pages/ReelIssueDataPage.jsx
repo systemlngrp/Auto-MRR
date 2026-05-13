@@ -1,17 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import CsvTableViewer from '../components/layout/CsvTableViewer';
-import { REEL_SCHEMAS } from '../utils/reelSchemas';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchReelIssueEntries, fetchReelStock, saveReelIssueEntry } from '../sheetSync';
+import { getAvailableReelOptions } from '../utils/reelStock';
 
 export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack }) {
   const [issueRows, setIssueRows] = useState([]);
+  const [stockRows, setStockRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorText, setErrorText] = useState('');
+  const loadRunRef = useRef(0);
+
+  const [jobNo, setJobNo] = useState('');
+  const [ourReelNo, setOurReelNo] = useState('');
+  const [issueWeight, setIssueWeight] = useState('');
 
   const jobSummary = useMemo(() => {
     const byJob = new Map();
     (issueRows || []).forEach((row) => {
-      const job = String(row?.['JOB NO.'] || row?.['JOB No.'] || row?.JOB || '').trim();
+      const job = String(row?.job_no || '').trim();
       if (!job) return;
-      const reelKey = String(row?.['QR Scan'] || row?.['Our Reel Number'] || row?.['Supplier Reel No.'] || '').trim();
-      const w = Number(String(row?.Weight ?? '').trim());
+      const reelKey = String(row?.our_reel_no || '').trim();
+      const w = Number(row?.issue_weight || 0);
       if (!byJob.has(job)) byJob.set(job, { job, rows: 0, reels: new Set(), weight: 0 });
       const entry = byJob.get(job);
       entry.rows += 1;
@@ -22,6 +30,58 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
       .map((j) => ({ ...j, reelsCount: j.reels.size }))
       .sort((a, b) => a.job.localeCompare(b.job, undefined, { sensitivity: 'base' }));
   }, [issueRows]);
+
+  const reelOptions = useMemo(() => getAvailableReelOptions(stockRows), [stockRows]);
+
+  const loadAll = async () => {
+    if (!selectedFirm) return;
+    const runId = ++loadRunRef.current;
+    setIsLoading(true);
+    setErrorText('');
+    try {
+      const [stock, issues] = await Promise.all([
+        fetchReelStock(selectedFirm),
+        fetchReelIssueEntries(selectedFirm)
+      ]);
+      if (loadRunRef.current !== runId) return;
+      setStockRows(Array.isArray(stock?.rows) ? stock.rows : []);
+      setIssueRows(Array.isArray(issues?.rows) ? issues.rows : []);
+    } catch (err) {
+      if (loadRunRef.current !== runId) return;
+      setErrorText(err?.message || 'Could not load reel issue data.');
+      setStockRows([]);
+      setIssueRows([]);
+    } finally {
+      if (loadRunRef.current === runId) setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
+
+  const onSave = async () => {
+    if (!selectedFirm) return;
+    setIsLoading(true);
+    setErrorText('');
+    try {
+      await saveReelIssueEntry({
+        ...selectedFirm,
+        jobNo,
+        ourReelNo,
+        issueWeight: Number(issueWeight || 0),
+        createdBy: currentUser?.login_id || currentUser?.name || '',
+        userEmail: currentUser?.user_email || ''
+      });
+      setIssueWeight('');
+      await loadAll();
+    } catch (err) {
+      setErrorText(err?.message || 'Could not save reel issue.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div style={{ padding: '24px', width: '100%', minHeight: '100vh', background: '#f5f7fb' }}>
@@ -39,9 +99,45 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>New Reel Issue</div>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
+                Our Reel No dropdown shows reels with Available Weight &gt; 0.
+              </div>
+              {errorText ? <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>{errorText}</div> : null}
+            </div>
+            <button type="button" className="btn" onClick={loadAll} disabled={isLoading} style={{ padding: '10px 16px', fontWeight: 900 }}>
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 180px 140px', gap: '10px', marginTop: '12px', alignItems: 'end' }}>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 900, color: '#374151' }}>JOB NO.</div>
+              <input value={jobNo} onChange={(e) => setJobNo(e.target.value)} placeholder="Job No" style={{ width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: '10px' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 900, color: '#374151' }}>OUR REEL NO.</div>
+              <select value={ourReelNo} onChange={(e) => setOurReelNo(e.target.value)} style={{ width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: '10px' }}>
+                <option value="">Select Our Reel No</option>
+                {reelOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 900, color: '#374151' }}>ISSUE WEIGHT (KG)</div>
+              <input value={issueWeight} onChange={(e) => setIssueWeight(e.target.value)} placeholder="0" inputMode="decimal" style={{ width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: '10px' }} />
+            </div>
+            <button type="button" className="btn main" onClick={onSave} disabled={isLoading || !jobNo.trim() || !ourReelNo || Number(issueWeight || 0) <= 0} style={{ padding: '10px 14px', fontWeight: 1000 }}>
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
           <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>Jobs Summary (Issue)</div>
           <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-            Upload Issue CSV below to see reels count by Job.
+            Shows reels count and total issued weight by Job.
           </div>
           <div style={{ marginTop: '12px', width: '100%', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
             <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -72,7 +168,7 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
                 {!jobSummary.length ? (
                   <tr>
                     <td colSpan={4} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>
-                      Upload Reel Issue CSV to see jobs.
+                      -
                     </td>
                   </tr>
                 ) : null}
@@ -89,14 +185,35 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
           </div>
         </div>
 
-        <CsvTableViewer
-          title="ALL IN ONE - REEL ISSUE"
-          helpText="Upload the CSV export for Reel Issue to view and search the full data."
-          expectedHeaders={REEL_SCHEMAS.reel_issue.headers}
-          onDataLoaded={(data) => setIssueRows(Array.isArray(data?.rows) ? data.rows : [])}
-        />
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>Issue Entries</div>
+          <div style={{ marginTop: '10px', width: '100%', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+            <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+              <thead>
+                <tr>
+                  {['ID', 'JOB NO.', 'OUR REEL NO.', 'ISSUE WT', 'DATE'].map((h) => (
+                    <th key={h} style={{ position: 'sticky', top: 0, background: '#1d4ed8', color: '#fff', fontSize: '12px', fontWeight: 1000, padding: '10px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!issueRows.length ? (
+                  <tr><td colSpan={5} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>-</td></tr>
+                ) : null}
+                {issueRows.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.id}</td>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 900, color: '#dc2626' }}>{r.job_no}</td>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.our_reel_no}</td>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{Number(r.issue_weight || 0).toFixed(3)}</td>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.issue_date || ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

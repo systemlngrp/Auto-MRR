@@ -512,6 +512,194 @@ function upsertSupplierName(string $firmId, string $supplierName): void
     ]);
 }
 
+function ensureReelStockSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS reel_issue_entries (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          job_no VARCHAR(120) NOT NULL,
+          our_reel_no VARCHAR(120) NOT NULL,
+          issue_weight DECIMAL(18,3) NOT NULL DEFAULT 0,
+          issue_date VARCHAR(40) DEFAULT NULL,
+          corrugation VARCHAR(120) DEFAULT NULL,
+          erp_code VARCHAR(120) DEFAULT NULL,
+          supplier_name VARCHAR(255) DEFAULT NULL,
+          size_value VARCHAR(80) DEFAULT NULL,
+          gsm_value VARCHAR(80) DEFAULT NULL,
+          bf_value VARCHAR(80) DEFAULT NULL,
+          rate_value DECIMAL(18,2) DEFAULT NULL,
+          created_by VARCHAR(190) DEFAULT NULL,
+          extra_json LONGTEXT DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_reel_issue_reel (firm_id, our_reel_no),
+          KEY idx_reel_issue_job (firm_id, job_no)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS reel_return_entries (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          job_no VARCHAR(120) NOT NULL,
+          our_reel_no VARCHAR(120) NOT NULL,
+          return_weight DECIMAL(18,3) NOT NULL DEFAULT 0,
+          return_date VARCHAR(40) DEFAULT NULL,
+          corrugation VARCHAR(120) DEFAULT NULL,
+          erp_code VARCHAR(120) DEFAULT NULL,
+          supplier_name VARCHAR(255) DEFAULT NULL,
+          size_value VARCHAR(80) DEFAULT NULL,
+          gsm_value VARCHAR(80) DEFAULT NULL,
+          bf_value VARCHAR(80) DEFAULT NULL,
+          rate_value DECIMAL(18,2) DEFAULT NULL,
+          created_by VARCHAR(190) DEFAULT NULL,
+          extra_json LONGTEXT DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_reel_return_reel (firm_id, our_reel_no),
+          KEY idx_reel_return_job (firm_id, job_no)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
+function toDecimal(?string $value): float
+{
+    $text = trim((string)($value ?? ''));
+    if ($text === '') {
+        return 0.0;
+    }
+    $text = str_replace(',', '', $text);
+    $num = (float)$text;
+    return is_finite($num) ? $num : 0.0;
+}
+
+function fetchReelStockRows(string $firmId): array
+{
+    $pdo = db();
+    ensureReelStockSchema($pdo);
+
+    // Base: unique Our Reel No from MRR children.
+    $stmt = $pdo->prepare("
+        SELECT
+          c.our_reel_no,
+          c.erp_code,
+          COALESCE(p.supplier_name, '') AS supplier_name,
+          c.size_value,
+          c.gsm_value,
+          c.bf_value,
+          c.weight_value,
+          c.rate_value
+        FROM reel_mrr_children c
+        LEFT JOIN reel_mrr_parents p
+          ON p.id = c.parent_id
+         AND p.firm_id = c.firm_id
+        WHERE c.firm_id = :firm_id
+          AND COALESCE(c.our_reel_no, '') <> ''
+    ");
+    $stmt->execute(['firm_id' => $firmId]);
+
+    $base = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $key = trim((string)($row['our_reel_no'] ?? ''));
+        if ($key === '') {
+            continue;
+        }
+        if (!isset($base[$key])) {
+            $base[$key] = [
+                'our_reel_no' => $key,
+                'erp' => trim((string)($row['erp_code'] ?? '')),
+                'supplier' => trim((string)($row['supplier_name'] ?? '')),
+                'size' => trim((string)($row['size_value'] ?? '')),
+                'gsm' => trim((string)($row['gsm_value'] ?? '')),
+                'bf' => trim((string)($row['bf_value'] ?? '')),
+                'weight' => 0.0,
+                'rate' => (float)($row['rate_value'] ?? 0),
+            ];
+        }
+        $base[$key]['weight'] += (float)($row['weight_value'] ?? 0);
+        if ($base[$key]['rate'] == 0.0 && $row['rate_value'] !== null) {
+            $base[$key]['rate'] = (float)$row['rate_value'];
+        }
+    }
+
+    // Issued / returned aggregates.
+    $issued = [];
+    $stmt = $pdo->prepare("
+        SELECT our_reel_no, COALESCE(SUM(issue_weight), 0) AS issued_weight
+        FROM reel_issue_entries
+        WHERE firm_id = :firm_id
+        GROUP BY our_reel_no
+    ");
+    $stmt->execute(['firm_id' => $firmId]);
+    foreach ($stmt->fetchAll() as $row) {
+        $key = trim((string)($row['our_reel_no'] ?? ''));
+        if ($key !== '') {
+            $issued[$key] = (float)($row['issued_weight'] ?? 0);
+        }
+    }
+
+    $returned = [];
+    $stmt = $pdo->prepare("
+        SELECT our_reel_no, COALESCE(SUM(return_weight), 0) AS return_weight
+        FROM reel_return_entries
+        WHERE firm_id = :firm_id
+        GROUP BY our_reel_no
+    ");
+    $stmt->execute(['firm_id' => $firmId]);
+    foreach ($stmt->fetchAll() as $row) {
+        $key = trim((string)($row['our_reel_no'] ?? ''));
+        if ($key !== '') {
+            $returned[$key] = (float)($row['return_weight'] ?? 0);
+        }
+    }
+
+    $rows = [];
+    foreach ($base as $key => $r) {
+        $issuedW = (float)($issued[$key] ?? 0);
+        $returnW = (float)($returned[$key] ?? 0);
+        $available = max(0.0, (float)$r['weight'] - $issuedW + $returnW);
+        $rows[] = [
+            'our_reel_no' => $r['our_reel_no'],
+            'erp' => $r['erp'],
+            'supplier' => $r['supplier'],
+            'size' => $r['size'],
+            'gsm' => $r['gsm'],
+            'bf' => $r['bf'],
+            'weight' => (float)$r['weight'],
+            'rate' => (float)$r['rate'],
+            'issued_weight' => $issuedW,
+            'return_weight' => $returnW,
+            'available_weight' => $available,
+        ];
+    }
+
+    usort($rows, static fn($a, $b) => strcasecmp((string)$a['our_reel_no'], (string)$b['our_reel_no']));
+    return $rows;
+}
+
+function getAvailableWeightForReel(string $firmId, string $ourReelNo): float
+{
+    $pdo = db();
+    ensureReelStockSchema($pdo);
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(weight_value), 0) AS w FROM reel_mrr_children WHERE firm_id = :firm_id AND our_reel_no = :our_reel_no");
+    $stmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+    $base = (float)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(issue_weight), 0) AS w FROM reel_issue_entries WHERE firm_id = :firm_id AND our_reel_no = :our_reel_no");
+    $stmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+    $issued = (float)$stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(return_weight), 0) AS w FROM reel_return_entries WHERE firm_id = :firm_id AND our_reel_no = :our_reel_no");
+    $stmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+    $returned = (float)$stmt->fetchColumn();
+
+    return max(0.0, $base - $issued + $returned);
+}
+
 function upsertRecord(array $record): void
 {
     $pdo = db();
@@ -2080,6 +2268,159 @@ try {
             'server_port' => (string)($meta['port'] ?? ''),
             'server_version' => (string)($meta['version'] ?? ''),
         ]);
+    }
+
+    if ($action === 'ensure_reel_stock_schema') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'get_reel_stock') {
+        $rows = fetchReelStockRows($firmId);
+        jsonOut(['ok' => true, 'count' => count($rows), 'rows' => $rows]);
+    }
+
+    if ($action === 'get_reel_issue_entries') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $jobNo = trim((string)($_GET['job_no'] ?? ''));
+        $params = ['firm_id' => $firmId];
+        $where = "firm_id = :firm_id";
+        if ($jobNo !== '') {
+            $where .= " AND job_no = :job_no";
+            $params['job_no'] = $jobNo;
+        }
+        $stmt = $pdo->prepare("SELECT * FROM reel_issue_entries WHERE {$where} ORDER BY id DESC LIMIT 2000");
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        jsonOut(['ok' => true, 'count' => count($rows), 'rows' => $rows]);
+    }
+
+    if ($action === 'get_reel_return_entries') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $jobNo = trim((string)($_GET['job_no'] ?? ''));
+        $params = ['firm_id' => $firmId];
+        $where = "firm_id = :firm_id";
+        if ($jobNo !== '') {
+            $where .= " AND job_no = :job_no";
+            $params['job_no'] = $jobNo;
+        }
+        $stmt = $pdo->prepare("SELECT * FROM reel_return_entries WHERE {$where} ORDER BY id DESC LIMIT 2000");
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        jsonOut(['ok' => true, 'count' => count($rows), 'rows' => $rows]);
+    }
+
+    if ($action === 'save_reel_issue_entry') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $payload = readPayload();
+        $jobNo = trim((string)($payload['job_no'] ?? ''));
+        $ourReelNo = trim((string)($payload['our_reel_no'] ?? ''));
+        $issueWeight = (float)($payload['issue_weight'] ?? 0);
+        $issueDate = trim((string)($payload['issue_date'] ?? ''));
+        $corrugation = trim((string)($payload['corrugation'] ?? ''));
+        $createdBy = trim((string)($payload['created_by'] ?? $payload['user_email'] ?? ''));
+
+        if ($jobNo === '' || $ourReelNo === '' || $issueWeight <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing job_no / our_reel_no / issue_weight.'], 400);
+        }
+
+        $available = getAvailableWeightForReel($firmId, $ourReelNo);
+        if ($issueWeight > $available + 0.0001) {
+            jsonOut(['ok' => false, 'error' => 'Issue weight exceeds available reel weight.'], 400);
+        }
+
+        // Snapshot current reel meta (best-effort).
+        $metaStmt = $pdo->prepare("
+            SELECT c.erp_code, COALESCE(p.supplier_name, '') AS supplier_name, c.size_value, c.gsm_value, c.bf_value, c.rate_value
+            FROM reel_mrr_children c
+            LEFT JOIN reel_mrr_parents p ON p.id = c.parent_id AND p.firm_id = c.firm_id
+            WHERE c.firm_id = :firm_id AND c.our_reel_no = :our_reel_no
+            ORDER BY c.id DESC
+            LIMIT 1
+        ");
+        $metaStmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+        $meta = $metaStmt->fetch() ?: [];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO reel_issue_entries
+              (firm_id, job_no, our_reel_no, issue_weight, issue_date, corrugation, erp_code, supplier_name, size_value, gsm_value, bf_value, rate_value, created_by, extra_json)
+            VALUES
+              (:firm_id, :job_no, :our_reel_no, :issue_weight, :issue_date, :corrugation, :erp_code, :supplier_name, :size_value, :gsm_value, :bf_value, :rate_value, :created_by, :extra_json)
+        ");
+        $stmt->execute([
+            'firm_id' => $firmId,
+            'job_no' => $jobNo,
+            'our_reel_no' => $ourReelNo,
+            'issue_weight' => $issueWeight,
+            'issue_date' => $issueDate !== '' ? $issueDate : date('d/m/Y'),
+            'corrugation' => $corrugation !== '' ? $corrugation : null,
+            'erp_code' => (string)($meta['erp_code'] ?? ''),
+            'supplier_name' => (string)($meta['supplier_name'] ?? ''),
+            'size_value' => (string)($meta['size_value'] ?? ''),
+            'gsm_value' => (string)($meta['gsm_value'] ?? ''),
+            'bf_value' => (string)($meta['bf_value'] ?? ''),
+            'rate_value' => $meta['rate_value'] ?? null,
+            'created_by' => $createdBy !== '' ? $createdBy : null,
+            'extra_json' => null,
+        ]);
+
+        jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+    }
+
+    if ($action === 'save_reel_return_entry') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $payload = readPayload();
+        $jobNo = trim((string)($payload['job_no'] ?? ''));
+        $ourReelNo = trim((string)($payload['our_reel_no'] ?? ''));
+        $returnWeight = (float)($payload['return_weight'] ?? 0);
+        $returnDate = trim((string)($payload['return_date'] ?? ''));
+        $corrugation = trim((string)($payload['corrugation'] ?? ''));
+        $createdBy = trim((string)($payload['created_by'] ?? $payload['user_email'] ?? ''));
+
+        if ($jobNo === '' || $ourReelNo === '' || $returnWeight <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing job_no / our_reel_no / return_weight.'], 400);
+        }
+
+        $metaStmt = $pdo->prepare("
+            SELECT c.erp_code, COALESCE(p.supplier_name, '') AS supplier_name, c.size_value, c.gsm_value, c.bf_value, c.rate_value
+            FROM reel_mrr_children c
+            LEFT JOIN reel_mrr_parents p ON p.id = c.parent_id AND p.firm_id = c.firm_id
+            WHERE c.firm_id = :firm_id AND c.our_reel_no = :our_reel_no
+            ORDER BY c.id DESC
+            LIMIT 1
+        ");
+        $metaStmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+        $meta = $metaStmt->fetch() ?: [];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO reel_return_entries
+              (firm_id, job_no, our_reel_no, return_weight, return_date, corrugation, erp_code, supplier_name, size_value, gsm_value, bf_value, rate_value, created_by, extra_json)
+            VALUES
+              (:firm_id, :job_no, :our_reel_no, :return_weight, :return_date, :corrugation, :erp_code, :supplier_name, :size_value, :gsm_value, :bf_value, :rate_value, :created_by, :extra_json)
+        ");
+        $stmt->execute([
+            'firm_id' => $firmId,
+            'job_no' => $jobNo,
+            'our_reel_no' => $ourReelNo,
+            'return_weight' => $returnWeight,
+            'return_date' => $returnDate !== '' ? $returnDate : date('d/m/Y'),
+            'corrugation' => $corrugation !== '' ? $corrugation : null,
+            'erp_code' => (string)($meta['erp_code'] ?? ''),
+            'supplier_name' => (string)($meta['supplier_name'] ?? ''),
+            'size_value' => (string)($meta['size_value'] ?? ''),
+            'gsm_value' => (string)($meta['gsm_value'] ?? ''),
+            'bf_value' => (string)($meta['bf_value'] ?? ''),
+            'rate_value' => $meta['rate_value'] ?? null,
+            'created_by' => $createdBy !== '' ? $createdBy : null,
+            'extra_json' => null,
+        ]);
+
+        jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
 
     if ($action === 'get_latest_ids') {

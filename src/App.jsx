@@ -24,6 +24,7 @@ import ReelCloserPage from './pages/ReelCloserPage';
 import ReelReturnPage from './pages/ReelReturnPage';
 import ReelIssueDataPage from './pages/ReelIssueDataPage';
 import DpmJobsPage from './pages/DpmJobsPage';
+import ReelStockPage from './pages/ReelStockPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')

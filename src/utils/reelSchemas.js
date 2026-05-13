@@ -46,7 +46,6 @@ export const REEL_SCHEMAS = {
       'HIGHEST',
       'ISSUE DATE',
       'Issue Id',
-      'Issue Item Id',
       'VALUE'
     ]
   },
@@ -65,7 +64,6 @@ export const REEL_SCHEMAS = {
       'Rate',
       'RETURN DATE',
       'CORRUGATION',
-      'Return Item Id',
       'Reel Return Id',
       'Return PDF',
       'RETURN MSG',

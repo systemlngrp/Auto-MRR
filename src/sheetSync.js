@@ -312,6 +312,85 @@ export async function fetchSheetRangeWithParams(params = {}, backendSource) {
   };
 }
 
+export async function fetchReelStock(firmSource, backendSource) {
+  const backendUrl = ensureBackendUrl(backendSource || firmSource);
+  const firmId = getFirmKey(firmSource);
+  const query = toQuery({
+    action: 'get_reel_stock',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function fetchReelIssueEntries(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_reel_issue_entries',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    job_no: options.jobNo
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function fetchReelReturnEntries(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_reel_return_entries',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+    job_no: options.jobNo
+  });
+  return fetchJson(`${backendUrl}?${query}`);
+}
+
+export async function saveReelIssueEntry(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'save_reel_issue_entry',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  return fetchJson(`${backendUrl}?${query}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      job_no: options.jobNo,
+      our_reel_no: options.ourReelNo,
+      issue_weight: options.issueWeight,
+      issue_date: options.issueDate,
+      corrugation: options.corrugation,
+      created_by: options.createdBy || options.userEmail || ''
+    })
+  });
+}
+
+export async function saveReelReturnEntry(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'save_reel_return_entry',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  return fetchJson(`${backendUrl}?${query}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      job_no: options.jobNo,
+      our_reel_no: options.ourReelNo,
+      return_weight: options.returnWeight,
+      return_date: options.returnDate,
+      corrugation: options.corrugation,
+      created_by: options.createdBy || options.userEmail || ''
+    })
+  });
+}
+
 export async function fetchLatestMrrGe(mrrSheetName, firmSource, backendSource, prefix = '', geSheetName = GE_SHEET_NAME) {
   const backendUrl = ensureBackendUrl(backendSource || firmSource);
   const firmId = getFirmKey(firmSource);

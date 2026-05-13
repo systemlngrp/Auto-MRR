@@ -7,6 +7,7 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
   const [issueRows, setIssueRows] = useState([]);
   const [pendingRows, setPendingRows] = useState([]);
   const [returnRows, setReturnRows] = useState([]);
+  const [helperRows, setHelperRows] = useState([]);
   const [activePendingJob, setActivePendingJob] = useState(null);
   const [pendingSearch, setPendingSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,16 +29,19 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
       const pending = await fetchSheetRange(REEL_SCHEMAS.reel_issue_pending.sheetName, selectedFirm);
       const issue = await fetchSheetRange(REEL_SCHEMAS.reel_issue.sheetName, selectedFirm);
       const ret = await fetchSheetRange(REEL_SCHEMAS.reel_return.sheetName, selectedFirm);
+      const helper = await fetchSheetRange('HELPER SHEET', selectedFirm);
       if (loadRunRef.current !== runId) return;
       setPendingRows(Array.isArray(pending?.data) ? pending.data : []);
       setIssueRows(Array.isArray(issue?.data) ? issue.data : []);
       setReturnRows(Array.isArray(ret?.data) ? ret.data : []);
+      setHelperRows(Array.isArray(helper?.data) ? helper.data : []);
     } catch (err) {
       if (loadRunRef.current !== runId) return;
       setLoadError(err?.message || 'Could not load data from Sheets.');
       setPendingRows([]);
       setIssueRows([]);
       setReturnRows([]);
+      setHelperRows([]);
     } finally {
       if (loadRunRef.current === runId) setIsLoading(false);
     }
@@ -189,6 +193,44 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
       returnRowsForJob
     };
   }, [activePendingJob, combinedPendingList, issueRows, returnRows, jobAggregates]);
+
+  const availableReels = useMemo(() => {
+    const stockMap = new Map();
+
+    // 1. Initial weight from MRR (Helper Sheet)
+    (helperRows || []).forEach(r => {
+      const reel = String(r?.our_reel_number || r?.['Our Reel Number'] || '').trim();
+      if (!reel) return;
+      const w = Number(String(r?.weight || '0').trim()) || 0;
+      if (!stockMap.has(reel)) stockMap.set(reel, { weight: w });
+    });
+
+    // 2. Subtract all issued weights
+    (issueRows || []).forEach(r => {
+      const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || '').trim();
+      if (!reel) return;
+      const w = Number(String(r?.Weight || '0').trim()) || 0;
+      if (stockMap.has(reel)) {
+        stockMap.get(reel).weight -= w;
+      }
+    });
+
+    // 3. Add all returned weights
+    (returnRows || []).forEach(r => {
+      const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || '').trim();
+      if (!reel) return;
+      const w = Number(String(r?.Weight || '0').trim()) || 0;
+      if (stockMap.has(reel)) {
+        stockMap.get(reel).weight += w;
+      }
+    });
+
+    // Filter reels with available weight > 0
+    return Array.from(stockMap.entries())
+      .filter(([_, data]) => data.weight > 0)
+      .map(([reel]) => reel)
+      .sort();
+  }, [helperRows, issueRows, returnRows]);
 
   const onManualIssue = async () => {
     if (!activeDetail || isSavingManual) return;
@@ -404,12 +446,16 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7', marginBottom: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>+ MANUAL REEL ISSUE</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <input
-                      placeholder="Our Reel No"
+                    <select
                       value={manualIssue.our_reel}
                       onChange={e => setManualIssue(p => ({ ...p, our_reel: e.target.value }))}
-                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
-                    />
+                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                    >
+                      <option value="">Select Our Reel</option>
+                      {availableReels.map((reel, idx) => (
+                        <option key={idx} value={reel}>{reel}</option>
+                      ))}
+                    </select>
                     <input
                       type="number"
                       placeholder="Issue Weight"
