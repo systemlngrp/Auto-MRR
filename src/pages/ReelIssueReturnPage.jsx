@@ -1,4 +1,5 @@
 import React from 'react';
+import CsvTableViewer from '../components/layout/CsvTableViewer';
 
 export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack }) {
   return (
@@ -15,13 +16,12 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
         </button>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 900, color: '#1d4ed8' }}>Module</div>
-        <div style={{ marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
-          Page ready. Tell me fields/workflow you want for Reel Issue and Return, and I will build it.
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
+        <CsvTableViewer
+          title="ALL IN ONE - REEL ISSUE"
+          helpText="Upload the CSV export for Reel Issue to view and search the full data."
+        />
       </div>
     </div>
   );
 }
-

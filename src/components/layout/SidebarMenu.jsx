@@ -135,10 +135,16 @@ export default function SidebarMenu({
         <span style={sectionHeaderTextStyle}>REEL</span>
         <span style={sectionChevronStyle(openMenuSection === 'reel')}>{'\u203A'}</span>
       </button>
-      {openMenuSection === 'reel' && canSeeMenu('reel_issue_return') ? (
-        <button type="button" style={sideButtonStyle} onClick={actions.onReelIssueReturn}>
+      {openMenuSection === 'reel' && canSeeMenu('reel_issue') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelIssue}>
           <span style={sideIconStyle}>🔁</span>
-          <span>Reel Issue &amp; Return</span>
+          <span>Reel Issue</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_return') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelReturn}>
+          <span style={sideIconStyle}>↩️</span>
+          <span>Reel Return</span>
         </button>
       ) : null}
       {openMenuSection === 'reel' && canSeeMenu('sheet_plant') ? (

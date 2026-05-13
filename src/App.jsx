@@ -21,6 +21,7 @@ import ReelIssueReturnPage from './pages/ReelIssueReturnPage';
 import SheetPlantPage from './pages/SheetPlantPage';
 import ReelPrintingPage from './pages/ReelPrintingPage';
 import ReelCloserPage from './pages/ReelCloserPage';
+import ReelReturnPage from './pages/ReelReturnPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3440,7 +3441,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onApprovals: () => { setPendingFilter('all_approvals'); setStep(6); },
               onReviewAll: async () => { setReportFilter('all'); await loadPreviewAllMrr(); setStep(7); },
               onDownloadLabel: () => { setLabelInitialMrr(''); setStep(5); },
-              onReelIssueReturn: () => setStep(19),
+              onReelIssue: () => setStep(19),
+              onReelReturn: () => setStep(23),
               onSheetPlant: () => setStep(20),
               onReelPrinting: () => setStep(21),
               onReelCloser: () => setStep(22),
@@ -5139,6 +5141,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <ReelCloserPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 23) {
+    return (
+      <>
+        {userBadge}
+        <ReelReturnPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
       </>
     );
   }

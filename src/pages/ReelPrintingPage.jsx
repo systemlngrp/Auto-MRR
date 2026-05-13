@@ -1,4 +1,5 @@
 import React from 'react';
+import CsvTableViewer from '../components/layout/CsvTableViewer';
 
 export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) {
   return (
@@ -15,13 +16,10 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
         </button>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 900, color: '#1d4ed8' }}>Module</div>
-        <div style={{ marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
-          Page ready. This can host label printing, packing slip printing, or any Reel print formats you need.
-        </div>
-      </div>
+      <CsvTableViewer
+        title="ALL IN ONE - PENDING FOR PRINTING"
+        helpText="Upload the pending printing CSV to view, search, and scroll all columns."
+      />
     </div>
   );
 }
-
