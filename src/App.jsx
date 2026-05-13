@@ -5,6 +5,7 @@ import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/docu
 import PendingGeModal from './components/modals/PendingGeModal';
 import ConfirmModal from './components/modals/ConfirmModal';
 import ProfileMenu from './components/layout/ProfileMenu';
+import SidebarMenu from './components/layout/SidebarMenu';
 import { directLabelPrintStyles, labelStyles, printGridStyles, styles } from './styles/appStyles';
 import { getSafeInputValue, normalizeInputDateValue } from './utils/inputFormatters';
 import GateEntryPage from './pages/GateEntryPage';
@@ -3379,6 +3380,50 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         </div>
 
         <div style={bodyStyle}>
+          <SidebarMenu
+            step={step}
+            openMenuSection={openMenuSection}
+            toggleSection={toggleSection}
+            canSeeMenu={canSeeMenu}
+            pendingCounts={pendingCounts}
+            menuCountText={menuCountText}
+            isLoadingPending={isLoadingPending}
+            isLoadingEditMrr={isLoadingEditMrr}
+            isLoadingAllApprovals={isLoadingAllApprovals}
+            isLoadingPreviewAll={isLoadingPreviewAll}
+            isPreparingLabels={isPreparingLabels}
+            currentUser={currentUser}
+            onLogout={onLogout}
+            styles={{
+              sidebarStyle,
+              sideButtonStyle,
+              sideButtonActiveStyle,
+              sideIconStyle,
+              sideIconActiveStyle,
+              sectionDividerStyle,
+              sectionHeaderStyle,
+              sectionHeaderTextStyle,
+              sectionChevronStyle
+            }}
+            actions={{
+              onDashboard: () => setStep(3),
+              onNewGe: () => { setEditData(null); setStep(4); },
+              onReviewGe: () => setStep(11),
+              onPendingMrr: () => { setPendingFilter('pending_mrr'); setStep(6); },
+              onEditMrr: () => { setPendingFilter('edit_mrr'); setStep(6); },
+              onApprovals: () => { setPendingFilter('all_approvals'); setStep(6); },
+              onReviewAll: async () => { setReportFilter('all'); await loadPreviewAllMrr(); setStep(7); },
+              onDownloadLabel: () => { setLabelInitialMrr(''); setStep(5); },
+              onIndent: () => setStep(14),
+              onPo: () => setStep(16),
+              onItemMaster: () => setStep(13),
+              onSuppliers: () => setStep(18),
+              onUsers: () => setStep(9),
+              onBackToFirms: () => setStep(2)
+            }}
+          />
+
+          {false && (
           <div style={sidebarStyle}>
             <button type="button" style={step === 3 ? sideButtonActiveStyle : sideButtonStyle} onClick={() => { setStep(3); }}>
               <span style={step === 3 ? sideIconActiveStyle : sideIconStyle}>🏠</span>
@@ -3589,6 +3634,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               <span>Back to Firms</span>
             </button>
           </div>
+          )}
 
           <div style={{ ...mainStyle, justifyContent: 'flex-start' }}>
             <div style={{ width: 'min(1120px, 100%)' }}>
@@ -5974,29 +6020,77 @@ function App() {
       let approvedPurchaseOrderRows = [];
       try {
         const purchaseOrders = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
-        approvedPurchaseOrderRows = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
+        const approvedPos = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
           .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved')
           .filter((po) => String(po?.po_type || '').trim().toLowerCase() === String(mrrType || '').trim().toLowerCase())
-          .map((po) => ({
-            sno: '',
-            po_no: String(po?.po_no || '').trim(),
-            date: String(po?.po_date || '').trim(),
-            supplier: String(po?.supplier || '').trim(),
-            po_details: String(po?.po_details || '').trim(),
-            erp_code: '',
-            size: '',
-            gsm: '',
-            bf: '',
-            reel_details: '',
-            unit: '',
-            rate: '',
-            quantity: '',
-            status: String(po?.status || '').trim(),
-            quantity_received: '',
-            pending: '',
-            closed: '',
-            rapc: ''
-          }))
+
+        // Enrich approved POs with item rows, so MRR dropdowns can show item/qty/rate.
+        // Keep a small cap to avoid flooding the backend with many requests.
+        const MAX_PO_DETAILS_FETCH = 30;
+        const limited = approvedPos.slice(0, MAX_PO_DETAILS_FETCH);
+        const detailResults = await Promise.allSettled(
+          limited.map(async (po) => {
+            const poNo = String(po?.po_no || '').trim();
+            if (!poNo) return { po, items: [] };
+            const details = await fetchPurchaseOrderDetails(poNo, { spreadsheetId: selectedFirm.spreadsheetId });
+            const items = Array.isArray(details?.items) ? details.items : [];
+            return { po, items };
+          })
+        );
+
+        approvedPurchaseOrderRows = detailResults
+          .filter((r) => r.status === 'fulfilled')
+          .flatMap((r) => {
+            const { po, items } = r.value || {};
+            const poNo = String(po?.po_no || '').trim();
+            if (!poNo) return [];
+            const poDate = String(po?.po_date || '').trim();
+            const supplier = String(po?.supplier || '').trim();
+            const poDetails = String(po?.po_details || '').trim();
+            const poStatus = String(po?.status || '').trim();
+            if (!Array.isArray(items) || items.length === 0) {
+              return [{
+                sno: '',
+                po_no: poNo,
+                date: poDate,
+                supplier,
+                po_details: poDetails,
+                erp_code: '',
+                size: '',
+                gsm: '',
+                bf: '',
+                reel_details: '',
+                unit: '',
+                rate: '',
+                quantity: '',
+                status: poStatus,
+                quantity_received: '',
+                pending: '',
+                closed: '',
+                rapc: ''
+              }];
+            }
+            return items.map((it) => ({
+              sno: '',
+              po_no: poNo,
+              date: poDate,
+              supplier: String(it?.supplier || supplier || '').trim(),
+              po_details: poDetails,
+              erp_code: String(it?.erp_code || '').trim(),
+              size: '',
+              gsm: '',
+              bf: '',
+              reel_details: String(it?.item_name || it?.description || '').trim(),
+              unit: String(it?.unit || '').trim(),
+              rate: String(it?.rate || '').trim(),
+              quantity: String(it?.qty || '').trim(),
+              status: poStatus,
+              quantity_received: '',
+              pending: '',
+              closed: '',
+              rapc: ''
+            }));
+          })
           .filter((row) => row.po_no);
       } catch {
         approvedPurchaseOrderRows = [];

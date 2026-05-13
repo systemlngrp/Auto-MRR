@@ -242,18 +242,6 @@ export default function PurchaseOrdersPage({
           row.item_id = '';
         }
       }
-      if (key === 'supplier') {
-        const normalized = String(value || '').trim();
-        if (index === 0 && normalized) {
-          // Convenience: if the first row supplier is chosen, prefill empty suppliers
-          // on other rows so same-supplier POs stay under one PO number.
-          for (let i = 1; i < next.length; i += 1) {
-            if (!String(next[i]?.supplier || '').trim()) {
-              next[i] = { ...(next[i] || blankItemRow()), supplier: normalized };
-            }
-          }
-        }
-      }
       next[index] = row;
       return next;
     });
@@ -288,10 +276,16 @@ export default function PurchaseOrdersPage({
       if (prStatus && prStatus !== 'approved') {
         throw new Error('Only approved Purchase Request can create PO.');
       }
+      const inferPoType = () => {
+        if (!prItems.length) return 'reel';
+        const hasAnyErp = prItems.some((it) => String(it?.erp_code || '').trim());
+        return hasAnyErp ? 'reel' : 'other';
+      };
+      const nextPoType = inferPoType();
       setFormData({
         ...blankPo(),
         pr_no: prNo,
-        po_type: 'reel',
+        po_type: nextPoType,
         po_date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
         status: 'pending'
       });
@@ -301,6 +295,7 @@ export default function PurchaseOrdersPage({
         item_id: String(it?.item_id || '').trim(),
         pr_item_id: String(it?.pr_item_id || '').trim(),
         supplier: String(it?.supplier || '').trim(),
+        erp_code: nextPoType === 'other' ? '' : String(it?.erp_code || '').trim(),
         amount: it?.amount || formatAmount(toNumber(it?.qty) * toNumber(it?.rate))
       })) : [blankItemRow()]);
       setErrors({});
