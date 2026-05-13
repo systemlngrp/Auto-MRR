@@ -446,18 +446,22 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7', marginBottom: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>+ MANUAL REEL ISSUE</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <select
-                      value={manualIssue.our_reel}
-                      onChange={e => setManualIssue(p => ({ ...p, our_reel: e.target.value }))}
-                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
-                    >
-                      <option value="">Select Our Reel</option>
-                      {availableReels.map((reel, idx) => (
-                        <option key={idx} value={reel}>{reel}</option>
-                      ))}
-                    </select>
+                    <div>
+                      <input
+                        list="available-reels"
+                        value={manualIssue.our_reel}
+                        onChange={e => setManualIssue(p => ({ ...p, our_reel: e.target.value }))}
+                        placeholder="Type / select Our Reel No"
+                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                      />
+                      <datalist id="available-reels">
+                        {availableReels.map((reel, idx) => (
+                          <option key={idx} value={reel} />
+                        ))}
+                      </datalist>
+                    </div>
                     <input
-                      type="number"
+                      inputMode="decimal"
                       placeholder="Issue Weight"
                       value={manualIssue.weight}
                       onChange={e => setManualIssue(p => ({ ...p, weight: e.target.value }))}
@@ -472,19 +476,23 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>- MANUAL REEL RETURN</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <select
-                      value={manualReturn.our_reel}
-                      onChange={e => setManualReturn(p => ({ ...p, our_reel: e.target.value }))}
-                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
-                    >
-                      <option value="">Select Issued Reel</option>
-                      {activeDetail.issuedRowsForJob.map((r, idx) => {
-                        const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || r?.['Supplier Reel No.'] || '').trim();
-                        return reel ? <option key={idx} value={reel}>{reel}</option> : null;
-                      })}
-                    </select>
+                    <div>
+                      <input
+                        list="issued-reels"
+                        value={manualReturn.our_reel}
+                        onChange={e => setManualReturn(p => ({ ...p, our_reel: e.target.value }))}
+                        placeholder="Type / select Issued Reel"
+                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                      />
+                      <datalist id="issued-reels">
+                        {activeDetail.issuedRowsForJob.map((r, idx) => {
+                          const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || r?.['Supplier Reel No.'] || '').trim();
+                          return reel ? <option key={idx} value={reel} /> : null;
+                        })}
+                      </datalist>
+                    </div>
                     <input
-                      type="number"
+                      inputMode="decimal"
                       placeholder="Return Weight"
                       value={manualReturn.weight}
                       onChange={e => setManualReturn(p => ({ ...p, weight: e.target.value }))}
