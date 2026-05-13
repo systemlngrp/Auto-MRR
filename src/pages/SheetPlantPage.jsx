@@ -1,5 +1,6 @@
 import React from 'react';
 import CsvTableViewer from '../components/layout/CsvTableViewer';
+import { REEL_SCHEMAS } from '../utils/reelSchemas';
 
 export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
   return (
@@ -19,6 +20,7 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
       <CsvTableViewer
         title="ALL IN ONE - PENDING SHEET PLANT"
         helpText="Upload the pending sheet plant CSV to view all columns with horizontal scroll."
+        expectedHeaders={REEL_SCHEMAS.sheet_plant_pending.headers}
       />
     </div>
   );

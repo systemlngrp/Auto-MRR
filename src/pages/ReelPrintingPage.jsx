@@ -1,5 +1,6 @@
 import React from 'react';
 import CsvTableViewer from '../components/layout/CsvTableViewer';
+import { REEL_SCHEMAS } from '../utils/reelSchemas';
 
 export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) {
   return (
@@ -19,6 +20,7 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
       <CsvTableViewer
         title="ALL IN ONE - PENDING FOR PRINTING"
         helpText="Upload the pending printing CSV to view, search, and scroll all columns."
+        expectedHeaders={REEL_SCHEMAS.printing_pending.headers}
       />
     </div>
   );

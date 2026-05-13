@@ -1,5 +1,6 @@
 import React from 'react';
 import CsvTableViewer from '../components/layout/CsvTableViewer';
+import { REEL_SCHEMAS } from '../utils/reelSchemas';
 
 export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
   return (
@@ -19,8 +20,8 @@ export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
       <CsvTableViewer
         title="ALL IN ONE - REEL RETURN"
         helpText="Upload the CSV export for Reel Return to view and search the full data."
+        expectedHeaders={REEL_SCHEMAS.reel_return.headers}
       />
     </div>
   );
 }
-
