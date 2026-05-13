@@ -63,6 +63,31 @@ export const REEL_SCHEMAS = {
       'Telegram MSG'
     ]
   },
+  reel_issue_pending: {
+    sheetName: 'ALL IN ONE - PENDING FOR REEL ISSUE',
+    headers: [
+      'S NO.',
+      'DATE',
+      'JOB No.',
+      'ERP',
+      'ITEM',
+      'PLAN QUANTITY',
+      'REQUIRED REEL',
+      'TOTAL REEL ISSUED',
+      'TOTAL REEL RETURNED',
+      'ACTUAL PAPER USED',
+      'CORRUGATION',
+      'ERP REEL CODE',
+      'SELECT JOB FOR TRANSFER',
+      'REEL NO FOR TRANSFER',
+      'Average Notional wheight per reel',
+      'NO OF REELS',
+      'Timestamp New',
+      'ROW ADDED IN REEL ISSUE/RETURN',
+      'Corugation Timestamp',
+      'Cancel Timestamp'
+    ]
+  },
   sheet_plant_pending: {
     sheetName: 'ALL IN ONE - PENDING SHEET PLANT',
     headers: [
@@ -169,4 +194,3 @@ export const REEL_SCHEMAS = {
     ]
   }
 };
-
