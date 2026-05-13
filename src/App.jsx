@@ -6012,14 +6012,10 @@ function App() {
       // This replaces the old PO DETAILS / OTHER PO sheet based dropdown.
       const normalizePoType = (value) => String(value || '').trim().toLowerCase();
       const normalizedMode = normalizePoType(mrrType);
-      const acceptedPoTypes = normalizedMode === 'other'
-        ? new Set(['other'])
-        : new Set(['reel', 'mrr', '']);
 
       const purchaseOrders = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
       const approvedPos = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
-        .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved')
-        .filter((po) => acceptedPoTypes.has(normalizePoType(po?.po_type)));
+        .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved');
 
       const MAX_PO_DETAILS_FETCH = 80;
       const limited = approvedPos.slice(0, MAX_PO_DETAILS_FETCH);
@@ -6044,6 +6040,13 @@ function App() {
           const poDetails = String(po?.po_details || '').trim();
           const poStatus = String(po?.status || '').trim();
           const normalizedItems = Array.isArray(items) ? items : [];
+          const headerType = normalizePoType(po?.po_type);
+          const isOtherLikeByItems = normalizedItems.length > 0
+            ? normalizedItems.every((it) => !String(it?.erp_code || '').trim())
+            : false;
+          const isOtherLike = headerType === 'other' || isOtherLikeByItems;
+          const shouldInclude = normalizedMode === 'other' ? isOtherLike : !isOtherLike;
+          if (!shouldInclude) return [];
           if (!normalizedItems.length) {
             return [{
               sno: '',
