@@ -2068,6 +2068,20 @@ try {
         ]);
     }
 
+    if ($action === 'db_ping') {
+        $pdo = db();
+        $row = $pdo->query('SELECT 1 AS ok')->fetch();
+        $meta = $pdo->query('SELECT DATABASE() AS dbname, @@hostname AS host, @@port AS port, @@version AS version')->fetch();
+        jsonOut([
+            'ok' => true,
+            'ping' => (int)($row['ok'] ?? 0),
+            'database' => (string)($meta['dbname'] ?? ''),
+            'server_host' => (string)($meta['host'] ?? ''),
+            'server_port' => (string)($meta['port'] ?? ''),
+            'server_version' => (string)($meta['version'] ?? ''),
+        ]);
+    }
+
     if ($action === 'get_latest_ids') {
         $sheetName = trim((string)($_GET['mrrSheet'] ?? $_GET['sheet'] ?? 'MRR FORM')) ?: 'MRR FORM';
         $geSheetName = trim((string)($_GET['geSheet'] ?? 'GE ENTRY')) ?: 'GE ENTRY';
