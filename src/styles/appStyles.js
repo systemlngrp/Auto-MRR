@@ -248,8 +248,9 @@ th { font-weight: bold !important; background-color: #1d4ed8 !important; color: 
 }
 
 .app.mrr-classic .doc {
-  max-width: var(--sheet-width);
+  max-width: 100%;
   margin: 12px auto 0;
+  padding: 0 12px;
 }
 
 .app.mrr-classic .sheet {
@@ -394,18 +395,24 @@ th { font-weight: bold !important; background-color: #1d4ed8 !important; color: 
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-gutter: stable both-edges;
+  padding-bottom: 6px;
 }
 
 .app.mrr-classic .wrap table {
-  width: 100% !important;
-  min-width: 0 !important;
-  table-layout: fixed;
+  width: max-content !important;
+  min-width: 1800px !important;
+  table-layout: auto;
+}
+
+.app.mrr-classic .wrap table.packingTable {
+  min-width: 2400px !important;
 }
 
 .app.mrr-classic .wrap td,
 .app.mrr-classic .wrap th {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
