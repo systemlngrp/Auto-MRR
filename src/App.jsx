@@ -7718,8 +7718,6 @@ function App() {
                         return (
                         <tr key={i}>
                           <td className="c">{i + 1}</td>
-                          <td><input value={invoice.mrr_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
-                          <td><input value={invoice.ge_no} readOnly style={{ background: '#f5f5f5', cursor: 'not-allowed' }} /></td>
                           <td>
                             <input
                               list={`other-po-no-options-${i}`}
