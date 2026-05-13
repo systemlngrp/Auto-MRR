@@ -17,6 +17,10 @@ import ItemMasterPage from './pages/ItemMasterPage';
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import SuppliersPage from './pages/SuppliersPage';
+import ReelIssueReturnPage from './pages/ReelIssueReturnPage';
+import SheetPlantPage from './pages/SheetPlantPage';
+import ReelPrintingPage from './pages/ReelPrintingPage';
+import ReelCloserPage from './pages/ReelCloserPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3436,6 +3440,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onApprovals: () => { setPendingFilter('all_approvals'); setStep(6); },
               onReviewAll: async () => { setReportFilter('all'); await loadPreviewAllMrr(); setStep(7); },
               onDownloadLabel: () => { setLabelInitialMrr(''); setStep(5); },
+              onReelIssueReturn: () => setStep(19),
+              onSheetPlant: () => setStep(20),
+              onReelPrinting: () => setStep(21),
+              onReelCloser: () => setStep(22),
               onIndent: () => setStep(14),
               onPo: () => setStep(16),
               onItemMaster: () => setStep(13),
@@ -5095,6 +5103,42 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           }}
           onBack={() => setStep(3)}
         />
+      </>
+    );
+  }
+
+  if (step === 19) {
+    return (
+      <>
+        {userBadge}
+        <ReelIssueReturnPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 20) {
+    return (
+      <>
+        {userBadge}
+        <SheetPlantPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 21) {
+    return (
+      <>
+        {userBadge}
+        <ReelPrintingPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 22) {
+    return (
+      <>
+        {userBadge}
+        <ReelCloserPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
       </>
     );
   }

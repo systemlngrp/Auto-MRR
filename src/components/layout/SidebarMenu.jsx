@@ -131,6 +131,36 @@ export default function SidebarMenu({
       ) : null}
 
       <div style={sectionDividerStyle} />
+      <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('reel')}>
+        <span style={sectionHeaderTextStyle}>REEL</span>
+        <span style={sectionChevronStyle(openMenuSection === 'reel')}>{'\u203A'}</span>
+      </button>
+      {openMenuSection === 'reel' && canSeeMenu('reel_issue_return') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelIssueReturn}>
+          <span style={sideIconStyle}>🔁</span>
+          <span>Reel Issue &amp; Return</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('sheet_plant') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onSheetPlant}>
+          <span style={sideIconStyle}>🏭</span>
+          <span>Sheet Plant</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_printing') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelPrinting}>
+          <span style={sideIconStyle}>🖨️</span>
+          <span>Printing</span>
+        </button>
+      ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_closer') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelCloser}>
+          <span style={sideIconStyle}>🔒</span>
+          <span>Closer</span>
+        </button>
+      ) : null}
+
+      <div style={sectionDividerStyle} />
       <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('purchase')}>
         <span style={sectionHeaderTextStyle}>PURCHASE</span>
         <span style={sectionChevronStyle(openMenuSection === 'purchase')}>{'\u203A'}</span>
@@ -194,4 +224,3 @@ export default function SidebarMenu({
     </div>
   );
 }
-
