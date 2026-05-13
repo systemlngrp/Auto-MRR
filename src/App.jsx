@@ -318,6 +318,28 @@ const getQuantityToleranceOptions = (value, tolerance = 15) => {
     formatToleranceValue(base + tolerance)
   ]).filter(Boolean);
 };
+
+const parseReelSpecFromText = (value = '') => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return { size: '', unit: '', gsm: '', bf: '' };
+
+  const get = (re) => {
+    const m = text.match(re);
+    return m ? String(m[1] || '').trim() : '';
+  };
+
+  const size = get(/\bsize\s*[:\-]?\s*([0-9.]+)\b/i);
+  const unit = get(/\bsize\s*[:\-]?\s*[0-9.]+\s*([a-z]{1,5})\b/i).toUpperCase();
+  const gsm = get(/\bgsm\s*[:\-]?\s*([0-9.]+)\b/i);
+  const bf = get(/\bbf\s*[:\-]?\s*([0-9.]+)\b/i);
+
+  return {
+    size,
+    unit: unit && ['CM', 'MM', 'IN', 'M'].includes(unit) ? unit : '',
+    gsm,
+    bf
+  };
+};
 const getTodayInputDate = () => {
   const now = new Date();
   const y = now.getFullYear();
@@ -5981,6 +6003,36 @@ function App() {
     })
   }));
 
+  const handleOtherPoItemSelectInvoice = (index, itemName) => setInvoice((p) => ({
+    ...p,
+    goods: p.goods.map((row, idx) => {
+      if (idx !== index) return row;
+      const name = String(itemName || '').trim();
+      if (!name) return { ...row, description: '' };
+      const matches = getPoRowsForPo(row.po_no).filter((po) => String(po?.reel_details || '').trim() === name);
+      if (!matches.length) return { ...row, description: name };
+      const match = matches[0];
+      const nextUnit = String(match.unit || '').trim() || row.size_unit || row.unit || '';
+      const nextRate = String(row.rate || '').trim() ? row.rate : match.rate;
+      const nextPoQty = firstFilled(match.quantity, match.quantity_received);
+      const nextQty = String(row.quantity || '').trim() ? row.quantity : nextPoQty;
+      const nextAmount = isOtherMrr ? money(n(nextQty) * n(nextRate)) : row.amount;
+      return {
+        ...row,
+        description: name,
+        po_details: match.po_details || row.po_details,
+        po_date: match.date || row.po_date,
+        supplier: match.supplier || row.supplier,
+        po_rate: match.rate || row.po_rate,
+        po_quantity: firstFilled(match.quantity, match.quantity_received) || row.po_quantity,
+        size_unit: nextUnit || row.size_unit,
+        rate: nextRate,
+        quantity: nextQty,
+        amount: nextAmount
+      };
+    })
+  }));
+
   const toggleManual = (i, field) => {
     setManualFields(prev => ({
       ...prev,
@@ -6069,18 +6121,21 @@ function App() {
               rapc: ''
             }];
           }
-          return normalizedItems.map((it) => ({
+          return normalizedItems.map((it) => {
+            const detailsText = String(it?.item_name || it?.description || '').trim();
+            const spec = parseReelSpecFromText(detailsText);
+            return ({
             sno: '',
             po_no: poNo,
             date: poDate,
             supplier: String(it?.supplier || supplier || '').trim(),
             po_details: poDetails,
             erp_code: String(it?.erp_code || '').trim(),
-            size: '',
-            gsm: '',
-            bf: '',
-            reel_details: String(it?.item_name || it?.description || '').trim(),
-            unit: String(it?.unit || '').trim(),
+            size: spec.size,
+            gsm: spec.gsm,
+            bf: spec.bf,
+            reel_details: detailsText,
+            unit: (String(it?.unit || '').trim() || spec.unit || 'CM'),
             rate: String(it?.rate || '').trim(),
             quantity: String(it?.qty || '').trim(),
             status: poStatus,
@@ -6088,7 +6143,8 @@ function App() {
             pending: '',
             closed: '',
             rapc: ''
-          }));
+          });
+          });
         })
         .filter((row) => String(row?.po_no || '').trim());
       const enrichedPacking = enrichPackingWithPoRows(packing, rows);
@@ -7697,7 +7753,7 @@ function App() {
                         <th style={{ width: "120px" }}>PO NO.<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>PO DATE<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "200px" }}>SUPPLIER<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
-                        <th style={{ width: "260px" }}>PO DETAILS<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
+                        <th style={{ width: "260px" }}>ITEM<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "120px" }}>PO RATE<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "130px" }}>PO QUANTITY<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
                         <th style={{ width: "90px" }}>Unit<span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span></th>
@@ -7761,19 +7817,22 @@ function App() {
                           </td>
                           <td>
                             <input
-                              list={`other-po-details-options-${i}`}
+                              list={`other-po-item-options-${i}`}
                               disabled={isDataEntryLocked}
-                              value={row.po_details || ''}
+                              value={row.description || ''}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                const options = getPoDetailOptions({ po_no: row.po_no, po_details: row.po_details });
-                                if (options.includes(value)) handlePoDetailsSelectInvoice(i, value);
-                                else setInvRow(i, 'po_details', value);
+                                const options = uniqueText(getPoRowsForPo(row.po_no).map((po) => String(po?.reel_details || '').trim()).filter(Boolean));
+                                if (options.includes(value)) handleOtherPoItemSelectInvoice(i, value);
+                                else setInvRow(i, 'description', value);
                               }}
-                              placeholder="Select or type PO Details"
+                              placeholder={row.po_no ? 'Select PO item' : 'Select PO first'}
+                              title={row.po_details ? `PO Details: ${row.po_details}` : ''}
                             />
-                            <datalist id={`other-po-details-options-${i}`}>
-                              {getPoDetailOptions({ po_no: row.po_no, po_details: row.po_details }).map((option) => <option key={option} value={option} />)}
+                            <datalist id={`other-po-item-options-${i}`}>
+                              {uniqueText(getPoRowsForPo(row.po_no).map((po) => String(po?.reel_details || '').trim()).filter(Boolean)).map((option) => (
+                                <option key={option} value={option} />
+                              ))}
                             </datalist>
                           </td>
                           <td>
