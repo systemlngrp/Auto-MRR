@@ -8,7 +8,7 @@ const baseCard = {
   padding: '16px'
 };
 
-export default function CsvTableViewer({ title, helpText, expectedHeaders }) {
+export default function CsvTableViewer({ title, helpText, expectedHeaders, onDataLoaded }) {
   const inputRef = useRef(null);
   const [status, setStatus] = useState('');
   const [headers, setHeaders] = useState([]);
@@ -30,6 +30,10 @@ export default function CsvTableViewer({ title, helpText, expectedHeaders }) {
       const parsed = parseCsv(text);
       setHeaders(parsed.headers || []);
       setRows(parsed.rows || []);
+      onDataLoaded?.({
+        headers: parsed.headers || [],
+        rows: parsed.rows || []
+      });
       if (Array.isArray(expectedHeaders) && expectedHeaders.length) {
         const expectedSet = new Set(expectedHeaders.map((h) => String(h || '').trim()).filter(Boolean));
         const actualSet = new Set((parsed.headers || []).map((h) => String(h || '').trim()).filter(Boolean));
@@ -45,6 +49,7 @@ export default function CsvTableViewer({ title, helpText, expectedHeaders }) {
       setHeaders([]);
       setRows([]);
       setSchemaReport({ missing: [], extra: [] });
+      onDataLoaded?.({ headers: [], rows: [] });
     }
   };
 
