@@ -3250,6 +3250,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       })();
       const canSeeMenu = (key) => {
         if (key === 'users') return isAdmin;
+        if (key === 'reel_stock') {
+          if (isAdmin) return true;
+          return (
+            currentMenuAccess.length === 0 ||
+            currentMenuAccess.includes('reel_stock') ||
+            currentMenuAccess.includes('pending_reel_issue_return') ||
+            currentMenuAccess.includes('reel_issue_data')
+          );
+        }
         if (isAdmin) return true;
         return currentMenuAccess.length === 0 || currentMenuAccess.includes(key);
       };
@@ -3448,9 +3457,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onDpmJobs: () => setStep(25),
               onPendingSheetPlant: () => setStep(20),
               onPendingPrinting: () => setStep(21),
-              onPendingCloser: () => setStep(22),
-              onReelIssueData: () => setStep(24),
-              onReelReturnData: () => setStep(23),
+              onPendingReelIssueReturn: () => setStep(19),
+              onReelIssueData: () => setStep(20),
+              onReelReturnData: () => setStep(21),
+              onReelStock: () => setStep(27),
+
               onReelStock: () => setStep(26),
               onIndent: () => setStep(14),
               onPo: () => setStep(16),

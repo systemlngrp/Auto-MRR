@@ -183,6 +183,12 @@ export default function SidebarMenu({
           <span>Reel Return Data</span>
         </button>
       ) : null}
+      {openMenuSection === 'reel' && canSeeMenu('reel_stock') ? (
+        <button type="button" style={sideButtonStyle} onClick={actions.onReelStock}>
+          <span style={sideIconStyle}>📊</span>
+          <span>Reel Wise Stock</span>
+        </button>
+      ) : null}
 
       <div style={sectionDividerStyle} />
       <button type="button" style={sectionHeaderStyle} onClick={() => toggleSection('purchase')}>
