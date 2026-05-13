@@ -242,6 +242,18 @@ export default function PurchaseOrdersPage({
           row.item_id = '';
         }
       }
+      if (key === 'supplier') {
+        const normalized = String(value || '').trim();
+        if (index === 0 && normalized) {
+          // Convenience: if the first row supplier is chosen, prefill empty suppliers
+          // on other rows so same-supplier POs stay under one PO number.
+          for (let i = 1; i < next.length; i += 1) {
+            if (!String(next[i]?.supplier || '').trim()) {
+              next[i] = { ...(next[i] || blankItemRow()), supplier: normalized };
+            }
+          }
+        }
+      }
       next[index] = row;
       return next;
     });

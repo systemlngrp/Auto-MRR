@@ -2230,11 +2230,47 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     });
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [allApprovalRows]);
-  const pendingTableStyle = { width: '100%', tableLayout: 'fixed' };
-  const pendingHeaderCellStyle = { fontSize: '13px', background: '#1d4ed8', color: '#fff', fontWeight: 800, padding: '8px 8px', textAlign: 'center', verticalAlign: 'middle' };
-  const pendingBodyCellStyle = { fontSize: '12px', color: '#111', padding: '8px 8px', verticalAlign: 'top' };
+  const pendingTableStyle = {
+    width: '100%',
+    tableLayout: 'fixed',
+    borderCollapse: 'separate',
+    borderSpacing: 0
+  };
+  const pendingTableWrapStyle = {
+    width: '100%',
+    overflowX: 'auto',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    background: '#fff'
+  };
+  const pendingHeaderCellStyle = {
+    fontSize: '12px',
+    background: '#1d4ed8',
+    color: '#fff',
+    fontWeight: 900,
+    padding: '10px 10px',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+    borderRight: '1px solid rgba(255,255,255,0.18)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    whiteSpace: 'nowrap'
+  };
+  const pendingBodyCellStyle = {
+    fontSize: '12px',
+    color: '#111',
+    padding: '10px 10px',
+    verticalAlign: 'middle',
+    borderBottom: '1px solid #e5e7eb',
+    borderRight: '1px solid #e5e7eb',
+    background: '#fff'
+  };
+  const pendingRowStyle = (rowIndex) => ({
+    background: rowIndex % 2 === 0 ? '#fff' : '#fbfdff'
+  });
   const groupedCheckboxHeaderStyle = { ...pendingHeaderCellStyle, width: '3%', minWidth: '36px' };
-  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'top' };
+  const groupedCheckboxCellStyle = { ...pendingBodyCellStyle, width: '3%', textAlign: 'center', verticalAlign: 'middle' };
   const groupedIdHeaderStyle = { ...pendingHeaderCellStyle, width: '5.5%', minWidth: '72px' };
   const groupedIdCellStyle = { ...pendingBodyCellStyle, width: '5.5%', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.35 };
   const groupedFirmCellStyle = { ...pendingBodyCellStyle, width: '7%', maxWidth: '120px', wordBreak: 'break-word' };
@@ -2245,22 +2281,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const groupedQtyCellStyle = { ...pendingBodyCellStyle, width: '4%', textAlign: 'center' };
   const groupedItemsCellStyle = { ...pendingBodyCellStyle, width: '17%', minWidth: '220px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
   const groupedItemsHeaderStyle = { ...pendingHeaderCellStyle, width: '17%' };
-  const groupedWeightCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'top', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
+  const groupedWeightCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'middle', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
   const groupedWeightHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
-  const groupedDiffCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'top', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
+  const groupedDiffCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'normal', verticalAlign: 'middle', lineHeight: 1.35, textAlign: 'right', wordBreak: 'break-word' };
   const groupedDiffHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
-  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedPoRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'middle', lineHeight: 1.35 };
   const groupedPoRateHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
-  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedInvoiceRateCellStyle = { ...pendingBodyCellStyle, width: '6%', minWidth: '72px', whiteSpace: 'pre-line', verticalAlign: 'middle', lineHeight: 1.35 };
   const groupedInvoiceRateHeaderStyle = { ...pendingHeaderCellStyle, width: '6%', minWidth: '72px' };
-  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '7%', minWidth: '78px', whiteSpace: 'pre-line', verticalAlign: 'top', lineHeight: 1.35 };
+  const groupedBasicValueCellStyle = { ...pendingBodyCellStyle, width: '7%', minWidth: '78px', whiteSpace: 'pre-line', verticalAlign: 'middle', lineHeight: 1.35 };
   const groupedBasicValueHeaderStyle = { ...pendingHeaderCellStyle, width: '7%', minWidth: '78px' };
   const groupedRemarkCellStyle = { ...pendingBodyCellStyle, width: '8%', minWidth: '120px', whiteSpace: 'pre-line', lineHeight: 1.35, wordBreak: 'break-word' };
   const groupedRemarkHeaderStyle = { ...pendingHeaderCellStyle, width: '8%', minWidth: '120px' };
   const groupedActionHeaderStyle = { ...pendingHeaderCellStyle, width: '11%', minWidth: '150px' };
-  const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '11%', minWidth: '150px' };
+  const groupedActionCellStyle = { ...pendingBodyCellStyle, width: '11%', minWidth: '150px', verticalAlign: 'top' };
   const groupedActionHeaderWideStyle = { ...pendingHeaderCellStyle, width: '16%', minWidth: '190px' };
-  const groupedActionCellWideStyle = { ...pendingBodyCellStyle, width: '16%', minWidth: '190px' };
+  const groupedActionCellWideStyle = { ...pendingBodyCellStyle, width: '16%', minWidth: '190px', verticalAlign: 'top' };
 
   const getGroupedApprovalRowKey = (row) => [
     String(row?.firm_id || '').trim(),
@@ -3815,7 +3851,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   <div style={{ fontSize: '18px', fontWeight: 900, color: '#1f2937', marginBottom: '10px' }}>
                     {activeStage.label} ({activeRows.length})
                   </div>
-                  <table className="table" style={pendingTableStyle}>
+                  <div style={pendingTableWrapStyle}>
+                  <table className="table" style={{ ...pendingTableStyle, minWidth: '1500px' }}>
                     <thead>
                       <tr>
                         <th style={groupedCheckboxHeaderStyle}>
@@ -3858,7 +3895,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                         const rowKey = getGroupedApprovalRowKey(ge);
                         const isRowApproving = approvingPendingKey === rowKey;
                         return (
-                        <tr key={`${activeStage.key}-${idx}`}>
+                        <tr key={`${activeStage.key}-${idx}`} style={pendingRowStyle(idx)}>
                           <td className="c" style={groupedCheckboxCellStyle}>
                             <input
                               type="checkbox"
@@ -4130,6 +4167,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                       )})}
                     </tbody>
                   </table>
+                  </div>
                   <div
                     style={{
                       position: 'fixed',
@@ -4239,7 +4277,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               );
             })()
           ) : !displayedRows.length ? <p>No entries found.</p> : (
-            <table className="table" style={pendingTableStyle}>
+            <div style={pendingTableWrapStyle}>
+            <table className="table" style={{ ...pendingTableStyle, minWidth: pendingFilter === 'pending_mrr' ? '980px' : '1250px' }}>
               <thead>
                 <tr>
                   <th style={pendingHeaderCellStyle}>S No</th>
@@ -4267,7 +4306,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                   ].join('|');
                   const isRowApproving = approvingPendingKey === rowKey;
                   return (
-                  <tr key={idx}>
+                  <tr key={idx} style={pendingRowStyle(idx)}>
                     <td className="c" style={pendingBodyCellStyle}>{idx + 1}</td>
                     <td style={pendingBodyCellStyle}>{ge.date}</td>
                     <td className="c" style={pendingBodyCellStyle}>{ge.ge_no || ge.ge_entry}</td>
@@ -4421,6 +4460,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 )})}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -5711,6 +5751,28 @@ function App() {
       ...getQuantityToleranceOptions(exactQty)
     ];
   }).filter(Boolean)), row.po_quantity);
+  const getDescriptionOptionEntries = (row) => {
+    const records = getPoRowsForRow(row);
+    const byDesc = new Map();
+    records.forEach((po) => {
+      const desc = String(po?.reel_details || '').trim();
+      if (!desc) return;
+      const qty = n(firstFilled(po?.quantity, po?.quantity_received, 0));
+      const current = byDesc.get(desc);
+      if (!current) {
+        byDesc.set(desc, { value: desc, qty });
+        return;
+      }
+      byDesc.set(desc, { value: desc, qty: current.qty + qty });
+    });
+    return Array.from(byDesc.values()).map((entry) => {
+      const qtyText = entry.qty > 0 ? String(Number(entry.qty.toFixed(3))) : '';
+      return {
+        value: entry.value,
+        label: qtyText ? `${entry.value} (PO Qty: ${qtyText})` : entry.value
+      };
+    });
+  };
   const getDescriptionOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).map((po) => po.reel_details).filter(Boolean)), row.item_name || row.reel_details);
   const getErpCodeOptions = (row) => withCurrentOption(uniqueText(getPoRowsForRow(row).filter((po) => !(row.item_name || row.reel_details) || po.reel_details === (row.item_name || row.reel_details)).map((po) => po.erp_code).filter(Boolean)), row.erp_code);
   const getPackingWeightOptions = (row, rowIndex = -1) => {
@@ -6063,6 +6125,7 @@ function App() {
     setSelectedFirm(firm);
     setMrrType(type);
     setIsFirmSelected(true);
+    handleRouteChange(APP_ROUTES.mrr, { replace: browserPath === '/' || browserPath === APP_ROUTES.dashboard });
     try {
       localStorage.setItem(FIRM_SELECTION_STORAGE_KEY, JSON.stringify({ firmId: firm?.id || '', type: type || 'reel' }));
     } catch {
@@ -6182,7 +6245,9 @@ function App() {
       if (!firm) return;
       setSelectedFirm(firm);
       setMrrType(type);
-      setIsFirmSelected(true);
+      // Restore the firm selection, but keep user on the dashboard (StartupOverlay)
+      // until they explicitly start a workflow.
+      setIsFirmSelected(false);
     } catch {
       // ignore
     }
@@ -6190,9 +6255,40 @@ function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser || !isFirmSelected) return;
-    handleRouteChange(APP_ROUTES.mrr, { replace: browserPath === '/' });
-  }, [browserPath, currentUser, isFirmSelected]);
+    // Ensure a predictable landing flow:
+    // - Not logged in -> /login
+    // - Logged in but no firm -> /firms
+    // - Logged in + firm selected -> /dashboard (default landing)
+    if (!currentUser) {
+      if (browserPath !== APP_ROUTES.login) handleRouteChange(APP_ROUTES.login, { replace: true });
+      return;
+    }
+
+    if (!isFirmSelected) {
+      // If the user has not chosen a firm yet, send them to the firm selector.
+      if (!selectedFirm) {
+        if (browserPath !== APP_ROUTES.firms && browserPath !== APP_ROUTES.login) {
+          handleRouteChange(APP_ROUTES.firms, { replace: browserPath === '/' });
+        }
+        return;
+      }
+
+      // Firm is remembered/selected, but user hasn't started a workflow yet: land on dashboard.
+      if (browserPath === '/' || browserPath === APP_ROUTES.login || browserPath === APP_ROUTES.firms || browserPath === APP_ROUTES.mrr) {
+        handleRouteChange(APP_ROUTES.dashboard, { replace: true });
+      }
+      return;
+    }
+
+    // If user opens root (/) or is coming from auth/firm routes, land on dashboard.
+    if (
+      browserPath === '/' ||
+      browserPath === APP_ROUTES.login ||
+      browserPath === APP_ROUTES.firms
+    ) {
+      handleRouteChange(APP_ROUTES.dashboard, { replace: true });
+    }
+  }, [browserPath, currentUser, isFirmSelected, selectedFirm]);
 
   const openStageMenuView = (typeOverride = mrrType, view = 'dashboard', overrides = {}) => {
     const targetFirmId = overrides.firmId || selectedFirm?.id;
@@ -7864,10 +7960,24 @@ function App() {
                           <td><select disabled={isDataEntryLocked} value={getSelectValue(poNoOptions, row.po_no)} onChange={(e) => handlePoNoSelect(i, e.target.value)}><option value="">Select PO</option>{poNoOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
                           <td><select disabled={isDataEntryLocked} value={getSelectValue(getPoDetailOptions(row), row.po_details)} onChange={(e) => handlePoDetailsSelect(i, e.target.value)}><option value="">Select PO Details</option>{getPoDetailOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td>
                           <td style={{ minWidth: '260px', maxWidth: '320px', whiteSpace: 'nowrap' }}>
-                            <select disabled={isDataEntryLocked} style={{ width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} value={getSelectValue(getDescriptionOptions(row), row.item_name || row.reel_details)} onChange={(e) => handleDescriptionSelect(i, e.target.value)}>
-                              <option value="">Select Description</option>
-                              {getDescriptionOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}
-                            </select>
+                            {(() => {
+                              const entries = getDescriptionOptionEntries(row);
+                              const options = entries.map((e) => e.value);
+                              return (
+                                <select
+                                  disabled={isDataEntryLocked}
+                                  style={{ width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  value={getSelectValue(options, row.item_name || row.reel_details)}
+                                  onChange={(e) => handleDescriptionSelect(i, e.target.value)}
+                                  title="Shows approved PO item + PO Qty (for this item)."
+                                >
+                                  <option value="">Select Description</option>
+                                  {entries.map((entry) => (
+                                    <option key={entry.value} value={entry.value}>{entry.label}</option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </td>
                           <td><input value={row.supplier_reel_no} readOnly={isDataEntryLocked} onChange={(e) => setPackRow(i, 'supplier_reel_no', e.target.value)} /></td>
                           <td><select disabled={isDataEntryLocked} value={getSelectValue(getErpCodeOptions(row), row.erp_code)} onChange={(e) => handleErpCodeSelect(i, e.target.value)}><option value="">Select ERP Code</option>{getErpCodeOptions(row).map((option) => <option key={option} value={option}>{option}</option>)}</select></td>

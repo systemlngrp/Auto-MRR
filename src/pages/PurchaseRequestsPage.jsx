@@ -704,7 +704,7 @@ export default function PurchaseRequestsPage({
             <div className="spinner" />
           </div>
         ) : null}
-        <div style={{ width: 'min(1300px, 100%)', margin: '0 auto' }}>
+        <div style={{ width: '100%', margin: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests'}</div>
@@ -864,7 +864,7 @@ export default function PurchaseRequestsPage({
             zIndex: 10010
           }}
         >
-          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ maxWidth: 'none', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '12px', color: '#fff' }}>Selected: <span style={{ color: '#fff', fontWeight: 800 }}>{selectedPrNo}</span></div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800, background: '#fff', color: '#1d4ed8' }}>Clear</button>

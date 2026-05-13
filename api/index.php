@@ -3355,25 +3355,38 @@ try {
             jsonOut(['ok' => false, 'error' => 'At least 1 item required.'], 400);
         }
 
+        $normalizeSupplierKey = static function (string $value): string {
+            $clean = preg_replace('/\s+/', ' ', trim($value));
+            return strtoupper($clean ?? '');
+        };
+
         // Group items by supplier (each supplier => separate PO number).
+        // Supplier keys are normalized to avoid accidental splits caused by casing/extra spaces.
         $groups = [];
         foreach ($meaningful as $item) {
             $itemSupplier = trim((string)($item['supplier'] ?? $item['supplier_name'] ?? ''));
             if ($itemSupplier === '') {
                 jsonOut(['ok' => false, 'error' => 'Supplier required for each PO item.'], 400);
             }
-            if (!isset($groups[$itemSupplier])) $groups[$itemSupplier] = [];
-            $groups[$itemSupplier][] = $item;
+            $supplierKey = $normalizeSupplierKey($itemSupplier);
+            if ($supplierKey === '') {
+                jsonOut(['ok' => false, 'error' => 'Supplier required for each PO item.'], 400);
+            }
+            if (!isset($groups[$supplierKey])) $groups[$supplierKey] = ['supplier' => $itemSupplier, 'items' => []];
+            $groups[$supplierKey]['items'][] = $item;
         }
         // If a header supplier is given, keep single group only.
         if ($supplier !== '') {
-            $groups = [$supplier => $meaningful];
+            $supplierKey = $normalizeSupplierKey($supplier);
+            $groups = [$supplierKey => ['supplier' => $supplier, 'items' => $meaningful]];
         }
 
         $createdPoNos = [];
         $totalSavedItems = 0;
 
-        foreach ($groups as $supplierKey => $groupItems) {
+        foreach ($groups as $group) {
+            $supplierKey = trim((string)($group['supplier'] ?? ''));
+            $groupItems = is_array($group['items'] ?? null) ? $group['items'] : [];
             $currentPoNo = $poNo;
             // For multi-supplier split, always generate new PO numbers (ignore client-provided po_no).
             if (count($groups) > 1) {

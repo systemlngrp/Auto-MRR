@@ -89,7 +89,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     async function loadUsers() {
       if (!selectedFirm) return;
       setIsLoading(true);
-      setStatus('Loading users...');
+      setStatus('');
       try {
         const data = await fetchUsers({
           spreadsheetId: selectedFirm.spreadsheetId
@@ -156,7 +156,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     if (!validate()) return;
 
     setIsSaving(true);
-    setStatus('Saving user...');
+    setStatus('');
     try {
       const userToSave = {
         ...formData,
@@ -447,11 +447,22 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
               disabled={isSaving}
               style={{ padding: '12px 32px', fontWeight: '700', minWidth: '160px' }}
             >
-              {isSaving ? 'Saving...' : 'Save User'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {isSaving ? <span className="spinner" /> : null}
+                <span>{isSaving ? 'Saving...' : 'Save User'}</span>
+              </span>
             </button>
           </div>
 
-          {status && <div className="status" style={{ marginTop: '24px', textAlign: 'center', padding: '12px', background: '#f9fafb', borderRadius: '6px', fontSize: '13px', border: '1px solid #f3f4f6' }}>{status}</div>}
+          {(isSaving || status) ? (
+            <div className="status" style={{ marginTop: '24px', textAlign: 'center', padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', border: '1px solid #f3f4f6', fontWeight: 800 }}>
+              {isSaving ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="spinner" /> Saving...
+                </span>
+              ) : status}
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -478,7 +489,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
           </div>
         </div>
 
-        {status ? <div className="status" style={{ marginBottom: '16px', padding: '12px' }}>{status}</div> : null}
+        {isLoading ? (
+          <div className="status" style={{ marginBottom: '16px', padding: '10px 12px', display: 'inline-flex', alignItems: 'center', gap: '8px', borderRadius: '999px', border: '1px solid #e5e7eb', background: '#f8fafc', fontWeight: 900, fontSize: '12px', color: '#1d4ed8' }}>
+            <span className="spinner" /> Loading users...
+          </div>
+        ) : status ? (
+          <div className="status" style={{ marginBottom: '16px', padding: '12px' }}>{status}</div>
+        ) : null}
 
         {(() => {
           const headerCellStyle = { fontSize: '12px', background: '#1d4ed8', color: '#fff', fontWeight: 'bold', padding: '10px 10px', textAlign: 'center', verticalAlign: 'middle', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' };
