@@ -1,139 +1,156 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
 import { fetchSheetRange } from '../sheetSync';
-import { loadDpmJobs, updateDpmJobStage } from '../utils/dpmJobs';
-
-function n(value) {
-  const num = Number(String(value ?? '').replace(/,/g, '').trim());
-  return Number.isFinite(num) ? num : 0;
-}
+import { loadDpmJobs, updateDpmJob } from '../utils/dpmJobs';
 
 export default function ReelCloserPage({ selectedFirm, currentUser, onBack }) {
-  const [rows, setRows] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
-  const loadRunRef = useRef(0);
-  const [activeJob, setActiveJob] = useState(null);
-  const [reason, setReason] = useState('');
-  const [reasonError, setReasonError] = useState('');
+  const [issueRows, setIssueRows] = useState([]);
+  const [returnRows, setReturnRows] = useState([]);
+  const [pendingRows, setPendingRows] = useState([]);
   const [dpmJobs, setDpmJobs] = useState([]);
+  const [activeJob, setActiveJob] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const loadRunRef = useRef(0);
+
+  const [form, setForm] = useState({
+    remarks: ''
+  });
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
     const runId = ++loadRunRef.current;
     setIsLoading(true);
-    setLoadError('');
     try {
-      const payload = await fetchSheetRange(REEL_SCHEMAS.closer_pending.sheetName, selectedFirm);
+      const pending = await fetchSheetRange(REEL_SCHEMAS.closer_pending.sheetName, selectedFirm);
+      const issue = await fetchSheetRange(REEL_SCHEMAS.reel_issue.sheetName, selectedFirm);
+      const ret = await fetchSheetRange(REEL_SCHEMAS.reel_return.sheetName, selectedFirm);
       if (loadRunRef.current !== runId) return;
-      setRows(Array.isArray(payload?.data) ? payload.data : []);
+      setPendingRows(Array.isArray(pending?.data) ? pending.data : []);
+      setIssueRows(Array.isArray(issue?.data) ? issue.data : []);
+      setReturnRows(Array.isArray(ret?.data) ? ret.data : []);
     } catch (err) {
-      if (loadRunRef.current !== runId) return;
-      setLoadError(err?.message || 'Could not load data from Sheets.');
-      setRows([]);
+      console.error('Closer load error:', err);
     } finally {
       if (loadRunRef.current === runId) setIsLoading(false);
     }
   };
 
+  const refreshDpm = () => setDpmJobs(loadDpmJobs(selectedFirm));
+
   useEffect(() => {
     loadFromSheets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    refreshDpm();
   }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
 
-  useEffect(() => {
-    setDpmJobs(loadDpmJobs(selectedFirm));
-  }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
+  const jobAggregates = useMemo(() => {
+    const normalizeJob = (raw) => String(raw || '').trim();
+    const issueAgg = new Map();
+    (issueRows || []).forEach((row) => {
+      const job = normalizeJob(row?.['JOB NO.'] || row?.['JOB No.'] || row?.JOB);
+      if (!job) return;
+      const w = Number(String(row?.Weight ?? '').trim());
+      if (!issueAgg.has(job)) issueAgg.set(job, { weight: 0 });
+      const entry = issueAgg.get(job);
+      if (Number.isFinite(w)) entry.weight += w;
+    });
 
-  const listRows = useMemo(() => {
-    const sheetRows = (rows || [])
-      .filter((r) => r && typeof r === 'object')
-      .map((r) => ({
-        date: String(r?.DATE || r?.Date || '').trim(),
-        job: String(r?.['JOB No.'] || r?.['JOB NO.'] || r?.JOB || '').trim(),
-        erp: String(r?.ERP || '').trim(),
-        item: String(r?.ITEM || '').trim(),
-        planQty: String(r?.['PLAN QUANTITY'] ?? '').trim(),
-        requiredReel: String(r?.['REQUIRED REEL'] ?? '').trim(),
-        actualUsed: String(r?.['ACTUAL PAPER USED'] ?? '').trim(),
-        prodSheetPlant: String(r?.['PROD. AT SHEET PLANT'] ?? '').trim(),
-        prodPrinting: String(r?.['PROD. AT PRINTING'] ?? '').trim(),
-        raw: r,
-        _dpm_id: ''
-      }))
-      .filter((r) => r.job);
+    const returnAgg = new Map();
+    (returnRows || []).forEach((row) => {
+      const job = normalizeJob(row?.JOB || row?.['JOB NO.'] || row?.['JOB No.']);
+      if (!job) return;
+      const w = Number(String(row?.Weight ?? '').trim());
+      if (!returnAgg.has(job)) returnAgg.set(job, { weight: 0 });
+      const entry = returnAgg.get(job);
+      if (Number.isFinite(w)) entry.weight += w;
+    });
 
-    const dpmRows = (dpmJobs || [])
+    return { issueAgg, returnAgg };
+  }, [issueRows, returnRows]);
+
+  const combinedPendingList = useMemo(() => {
+    const fromDpm = (dpmJobs || [])
       .filter((j) => String(j?.stage || '') === 'closer_pending')
-      .map((j) => ({
-        date: String(j?.date || '').trim(),
-        job: String(j?.job_no || '').trim(),
-        erp: String(j?.erp || '').trim(),
-        item: String(j?.item || '').trim(),
-        planQty: String(j?.plan_quantity || '').trim(),
-        requiredReel: String(j?.required_reel || '').trim(),
-        actualUsed: '',
-        prodSheetPlant: '',
-        prodPrinting: '',
-        raw: j,
-        _dpm_id: j.id
-      }))
-      .filter((r) => r.job);
+      .map((j) => {
+        const job = String(j.job_no || '').trim();
+        const issue = jobAggregates.issueAgg.get(job);
+        const ret = jobAggregates.returnAgg.get(job);
+        return {
+          job,
+          date: String(j.date || '').trim(),
+          erp: String(j.erp || '').trim(),
+          item: String(j.item || '').trim(),
+          planQty: String(j.plan_quantity || '').trim(),
+          requiredReel: String(j.required_reel || '').trim(),
+          totalIssued: issue ? issue.weight.toFixed(2) : '0.00',
+          totalReturned: ret ? ret.weight.toFixed(2) : '0.00',
+          actualUsed: Math.max(0, (issue?.weight || 0) - (ret?.weight || 0)).toFixed(2),
+          _dpm_id: j.id,
+          _raw: j
+        };
+      });
 
-    return [...dpmRows, ...sheetRows];
-  }, [rows, dpmJobs]);
+    const seenJobs = new Set(fromDpm.map(r => r.job));
+    const fromSheets = (pendingRows || [])
+      .map(row => {
+        const job = String(row?.['JOB No.'] || row?.['JOB NO.'] || row?.JOB || '').trim();
+        if (!job || seenJobs.has(job)) return null;
+        seenJobs.add(job);
+        const issue = jobAggregates.issueAgg.get(job);
+        const ret = jobAggregates.returnAgg.get(job);
+        return {
+          job,
+          date: String(row?.DATE || '').trim(),
+          erp: String(row?.ERP || '').trim(),
+          item: String(row?.ITEM || '').trim(),
+          planQty: String(row?.['PLAN QUANTITY'] || '').trim(),
+          requiredReel: String(row?.['REQUIRED REEL'] || '').trim(),
+          totalIssued: issue ? issue.weight.toFixed(2) : '0.00',
+          totalReturned: ret ? ret.weight.toFixed(2) : '0.00',
+          actualUsed: Math.max(0, (issue?.weight || 0) - (ret?.weight || 0)).toFixed(2),
+          _raw: row
+        };
+      })
+      .filter(Boolean);
 
-  const grouped = useMemo(() => {
-    const normalizeDate = (value) => {
-      const raw = String(value || '').trim();
-      return raw || 'Invalid date';
-    };
-    const byDate = new Map();
-    listRows.forEach((r) => {
-      const key = normalizeDate(r.date);
-      if (!byDate.has(key)) byDate.set(key, []);
-      byDate.get(key).push(r);
+    const all = [...fromDpm, ...fromSheets];
+    const groups = new Map();
+    all.forEach(r => {
+      const d = r.date || 'Unknown Date';
+      if (!groups.has(d)) groups.set(d, []);
+      groups.get(d).push(r);
     });
-    const entries = Array.from(byDate.entries());
-    entries.sort((a, b) => {
-      if (a[0] === 'Invalid date' && b[0] !== 'Invalid date') return -1;
-      if (b[0] === 'Invalid date' && a[0] !== 'Invalid date') return 1;
-      return a[0].localeCompare(b[0]);
-    });
-    const out = [];
-    entries.forEach(([date, items]) => {
-      out.push({ type: 'group', date });
-      items.forEach((it) => out.push({ type: 'row', row: it }));
-    });
-    return out;
-  }, [listRows]);
+
+    return Array.from(groups.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, rows]) => ({ date, rows }));
+  }, [dpmJobs, pendingRows, jobAggregates]);
 
   const activeDetail = useMemo(() => {
     if (!activeJob) return null;
     const job = String(activeJob || '').trim();
-    if (!job) return null;
-    return listRows.find((r) => r.job === job) || null;
-  }, [activeJob, listRows]);
+    for (const g of combinedPendingList) {
+      const found = g.rows.find(r => r.job === job);
+      if (found) return found;
+    }
+    return null;
+  }, [activeJob, combinedPendingList]);
 
-  const openJob = (job) => {
-    setReason('');
-    setReasonError('');
-    setActiveJob(job);
-  };
-
-  const saveCloser = () => {
-    const trimmed = String(reason || '').trim();
-    if (!trimmed) {
-      setReasonError('This entry is required');
+  const onSaveAndClose = () => {
+    if (!activeDetail?._dpm_id) {
+      alert('Only DPM Jobs can be closed automatically.');
       return;
     }
-    setReasonError('');
-    // For DPM jobs, mark closed in local pipeline.
-    if (activeDetail?._dpm_id) {
-      updateDpmJobStage(selectedFirm, activeDetail._dpm_id, 'closed');
-      setDpmJobs(loadDpmJobs(selectedFirm));
+    const remarks = String(form.remarks || '').trim();
+    if (!remarks) {
+      alert('Remarks are required to close the job.');
+      return;
     }
+    updateDpmJob(selectedFirm, activeDetail._dpm_id, {
+      remarks,
+      stage: 'closed'
+    });
     setActiveJob(null);
+    refreshDpm();
   };
 
   return (
@@ -152,174 +169,81 @@ export default function ReelCloserPage({ selectedFirm, currentUser, onBack }) {
 
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
         <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>Pending Jobs For Closer</div>
-        <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-          Auto-loaded from Sheets ({REEL_SCHEMAS.closer_pending.sheetName}).
-        </div>
-        {loadError ? (
-          <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>
-            {loadError}
-          </div>
-        ) : null}
-        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn main" disabled={isLoading} onClick={loadFromSheets}>
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </button>
-        </div>
-
         <div style={{ marginTop: '12px', width: '100%', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
           <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>
-                {['JOB No.', 'ERP', 'ITEM', 'PLAN QUANTITY', 'REQUIRED REEL', 'ACTUAL PAPER USED', 'PROD. AT SHEET PLANT', 'PROD. AT PRINTING', ''].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      position: 'sticky',
-                      top: 0,
-                      background: '#1d4ed8',
-                      color: '#fff',
-                      fontSize: '12px',
-                      fontWeight: 1000,
-                      padding: '10px 10px',
-                      textAlign: 'left',
-                      whiteSpace: 'nowrap',
-                      borderRight: '1px solid rgba(255,255,255,0.18)'
-                    }}
-                  >
-                    {h}
-                  </th>
+                {['JOB No.', 'ERP', 'ITEM', 'PLAN QTY', 'REQ REEL', 'ISSUED', 'RETURNED', 'ACTUAL'].map((h) => (
+                  <th key={h} style={{ position: 'sticky', top: 0, background: '#1d4ed8', color: '#fff', fontSize: '12px', fontWeight: 1000, padding: '10px' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {!grouped.length ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>
-                    -
-                  </td>
-                </tr>
-              ) : null}
-              {grouped.map((entry, idx) => {
-                if (entry.type === 'group') {
-                  return (
-                    <tr key={`g-${idx}`}>
-                      <td colSpan={9} style={{ padding: '10px 10px', background: '#f8fafc', borderTop: '1px solid #e5e7eb', fontSize: '12px', fontWeight: 900, color: '#111' }}>
-                        {entry.date}
-                      </td>
-                    </tr>
-                  );
-                }
-                const r = entry.row;
-                return (
-                  <tr
-                    key={`r-${idx}`}
-                    onClick={() => r.job && openJob(r.job)}
-                    style={{ cursor: r.job ? 'pointer' : 'default' }}
-                    title={r.job ? `Open Job ${r.job}` : ''}
-                  >
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 900, color: '#dc2626' }}>{r.job}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.erp}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.item}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.planQty}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.requiredReel}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.actualUsed}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.prodSheetPlant}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{r.prodPrinting}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', textAlign: 'right', color: '#6b7280', fontWeight: 900 }}>
-                      {'>'}
+              {combinedPendingList.map(group => (
+                <React.Fragment key={group.date}>
+                  <tr>
+                    <td colSpan={8} style={{ background: '#f8fafc', padding: '8px 10px', fontSize: '11px', fontWeight: 1000, color: '#475569', borderTop: '1px solid #e5e7eb' }}>
+                      📅 {group.date}
                     </td>
                   </tr>
-                );
-              })}
+                  {group.rows.map(r => (
+                    <tr key={r.job} onClick={() => setActiveJob(r.job)} style={{ cursor: 'pointer' }}>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', fontWeight: 900, color: '#dc2626' }}>{r.job}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb' }}>{r.erp}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb' }}>{r.item}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb' }}>{r.planQty}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb' }}>{r.requiredReel}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', fontWeight: 700 }}>{r.totalIssued}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', fontWeight: 700 }}>{r.totalReturned}</td>
+                      <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', fontWeight: 800, color: '#1d4ed8' }}>{r.actualUsed}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {activeDetail ? (
-        <div
-          className="no-print"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.25)',
-            backdropFilter: 'blur(6px)',
-            zIndex: 10050,
-            display: 'flex',
-            justifyContent: 'flex-end'
-          }}
-          onClick={() => setActiveJob(null)}
-        >
-          <div
-            style={{
-              width: 'min(620px, 96vw)',
-              height: '100%',
-              background: '#fff',
-              borderLeft: '1px solid #e5e7eb',
-              boxShadow: '-20px 0 60px rgba(0,0,0,0.18)',
-              padding: '16px',
-              overflowY: 'auto'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+      {activeDetail && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)', zIndex: 10050, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setActiveJob(null)}>
+          <div style={{ width: 'min(520px, 96vw)', height: '100%', background: '#fff', padding: '20px', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.08em', color: '#6b7280' }}>CLOSER</div>
-                <div style={{ marginTop: '6px', fontSize: '22px', fontWeight: 1100, color: '#dc2626' }}>
-                  {activeDetail.job}
+                <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>PENDING JOB (CLOSER)</div>
+                <div style={{ fontSize: '22px', fontWeight: 1100, color: '#dc2626' }}>{activeDetail.job}</div>
+              </div>
+              <button className="btn" onClick={() => setActiveJob(null)}>Close</button>
+            </div>
+
+            <div style={{ marginTop: '20px', display: 'grid', gap: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', borderBottom: '1px solid #eef2f7', paddingBottom: '6px' }}>Final Review</div>
+              
+              <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '10px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>JOB SUMMARY</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                  <div><div style={{ fontSize: '9px', fontWeight: 1000, color: '#94a3b8' }}>PLAN QTY</div><div style={{ fontSize: '14px', fontWeight: 900 }}>{activeDetail.planQty}</div></div>
+                  <div><div style={{ fontSize: '9px', fontWeight: 1000, color: '#94a3b8' }}>ACTUAL USED</div><div style={{ fontSize: '14px', fontWeight: 900, color: '#1d4ed8' }}>{activeDetail.actualUsed}</div></div>
                 </div>
               </div>
-              <button type="button" className="btn" onClick={() => setActiveJob(null)} style={{ padding: '8px 12px', fontWeight: 900 }}>
-                Close
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>REMARKS (Required)</div>
+                <textarea
+                  value={form.remarks}
+                  onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))}
+                  placeholder="Enter final remarks to close the job..."
+                  style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', minHeight: '100px', width: '100%' }}
+                />
+              </div>
+
+              <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndClose}>
+                Confirm & Close Job ✓
               </button>
-            </div>
-
-            <div style={{ marginTop: '16px', borderTop: '1px solid #eef2f7', paddingTop: '14px' }}>
-              {(() => {
-                const r = activeDetail.raw || {};
-                const get = (k) => String(r?.[k] ?? '').trim();
-                const fields = [
-                  ['PLAN QUANTITY', get('PLAN QUANTITY')],
-                  ['REQUIRED REEL', get('REQUIRED REEL')],
-                  ['ACTUAL PAPER USED', get('ACTUAL PAPER USED')],
-                  ['PROD. AT SHEET PLANT', get('PROD. AT SHEET PLANT')],
-                  ['PROD. AT PRINTING', get('PROD. AT PRINTING')],
-                  ['DELAMINATION', get('DELAMINATION')],
-                ];
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                    {fields.map(([label, value]) => (
-                      <div key={label} style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'baseline' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>{label}</div>
-                        <div style={{ fontSize: '13px', fontWeight: 900, color: '#111', wordBreak: 'break-word' }}>{value || '-'}</div>
-                      </div>
-                    ))}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '6px' }}>REASON *</div>
-                      <input
-                        value={reason}
-                        onChange={(e) => { setReason(e.target.value); if (reasonError) setReasonError(''); }}
-                        style={{ width: '100%', padding: '10px 12px', border: `1px solid ${reasonError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', fontSize: '13px' }}
-                        placeholder="Enter reason"
-                      />
-                      {reasonError ? (
-                        <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 900, color: '#ef4444' }}>
-                          {reasonError}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" className="btn" onClick={() => setActiveJob(null)}>Cancel</button>
-              <button type="button" className="btn main" onClick={saveCloser}>Save</button>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

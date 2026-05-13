@@ -11,10 +11,12 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
       const job = String(row?.['JOB NO.'] || row?.['JOB No.'] || row?.JOB || '').trim();
       if (!job) return;
       const reelKey = String(row?.['QR Scan'] || row?.['Our Reel Number'] || row?.['Supplier Reel No.'] || '').trim();
-      if (!byJob.has(job)) byJob.set(job, { job, rows: 0, reels: new Set() });
+      const w = Number(String(row?.Weight ?? '').trim());
+      if (!byJob.has(job)) byJob.set(job, { job, rows: 0, reels: new Set(), weight: 0 });
       const entry = byJob.get(job);
       entry.rows += 1;
       if (reelKey) entry.reels.add(reelKey);
+      if (Number.isFinite(w)) entry.weight += w;
     });
     return Array.from(byJob.values())
       .map((j) => ({ ...j, reelsCount: j.reels.size }))
@@ -45,7 +47,7 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
             <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
-                  {['JOB NO.', 'Rows', 'Reels'].map((h) => (
+                  {['JOB NO.', 'Rows', 'Reels', 'Total Weight'].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -69,7 +71,7 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
               <tbody>
                 {!jobSummary.length ? (
                   <tr>
-                    <td colSpan={3} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>
+                    <td colSpan={4} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>
                       Upload Reel Issue CSV to see jobs.
                     </td>
                   </tr>
@@ -79,6 +81,7 @@ export default function ReelIssueDataPage({ selectedFirm, currentUser, onBack })
                     <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 900 }}>{j.job}</td>
                     <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{j.rows}</td>
                     <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{j.reelsCount}</td>
+                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{j.weight.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

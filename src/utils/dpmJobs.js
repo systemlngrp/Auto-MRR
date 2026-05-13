@@ -44,11 +44,15 @@ export function addDpmJob(firm, job) {
   return record;
 }
 
-export function updateDpmJobStage(firm, id, stage) {
+export function updateDpmJob(firm, id, patch) {
   const jobs = loadDpmJobs(firm);
   const now = new Date().toISOString();
-  const next = jobs.map((j) => (j?.id === id ? { ...j, stage, updated_at: now } : j));
+  const next = jobs.map((j) => (j?.id === id ? { ...j, ...patch, updated_at: now } : j));
   saveDpmJobs(firm, next);
   return next;
+}
+
+export function updateDpmJobStage(firm, id, stage) {
+  return updateDpmJob(firm, id, { stage });
 }
 

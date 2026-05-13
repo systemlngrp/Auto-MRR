@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
 import { fetchSheetRange } from '../sheetSync';
-import { loadDpmJobs } from '../utils/dpmJobs';
+import { loadDpmJobs, updateDpmJobStage } from '../utils/dpmJobs';
 
 export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack }) {
   const [issueRows, setIssueRows] = useState([]);
@@ -38,35 +38,13 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
     }
   };
 
+  const refreshDpm = () => setDpmJobs(loadDpmJobs(selectedFirm));
+
   useEffect(() => {
     loadFromSheets();
+    refreshDpm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
-
-  useEffect(() => {
-    setDpmJobs(loadDpmJobs(selectedFirm));
-  }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
-
-  const jobSummary = useMemo(() => {
-    // ... rest of jobSummary useMemo remains the same
-    const byJob = new Map();
-    (issueRows || []).forEach((row) => {
-      const job = String(row?.['JOB NO.'] || row?.['JOB No.'] || row?.['JOB'] || '').trim();
-      if (!job) return;
-      const reelKey = String(row?.['QR Scan'] || row?.['Supplier Reel No.'] || row?.['Our Reel Number'] || '').trim();
-      if (!byJob.has(job)) {
-        byJob.set(job, { job, rows: 0, reels: new Set(), weight: 0 });
-      }
-      const entry = byJob.get(job);
-      entry.rows += 1;
-      if (reelKey) entry.reels.add(reelKey);
-      const w = Number(String(row?.Weight ?? '').trim());
-      if (Number.isFinite(w)) entry.weight += w;
-    });
-    return Array.from(byJob.values())
-      .map((j) => ({ ...j, reelsCount: j.reels.size }))
-      .sort((a, b) => a.job.localeCompare(b.job, undefined, { sensitivity: 'base' }));
-  }, [issueRows]);
 
   const jobAggregates = useMemo(() => {
     const normalizeJob = (raw) => String(raw || '').trim();
@@ -97,101 +75,125 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
     return { issueAgg, returnAgg };
   }, [issueRows, returnRows]);
 
-  const activePendingJobDetail = useMemo(() => {
-    if (!activePendingJob) return null;
-    const job = String(activePendingJob || '').trim();
-    if (!job) return null;
-
-    const pendingRow = (pendingRows || []).find((r) => String(r?.['JOB No.'] || r?.['JOB NO.'] || r?.JOB || '').trim() === job) || null;
-    const issue = jobAggregates.issueAgg.get(job);
-    const ret = jobAggregates.returnAgg.get(job);
-    const issuedReels = issue ? issue.reels.size : 0;
-    const returnedReels = ret ? ret.reels.size : 0;
-    const issuedWeight = issue ? issue.weight : 0;
-    const returnedWeight = ret ? ret.weight : 0;
-    const actualPaperUsed = Math.max(0, issuedWeight - returnedWeight);
-
-    const issuedRowsForJob = (issueRows || []).filter((r) => String(r?.['JOB NO.'] || r?.['JOB No.'] || r?.JOB || '').trim() === job);
-    const returnRowsForJob = (returnRows || []).filter((r) => String(r?.JOB || r?.['JOB NO.'] || r?.['JOB No.'] || '').trim() === job);
-
-    return {
-      job,
-      pendingRow,
-      issuedReels,
-      returnedReels,
-      issuedWeight,
-      returnedWeight,
-      actualPaperUsed,
-      issuedRowsForJob,
-      returnRowsForJob
-    };
-  }, [activePendingJob, pendingRows, issueRows, returnRows, jobAggregates.issueAgg, jobAggregates.returnAgg]);
-
-  const pendingDisplayRows = useMemo(() => {
+  const combinedPendingList = useMemo(() => {
     const normalizeJob = (raw) => String(raw || '').trim();
-    const headers = REEL_SCHEMAS.reel_issue_pending.headers;
-    return (pendingRows || [])
-      .filter((r) => r && typeof r === 'object')
-      .map((row) => {
+    
+    // 1. Process DPM Jobs in 'reel_issue_pending' stage
+    const fromDpm = (dpmJobs || [])
+      .filter((j) => String(j?.stage || '') === 'reel_issue_pending')
+      .map((j) => {
+        const job = String(j.job_no || '').trim();
+        const issue = jobAggregates.issueAgg.get(job);
+        const ret = jobAggregates.returnAgg.get(job);
+        return {
+          job,
+          date: String(j.date || '').trim(),
+          erp: String(j.erp || '').trim(),
+          item: String(j.item || '').trim(),
+          planQty: String(j.plan_quantity || '').trim(),
+          requiredReel: String(j.required_reel || '').trim(),
+          issued: issue ? String(issue.reels.size) : '0',
+          returned: ret ? String(ret.reels.size) : '0',
+          issuedWeight: issue ? issue.weight : 0,
+          returnedWeight: ret ? ret.weight : 0,
+          actualUsed: (issue || ret) ? Math.max(0, (issue?.weight || 0) - (ret?.weight || 0)).toFixed(2) : '0',
+          corrugation: '',
+          _dpm_id: j.id,
+          _raw: j
+        };
+      });
+
+    // 2. Process CSV/Sheets Jobs, excluding those already in DPM
+    const seenJobs = new Set(fromDpm.map(r => r.job));
+    const fromSheets = (pendingRows || [])
+      .filter(r => r && typeof r === 'object')
+      .map(row => {
         const job = normalizeJob(row?.['JOB No.'] || row?.['JOB NO.'] || row?.JOB);
-        const issue = job ? jobAggregates.issueAgg.get(job) : null;
-        const ret = job ? jobAggregates.returnAgg.get(job) : null;
+        if (!job || seenJobs.has(job)) return null;
+        seenJobs.add(job);
+
+        const issue = jobAggregates.issueAgg.get(job);
+        const ret = jobAggregates.returnAgg.get(job);
         const issuedReels = issue ? issue.reels.size : 0;
         const returnedReels = ret ? ret.reels.size : 0;
         const issuedWeight = issue ? issue.weight : 0;
         const returnedWeight = ret ? ret.weight : 0;
         const actualPaperUsed = Math.max(0, issuedWeight - returnedWeight);
 
-        const next = {};
-        headers.forEach((h) => {
-          next[h] = row?.[h] ?? '';
-        });
-        // Override with computed totals per Job No.
-        next['TOTAL REEL ISSUED'] = issuedReels ? String(issuedReels) : (next['TOTAL REEL ISSUED'] ?? '');
-        next['TOTAL REEL RETURNED'] = returnedReels ? String(returnedReels) : (next['TOTAL REEL RETURNED'] ?? '');
-        next['ACTUAL PAPER USED'] = (issuedWeight || returnedWeight) ? actualPaperUsed.toFixed(2) : (next['ACTUAL PAPER USED'] ?? '');
-        return next;
-      });
-  }, [pendingRows, jobAggregates.issueAgg, jobAggregates.returnAgg]);
+        return {
+          job,
+          date: String(row?.DATE || row?.Date || '').trim(),
+          erp: String(row?.ERP || '').trim(),
+          item: String(row?.ITEM || '').trim(),
+          planQty: String(row?.['PLAN QUANTITY'] || '').trim(),
+          requiredReel: String(row?.['REQUIRED REEL'] || '').trim(),
+          issued: issuedReels ? String(issuedReels) : (row?.['TOTAL REEL ISSUED'] ?? '0'),
+          returned: returnedReels ? String(returnedReels) : (row?.['TOTAL REEL RETURNED'] ?? '0'),
+          issuedWeight,
+          returnedWeight,
+          actualUsed: (issuedWeight || returnedWeight) ? actualPaperUsed.toFixed(2) : (row?.['ACTUAL PAPER USED'] ?? '0'),
+          corrugation: String(row?.['Pending Corrugation'] || row?.CORRUGATION || '').trim(),
+          _raw: row
+        };
+      })
+      .filter(Boolean);
 
-  const pendingListRows = useMemo(() => {
-    const rows = pendingDisplayRows.map((row) => ({
-      job: String(row?.['JOB No.'] || row?.['JOB NO.'] || row?.JOB || '').trim(),
-      date: String(row?.DATE || '').trim(),
-      erp: String(row?.ERP || '').trim(),
-      item: String(row?.ITEM || '').trim(),
-      planQty: String(row?.['PLAN QUANTITY'] || '').trim(),
-      requiredReel: String(row?.['REQUIRED REEL'] || '').trim(),
-      issued: String(row?.['TOTAL REEL ISSUED'] || '').trim(),
-      returned: String(row?.['TOTAL REEL RETURNED'] || '').trim(),
-      actualUsed: String(row?.['ACTUAL PAPER USED'] || '').trim(),
-      corrugation: String(row?.['Pending Corrugation'] || row?.CORRUGATION || '').trim()
-    }));
-
+    const all = [...fromDpm, ...fromSheets];
     const q = String(pendingSearch || '').trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => 
-      Object.values(r).some((v) => String(v || '').toLowerCase().includes(q))
-    );
-  }, [pendingDisplayRows, pendingSearch]);
+    const filtered = q ? all.filter(r => Object.values(r).some(v => String(v || '').toLowerCase().includes(q))) : all;
 
-  const dpmPendingRows = useMemo(() => {
-    const rows = (dpmJobs || [])
-      .filter((j) => String(j?.stage || '') === 'reel_issue_pending')
-      .map((j) => ({
-        job: String(j?.job_no || '').trim(),
-        erp: String(j?.erp || '').trim(),
-        item: String(j?.item || '').trim(),
-        planQty: String(j?.plan_quantity || '').trim(),
-        requiredReel: String(j?.required_reel || '').trim(),
-        issued: '',
-        returned: '',
-        actualUsed: '',
-        corrugation: '',
-        _dpm_id: j.id
-      }));
-    return [...rows, ...pendingListRows];
-  }, [dpmJobs, pendingListRows]);
+    // Group by Date
+    const groupsMap = new Map();
+    filtered.forEach(r => {
+      const d = r.date || 'Unknown Date';
+      if (!groupsMap.has(d)) groupsMap.set(d, []);
+      groupsMap.get(d).push(r);
+    });
+
+    return Array.from(groupsMap.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, rows]) => ({ date, rows }));
+  }, [dpmJobs, pendingRows, jobAggregates, pendingSearch]);
+
+  const activeDetail = useMemo(() => {
+    if (!activePendingJob) return null;
+    const job = String(activePendingJob || '').trim();
+    if (!job) return null;
+
+    let pendingRow = null;
+    for (const g of combinedPendingList) {
+      pendingRow = g.rows.find(r => r.job === job);
+      if (pendingRow) break;
+    }
+    if (!pendingRow) return null;
+
+    const issue = jobAggregates.issueAgg.get(job);
+    const ret = jobAggregates.returnAgg.get(job);
+    const issuedRowsForJob = (issueRows || []).filter((r) => String(r?.['JOB NO.'] || r?.['JOB No.'] || r?.JOB || '').trim() === job);
+    const returnRowsForJob = (returnRows || []).filter((r) => String(r?.JOB || r?.['JOB NO.'] || r?.['JOB No.'] || '').trim() === job);
+
+    return {
+      job,
+      pendingRow,
+      issuedReels: issue ? issue.reels.size : 0,
+      returnedReels: ret ? ret.reels.size : 0,
+      issuedWeight: issue ? issue.weight : 0,
+      returnedWeight: ret ? ret.weight : 0,
+      actualPaperUsed: Number(pendingRow.actualUsed),
+      issuedRowsForJob,
+      returnRowsForJob
+    };
+  }, [activePendingJob, combinedPendingList, issueRows, returnRows, jobAggregates]);
+
+  const onMoveToSheetPlant = () => {
+    if (!activeDetail?.pendingRow?._dpm_id) {
+      alert('Only DPM Jobs can be moved through stages automatically.');
+      return;
+    }
+    updateDpmJobStage(selectedFirm, activeDetail.pendingRow._dpm_id, 'sheet_plant_pending');
+    setActivePendingJob(null);
+    refreshDpm();
+  };
 
   return (
     <div style={{ padding: '24px', width: '100%', minHeight: '100vh', background: '#f5f7fb' }}>
@@ -213,13 +215,9 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
             <div>
               <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>Pending Jobs For Reel Issue</div>
               <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-                Auto-loaded from Sheets. For each Job No, TOTAL REEL ISSUED / RETURNED and ACTUAL PAPER USED are auto-calculated.
+                Grouping by Date. Live totals from Reel Issue/Return data.
               </div>
-              {loadError ? (
-                <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>
-                  {loadError}
-                </div>
-              ) : null}
+              {loadError ? <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>{loadError}</div> : null}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <input
@@ -238,7 +236,7 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
             <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
-                  {['JOB No.', 'ERP', 'ITEM', 'PLAN QUANTITY', 'REQUIRED REEL', 'TOTAL REEL ISSUED', 'TOTAL REEL RETURNED', 'ACTUAL PAPER USED', 'Pending Corrugation'].map((h) => (
+                  {['JOB No.', 'ERP', 'ITEM', 'PLAN QUANTITY', 'REQUIRED REEL', 'TOTAL ISSUED', 'TOTAL RETURNED', 'ACTUAL USED', 'Pending Corrugation'].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -260,40 +258,46 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 </tr>
               </thead>
               <tbody>
-                {!dpmPendingRows.length ? (
+                {!combinedPendingList.length ? (
                   <tr>
                     <td colSpan={9} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>
-                      
+                      {isLoading ? 'Loading data...' : 'No pending jobs found.'}
                     </td>
                   </tr>
                 ) : null}
-                {dpmPendingRows.map((row, idx) => {
-                  const job = String(row?.job || '').trim();
-                  return (
-                  <tr
-                    key={idx}
-                    onClick={() => job && setActivePendingJob(job)}
-                    title={job ? `Open Job ${job}` : ''}
-                    style={{ cursor: job ? 'pointer' : 'default' }}
-                  >
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 900, color: '#dc2626' }}>{row.job}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.erp}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.item}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.planQty}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.requiredReel}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.issued}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.returned}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.actualUsed}</td>
-                    <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.corrugation}</td>
-                  </tr>
-                  );
-                })}
+                {combinedPendingList.map((group) => (
+                  <React.Fragment key={group.date}>
+                    <tr>
+                      <td colSpan={9} style={{ background: '#f8fafc', padding: '8px 10px', fontSize: '11px', fontWeight: 1000, color: '#475569', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
+                        📅 {group.date}
+                      </td>
+                    </tr>
+                    {group.rows.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        onClick={() => row.job && setActivePendingJob(row.job)}
+                        style={{ cursor: row.job ? 'pointer' : 'default' }}
+                        title={row.job ? `Open Job ${row.job}` : ''}
+                      >
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 900, color: '#dc2626' }}>{row.job}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.erp}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.item}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.planQty}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.requiredReel}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 700 }}>{row.issued}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 700 }}>{row.returned}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap', fontWeight: 800, color: '#1d4ed8' }}>{row.actualUsed}</td>
+                        <td style={{ fontSize: '12px', padding: '8px 10px', borderTop: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{row.corrugation}</td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {activePendingJobDetail ? (
+        {activeDetail ? (
           <div
             className="no-print"
             style={{
@@ -321,9 +325,9 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.08em', color: '#6b7280' }}>PENDING JOB</div>
+                  <div style={{ fontSize: '11px', fontWeight: 1000, letterSpacing: '0.08em', color: '#6b7280' }}>PENDING JOB (REEL ISSUE)</div>
                   <div style={{ marginTop: '6px', fontSize: '22px', fontWeight: 1100, color: '#dc2626' }}>
-                    {activePendingJobDetail.job}
+                    {activeDetail.job}
                   </div>
                 </div>
                 <button type="button" className="btn" onClick={() => setActivePendingJob(null)} style={{ padding: '8px 12px', fontWeight: 900 }}>
@@ -332,36 +336,39 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
               </div>
 
               <div style={{ marginTop: '14px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="button" className="btn main" onClick={() => setActivePendingJob(null)} title="Go to Reel Issue">
+                {activeDetail.pendingRow?._dpm_id && (
+                  <button type="button" className="btn main" onClick={onMoveToSheetPlant} title="Save and Move to Sheet Plant">
+                    Save & Move to Sheet Plant →
+                  </button>
+                )}
+                <button type="button" className="btn" onClick={() => setActivePendingJob(null)} title="Go to Reel Issue">
                   + Reel Issue
                 </button>
                 <button type="button" className="btn" onClick={() => setActivePendingJob(null)} title="Go to Reel Return">
                   - Reel Return
                 </button>
-                <button type="button" className="btn" onClick={() => setActivePendingJob(null)} title="Reel Transfer">
-                  Reel Transfer
-                </button>
               </div>
 
               <div style={{ marginTop: '16px', borderTop: '1px solid #eef2f7', paddingTop: '14px' }}>
                 {(() => {
-                  const r = activePendingJobDetail.pendingRow || {};
-                  const get = (k) => String(r?.[k] ?? '').trim();
+                  const r = activeDetail.pendingRow || {};
                   const summary = [
-                    ['JOB No.', activePendingJobDetail.job],
-                    ['ERP', get('ERP')],
-                    ['ITEM', get('ITEM')],
-                    ['PLAN QUANTITY', get('PLAN QUANTITY')],
-                    ['REQUIRED REEL', get('REQUIRED REEL')],
-                    ['TOTAL REEL ISSUED', String(activePendingJobDetail.issuedReels || 0)],
-                    ['TOTAL REEL RETURNED', String(activePendingJobDetail.returnedReels || 0)],
-                    ['ACTUAL PAPER USED', activePendingJobDetail.actualPaperUsed.toFixed(2)],
-                    ['CORRUGATION', get('CORRUGATION')]
+                    ['JOB No.', activeDetail.job],
+                    ['DATE', r.date],
+                    ['ERP', r.erp],
+                    ['ITEM', r.item],
+                    ['PLAN QUANTITY', r.planQty],
+                    ['REQUIRED REEL', r.requiredReel],
+                    ['No of Reels Issued', String(activeDetail.issuedReels || 0)],
+                    ['Total Issued Weight/Qty', activeDetail.issuedWeight.toFixed(2)],
+                    ['No of Reels Returned', String(activeDetail.returnedReels || 0)],
+                    ['Total Returned Weight/Qty', activeDetail.returnedWeight.toFixed(2)],
+                    ['Actual (Issued - Returned)', activeDetail.actualPaperUsed.toFixed(2)]
                   ];
                   return (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
                       {summary.map(([label, value]) => (
-                        <div key={label} style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '10px', alignItems: 'baseline' }}>
+                        <div key={label} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '10px', alignItems: 'baseline' }}>
                           <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>{label}</div>
                           <div style={{ fontSize: '13px', fontWeight: 900, color: '#111', wordBreak: 'break-word' }}>{value || '-'}</div>
                         </div>
@@ -375,15 +382,12 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8' }}>Issued / Returned Details</div>
                 <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111' }}>Issued Rows</div>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 800 }}>
-                      {activePendingJobDetail.issuedRowsForJob.length} rows
-                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111' }}>Issued Rows ({activeDetail.issuedRowsForJob.length})</div>
                     <div style={{ marginTop: '10px', maxHeight: '220px', overflowY: 'auto', border: '1px solid #eef2f7', borderRadius: '10px' }}>
                       <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                         <thead>
                           <tr>
-                            {['QR Scan', 'Our Reel Number', 'Supplier Reel No.', 'Weight'].map((h) => (
+                            {['QR Scan', 'Supplier Reel No.', 'Weight'].map((h) => (
                               <th key={h} style={{ background: '#f1f5f9', fontSize: '11px', fontWeight: 1000, padding: '8px 10px', textAlign: 'left', position: 'sticky', top: 0 }}>
                                 {h}
                               </th>
@@ -391,47 +395,13 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                           </tr>
                         </thead>
                         <tbody>
-                          {!activePendingJobDetail.issuedRowsForJob.length ? (
-                            <tr><td colSpan={4} style={{ padding: '10px', color: '#6b7280', fontWeight: 800 }}>No issue rows loaded.</td></tr>
+                          {!activeDetail.issuedRowsForJob.length ? (
+                            <tr><td colSpan={3} style={{ padding: '10px', color: '#6b7280', fontWeight: 800 }}>No issue rows found.</td></tr>
                           ) : null}
-                          {activePendingJobDetail.issuedRowsForJob.slice(0, 200).map((r, i) => (
-                            <tr key={i}>
-                              <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['QR Scan'] ?? '')}</td>
-                              <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['Our Reel Number'] ?? '')}</td>
-                              <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['Supplier Reel No.'] ?? '')}</td>
-                              <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.Weight ?? '')}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 1000, color: '#111' }}>Returned Rows</div>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 800 }}>
-                      {activePendingJobDetail.returnRowsForJob.length} rows
-                    </div>
-                    <div style={{ marginTop: '10px', maxHeight: '220px', overflowY: 'auto', border: '1px solid #eef2f7', borderRadius: '10px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                        <thead>
-                          <tr>
-                            {['QR Scan', 'Supplier Reel No.', 'ERP Code', 'Weight'].map((h) => (
-                              <th key={h} style={{ background: '#f1f5f9', fontSize: '11px', fontWeight: 1000, padding: '8px 10px', textAlign: 'left', position: 'sticky', top: 0 }}>
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {!activePendingJobDetail.returnRowsForJob.length ? (
-                            <tr><td colSpan={4} style={{ padding: '10px', color: '#6b7280', fontWeight: 800 }}>No return rows loaded.</td></tr>
-                          ) : null}
-                          {activePendingJobDetail.returnRowsForJob.slice(0, 200).map((r, i) => (
+                          {activeDetail.issuedRowsForJob.map((r, i) => (
                             <tr key={i}>
                               <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['QR Scan'] ?? '')}</td>
                               <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['Supplier Reel No.'] ?? '')}</td>
-                              <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.['ERP Code'] ?? '')}</td>
                               <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(r?.Weight ?? '')}</td>
                             </tr>
                           ))}
@@ -444,8 +414,6 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
             </div>
           </div>
         ) : null}
-
-        {/* All-in-one detailed viewers removed from this screen */}
       </div>
     </div>
   );
