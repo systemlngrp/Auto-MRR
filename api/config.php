@@ -10,7 +10,7 @@ return [
         // Defaults below are set for the current Hostinger DB/user. Prefer env vars on the server.
         'database' => getenv('DB_NAME') ?: (getenv('MYSQL_DATABASE') ?: 'u380633007_RMS'),
         'username' => getenv('DB_USER') ?: (getenv('MYSQL_USER') ?: 'u380633007_rms'),
-        'password' => getenv('DB_PASS') ?: (getenv('MYSQL_PASSWORD') ?: 'CHANGE_ME'),
+        'password' => getenv('DB_PASS') ?: (getenv('MYSQL_PASSWORD') ?: '!Office2@'),
         'charset' => getenv('DB_CHARSET') ?: 'utf8mb4',
     ],
     'cors' => [
@@ -20,3 +20,4 @@ return [
         'timezone' => getenv('APP_TIMEZONE') ?: 'Asia/Kolkata',
     ],
 ];
+
