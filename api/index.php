@@ -597,6 +597,7 @@ function fetchReelStockRows(string $firmId): array
           ON p.id = c.parent_id
          AND p.firm_id = c.firm_id
         WHERE c.firm_id = :firm_id
+          AND LOWER(COALESCE(p.md_approval, '')) = 'approved'
           AND COALESCE(c.our_reel_no, '') <> ''
     ");
     $stmt->execute(['firm_id' => $firmId]);
@@ -685,7 +686,14 @@ function getAvailableWeightForReel(string $firmId, string $ourReelNo): float
     $pdo = db();
     ensureReelStockSchema($pdo);
 
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(weight_value), 0) AS w FROM reel_mrr_children WHERE firm_id = :firm_id AND our_reel_no = :our_reel_no");
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(c.weight_value), 0) AS w
+        FROM reel_mrr_children c
+        LEFT JOIN reel_mrr_parents p ON p.id = c.parent_id AND p.firm_id = c.firm_id
+        WHERE c.firm_id = :firm_id
+          AND c.our_reel_no = :our_reel_no
+          AND LOWER(COALESCE(p.md_approval, '')) = 'approved'
+    ");
     $stmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
     $base = (float)$stmt->fetchColumn();
 

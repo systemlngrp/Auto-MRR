@@ -3451,6 +3451,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onPendingCloser: () => setStep(22),
               onReelIssueData: () => setStep(24),
               onReelReturnData: () => setStep(23),
+              onReelStock: () => setStep(26),
               onIndent: () => setStep(14),
               onPo: () => setStep(16),
               onItemMaster: () => setStep(13),
@@ -5173,6 +5174,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <DpmJobsPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+      </>
+    );
+  }
+
+  if (step === 26) {
+    return (
+      <>
+        {userBadge}
+        <ReelStockPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
       </>
     );
   }
