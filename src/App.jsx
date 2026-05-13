@@ -6006,110 +6006,88 @@ function App() {
   const loadPoDetails = async () => {
     if (!selectedFirm) return;
     setIsLoadingPo(true);
-    const poSheet = getSheetName(selectedFirm.po, mrrType);
     setStatus(`Loading PO details for ${selectedFirm.name} (${mrrType.toUpperCase()})...`);
     try {
-      const payload = await fetchSheetRange(poSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
-      const allRows = Array.isArray(payload?.data)
-        ? payload.data.map((row) => normalizePoRow(row))
-        : sheetValuesToPoRows(payload?.values || []);
-      const sheetRows = allRows.filter((row) => isPoOpenRow(row));
+      // Use Purchase Orders module (DB) for BOTH Reel + Other.
+      // This replaces the old PO DETAILS / OTHER PO sheet based dropdown.
+      const normalizePoType = (value) => String(value || '').trim().toLowerCase();
+      const normalizedMode = normalizePoType(mrrType);
+      const acceptedPoTypes = normalizedMode === 'other'
+        ? new Set(['other'])
+        : new Set(['reel', 'mrr', '']);
 
-      // Also expose approved Purchase Orders (created from Indent flow) inside MRR PO dropdowns.
-      // These records may not yet exist in the PO DETAILS sheet, so we merge them in-memory.
-      let approvedPurchaseOrderRows = [];
-      try {
-        const purchaseOrders = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
-        const approvedPos = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
-          .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved')
-          .filter((po) => String(po?.po_type || '').trim().toLowerCase() === String(mrrType || '').trim().toLowerCase())
+      const purchaseOrders = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
+      const approvedPos = (Array.isArray(purchaseOrders) ? purchaseOrders : [])
+        .filter((po) => String(po?.status || '').trim().toLowerCase() === 'approved')
+        .filter((po) => acceptedPoTypes.has(normalizePoType(po?.po_type)));
 
-        // Enrich approved POs with item rows, so MRR dropdowns can show item/qty/rate.
-        // Keep a small cap to avoid flooding the backend with many requests.
-        const MAX_PO_DETAILS_FETCH = 30;
-        const limited = approvedPos.slice(0, MAX_PO_DETAILS_FETCH);
-        const detailResults = await Promise.allSettled(
-          limited.map(async (po) => {
-            const poNo = String(po?.po_no || '').trim();
-            if (!poNo) return { po, items: [] };
-            const details = await fetchPurchaseOrderDetails(poNo, { spreadsheetId: selectedFirm.spreadsheetId });
-            const items = Array.isArray(details?.items) ? details.items : [];
-            return { po, items };
-          })
-        );
+      const MAX_PO_DETAILS_FETCH = 80;
+      const limited = approvedPos.slice(0, MAX_PO_DETAILS_FETCH);
+      const detailResults = await Promise.allSettled(
+        limited.map(async (po) => {
+          const poNo = String(po?.po_no || '').trim();
+          if (!poNo) return { po, items: [] };
+          const details = await fetchPurchaseOrderDetails(poNo, { spreadsheetId: selectedFirm.spreadsheetId });
+          const items = Array.isArray(details?.items) ? details.items : [];
+          return { po, items };
+        })
+      );
 
-        approvedPurchaseOrderRows = detailResults
-          .filter((r) => r.status === 'fulfilled')
-          .flatMap((r) => {
-            const { po, items } = r.value || {};
-            const poNo = String(po?.po_no || '').trim();
-            if (!poNo) return [];
-            const poDate = String(po?.po_date || '').trim();
-            const supplier = String(po?.supplier || '').trim();
-            const poDetails = String(po?.po_details || '').trim();
-            const poStatus = String(po?.status || '').trim();
-            if (!Array.isArray(items) || items.length === 0) {
-              return [{
-                sno: '',
-                po_no: poNo,
-                date: poDate,
-                supplier,
-                po_details: poDetails,
-                erp_code: '',
-                size: '',
-                gsm: '',
-                bf: '',
-                reel_details: '',
-                unit: '',
-                rate: '',
-                quantity: '',
-                status: poStatus,
-                quantity_received: '',
-                pending: '',
-                closed: '',
-                rapc: ''
-              }];
-            }
-            return items.map((it) => ({
+      const rows = detailResults
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap((r) => {
+          const { po, items } = r.value || {};
+          const poNo = String(po?.po_no || '').trim();
+          if (!poNo) return [];
+          const poDate = String(po?.po_date || '').trim();
+          const supplier = String(po?.supplier || '').trim();
+          const poDetails = String(po?.po_details || '').trim();
+          const poStatus = String(po?.status || '').trim();
+          const normalizedItems = Array.isArray(items) ? items : [];
+          if (!normalizedItems.length) {
+            return [{
               sno: '',
               po_no: poNo,
               date: poDate,
-              supplier: String(it?.supplier || supplier || '').trim(),
+              supplier,
               po_details: poDetails,
-              erp_code: String(it?.erp_code || '').trim(),
+              erp_code: '',
               size: '',
               gsm: '',
               bf: '',
-              reel_details: String(it?.item_name || it?.description || '').trim(),
-              unit: String(it?.unit || '').trim(),
-              rate: String(it?.rate || '').trim(),
-              quantity: String(it?.qty || '').trim(),
+              reel_details: '',
+              unit: '',
+              rate: '',
+              quantity: '',
               status: poStatus,
               quantity_received: '',
               pending: '',
               closed: '',
               rapc: ''
-            }));
-          })
-          .filter((row) => row.po_no);
-      } catch {
-        approvedPurchaseOrderRows = [];
-      }
-
-      const seenPo = new Set();
-      const rows = [...sheetRows, ...approvedPurchaseOrderRows].filter((row) => {
-        const poNo = String(row?.po_no || '').trim();
-        if (!poNo) return false;
-        // Keep sheet rows first; avoid duplicate PO placeholders.
-        if (!seenPo.has(poNo)) {
-          seenPo.add(poNo);
-          return true;
-        }
-        // Allow multiple rows per PO when they come from sheet details.
-        // If this row looks like a placeholder (no details fields), drop it.
-        const hasDetails = [row?.po_details, row?.erp_code, row?.reel_details, row?.gsm, row?.size, row?.bf].some((v) => String(v || '').trim());
-        return hasDetails;
-      });
+            }];
+          }
+          return normalizedItems.map((it) => ({
+            sno: '',
+            po_no: poNo,
+            date: poDate,
+            supplier: String(it?.supplier || supplier || '').trim(),
+            po_details: poDetails,
+            erp_code: String(it?.erp_code || '').trim(),
+            size: '',
+            gsm: '',
+            bf: '',
+            reel_details: String(it?.item_name || it?.description || '').trim(),
+            unit: String(it?.unit || '').trim(),
+            rate: String(it?.rate || '').trim(),
+            quantity: String(it?.qty || '').trim(),
+            status: poStatus,
+            quantity_received: '',
+            pending: '',
+            closed: '',
+            rapc: ''
+          }));
+        })
+        .filter((row) => String(row?.po_no || '').trim());
       const enrichedPacking = enrichPackingWithPoRows(packing, rows);
       setPoRows(rows);
       setPacking(enrichedPacking);
