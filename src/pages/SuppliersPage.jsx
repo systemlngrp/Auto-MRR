@@ -3,15 +3,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 const blankSupplier = () => ({
   id: '',
   supplier_name: '',
+  address_text: '',
+  district: '',
+  state_name: '',
+  pin_code: '',
+  email: '',
+  contact_person: '',
   phone_no: '',
   gstin: '',
   active: '1'
 });
 
-export default function SuppliersPage({ selectedFirm, deps, onBack }) {
-  const { fetchSupplierMaster, saveSupplierMaster } = deps;
+export default function SuppliersPage({ selectedFirm, deps, onBack, initialView = 'list', onSaved }) {
+  const { fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster } = deps;
   const [rows, setRows] = useState([]);
-  const [view, setView] = useState('list'); // list | form
+  const [view, setView] = useState(initialView); // list | form
   const [formData, setFormData] = useState(blankSupplier());
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -42,7 +48,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
   const filteredRows = useMemo(() => {
     const q = String(search || '').trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) => [r?.supplier_name, r?.phone_no, r?.gstin]
+    return rows.filter((r) => [r?.supplier_name, r?.phone_no, r?.gstin, r?.email, r?.contact_person, r?.address_text, r?.district, r?.state_name, r?.pin_code]
       .some((v) => String(v || '').toLowerCase().includes(q)));
   }, [rows, search]);
 
@@ -92,18 +98,51 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
         {
           id: String(formData.id || '').trim(),
           supplier_name: String(formData.supplier_name || '').trim(),
-          supplier_code: '',
-          phone_no: String(formData.phone_no || '').trim(),
+          address_text: String(formData.address_text || '').trim(),
+          district: String(formData.district || '').trim(),
+          state_name: String(formData.state_name || '').trim(),
+          pin_code: String(formData.pin_code || '').trim(),
           gstin: String(formData.gstin || '').trim(),
+          email: String(formData.email || '').trim(),
+          contact_person: String(formData.contact_person || '').trim(),
+          phone_no: String(formData.phone_no || '').trim(),
           active: String(formData.active || '1') === '0' ? '0' : '1'
         },
         { spreadsheetId: selectedFirm.spreadsheetId }
       );
-      setView('list');
       await load();
       setStatus('Saved.');
+      if (typeof onSaved === 'function') {
+        try {
+          onSaved({ ...formData, supplier_name: String(formData.supplier_name || '').trim() });
+        } catch {
+          // ignore
+        }
+        onBack?.();
+      } else {
+        setView('list');
+      }
     } catch (err) {
       setStatus(err?.message || 'Could not save supplier.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const doDelete = async (row) => {
+    if (!selectedFirm || !deleteSupplierMaster) return;
+    const supplierId = String(row?.id || '').trim();
+    const name = String(row?.supplier_name || '').trim() || 'this supplier';
+    if (!supplierId) return;
+    if (!window.confirm(`Delete ${name}? This cannot be undone.`)) return;
+    setIsSaving(true);
+    setStatus('Deleting supplier...');
+    try {
+      await deleteSupplierMaster({ spreadsheetId: selectedFirm.spreadsheetId, supplier_id: supplierId });
+      await load();
+      setStatus('Deleted.');
+    } catch (err) {
+      setStatus(err?.message || 'Could not delete supplier.');
     } finally {
       setIsSaving(false);
     }
@@ -139,12 +178,36 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
               <input value={formData.supplier_name} onChange={(e) => setFormData((p) => ({ ...p, supplier_name: e.target.value }))} style={inputStyle('supplier_name')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Phone</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Contact Person</div>
+              <input value={formData.contact_person} onChange={(e) => setFormData((p) => ({ ...p, contact_person: e.target.value }))} style={inputStyle('contact_person')} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Contact Number</div>
               <input value={formData.phone_no} onChange={(e) => setFormData((p) => ({ ...p, phone_no: e.target.value }))} style={inputStyle('phone_no')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>GSTIN</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Email</div>
+              <input value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} style={inputStyle('email')} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>GST No.</div>
               <input value={formData.gstin} onChange={(e) => setFormData((p) => ({ ...p, gstin: e.target.value }))} style={inputStyle('gstin')} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>State</div>
+              <input value={formData.state_name} onChange={(e) => setFormData((p) => ({ ...p, state_name: e.target.value }))} style={inputStyle('state_name')} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>District</div>
+              <input value={formData.district} onChange={(e) => setFormData((p) => ({ ...p, district: e.target.value }))} style={inputStyle('district')} />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>PIN Code</div>
+              <input value={formData.pin_code} onChange={(e) => setFormData((p) => ({ ...p, pin_code: e.target.value }))} style={inputStyle('pin_code')} />
+            </div>
+            <div style={{ gridColumn: 'span 4' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Address</div>
+              <textarea value={formData.address_text} onChange={(e) => setFormData((p) => ({ ...p, address_text: e.target.value }))} style={{ ...inputStyle('address_text'), minHeight: '90px', resize: 'vertical' }} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Active</div>
@@ -185,12 +248,16 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
             {status ? <div style={{ fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Name</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Phone</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GSTIN</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Contact</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>GST</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>State</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>District</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>PIN</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Active</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
                 </tr>
@@ -199,17 +266,24 @@ export default function SuppliersPage({ selectedFirm, deps, onBack }) {
                 {filteredRows.map((row) => (
                   <tr key={String(row?.id || row?.supplier_name || '')}>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>{row?.supplier_name || '-'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.phone_no || '-'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                      {[row?.contact_person, row?.phone_no].map((v) => String(v || '').trim()).filter(Boolean).join(' | ') || '-'}
+                    </td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.email || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.gstin || '-'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.state_name || '-'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.district || '-'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.pin_code || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(row?.active ?? '1') === '0' ? 'No' : 'Yes'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" className="btn small" onClick={() => openEdit(row)} disabled={isSaving}>Open</button>
+                      <button type="button" className="btn small" onClick={() => openEdit(row)} disabled={isSaving}>Open</button>{' '}
+                      <button type="button" className="btn small" onClick={() => doDelete(row)} disabled={isSaving} style={{ background: '#111827', borderColor: '#111827', color: '#fff' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
                 {!filteredRows.length ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                    <td colSpan={9} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>

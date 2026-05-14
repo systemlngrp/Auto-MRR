@@ -2143,6 +2143,32 @@ try {
         }
     }
 
+    $hasMobileColumn = false;
+    try {
+        $colStmt = db()->prepare("
+            SELECT 1
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'app_users'
+              AND COLUMN_NAME = 'mobile_no'
+            LIMIT 1
+        ");
+        $colStmt->execute();
+        $hasMobileColumn = (bool)$colStmt->fetchColumn();
+    } catch (Throwable $e) {
+        $hasMobileColumn = false;
+    }
+
+    // Auto-migrate: add mobile_no for newer user form.
+    if (!$hasMobileColumn && in_array($action, ['save_users', 'get_users', 'authenticate_user', 'delete_user'], true)) {
+        try {
+            db()->exec("ALTER TABLE app_users ADD COLUMN mobile_no VARCHAR(30) DEFAULT NULL");
+            $hasMobileColumn = true;
+        } catch (Throwable $e) {
+            $hasMobileColumn = false;
+        }
+    }
+
     if ($action === 'authenticate_user') {
         ensureSessionStarted();
         $loginId = trim((string)($_GET['login_id'] ?? $_POST['login_id'] ?? ''));
@@ -2505,8 +2531,22 @@ try {
     }
 
     if ($action === 'get_supplier_master') {
+        $cols = tableColumns('suppliers');
+        $select = [
+            'id',
+            'supplier_name',
+            in_array('contact_person', $cols, true) ? 'contact_person' : "'' AS contact_person",
+            in_array('phone_no', $cols, true) ? 'phone_no' : "'' AS phone_no",
+            in_array('email', $cols, true) ? 'email' : "'' AS email",
+            in_array('address_text', $cols, true) ? 'address_text' : "'' AS address_text",
+            in_array('district_name', $cols, true) ? 'district_name' : "'' AS district_name",
+            in_array('state_name', $cols, true) ? 'state_name' : "'' AS state_name",
+            in_array('pin_code', $cols, true) ? 'pin_code' : "'' AS pin_code",
+            'gstin',
+            'active',
+        ];
         $stmt = db()->prepare("
-            SELECT id, supplier_name, supplier_code, phone_no, gstin, active
+            SELECT " . implode(', ', $select) . "
             FROM suppliers
             WHERE firm_id = :firm_id
             ORDER BY supplier_name ASC, id ASC
@@ -2516,9 +2556,14 @@ try {
             return [
                 'id' => (string)($row['id'] ?? ''),
                 'supplier_name' => trim((string)($row['supplier_name'] ?? '')),
-                'supplier_code' => trim((string)($row['supplier_code'] ?? '')),
+                'contact_person' => trim((string)($row['contact_person'] ?? '')),
                 'phone_no' => trim((string)($row['phone_no'] ?? '')),
+                'email' => trim((string)($row['email'] ?? '')),
+                'address_text' => trim((string)($row['address_text'] ?? '')),
+                'district' => trim((string)($row['district_name'] ?? '')),
                 'gstin' => trim((string)($row['gstin'] ?? '')),
+                'state_name' => trim((string)($row['state_name'] ?? '')),
+                'pin_code' => trim((string)($row['pin_code'] ?? '')),
                 'active' => (string)($row['active'] ?? '1'),
             ];
         }, $stmt->fetchAll());
@@ -2526,10 +2571,11 @@ try {
     }
 
     if ($action === 'get_users') {
-        $stmt = db()->prepare($hasMenuAccessColumn
-            ? "SELECT login_id, display_name, user_email, role, menu_access, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC"
-            : "SELECT login_id, display_name, user_email, role, active FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC"
-        );
+        $selectCols = ['login_id', 'display_name', 'user_email', 'role'];
+        if ($hasMobileColumn) $selectCols[] = 'mobile_no';
+        if ($hasMenuAccessColumn) $selectCols[] = 'menu_access';
+        $selectCols[] = 'active';
+        $stmt = db()->prepare("SELECT " . implode(', ', $selectCols) . " FROM app_users WHERE firm_id = :firm_id ORDER BY login_id ASC");
         $stmt->execute(['firm_id' => $firmId]);
         $users = $stmt->fetchAll();
         if ($hasMenuAccessColumn) {
@@ -3106,6 +3152,7 @@ try {
 
             $displayName = trim((string)($user['display_name'] ?? ''));
             $userEmail = trim((string)($user['user_email'] ?? ''));
+            $mobileNo = $hasMobileColumn ? trim((string)($user['mobile_no'] ?? $user['mobile'] ?? '')) : '';
             $role = trim((string)($user['role'] ?? ''));
             $menuAccessJson = $hasMenuAccessColumn ? $normalizeMenuAccess($user['menu_access'] ?? null) : null;
             $password = trim((string)($user['password'] ?? ''));
@@ -3119,130 +3166,64 @@ try {
             $exists = $check->fetch();
 
             if ($exists) {
-                if ($password !== '') {
-                    if ($hasMenuAccessColumn) {
-                        $update = db()->prepare("
-                            UPDATE app_users
-                            SET display_name = :display_name,
-                                user_email = :user_email,
-                                role = :role,
-                                menu_access = :menu_access,
-                                password_hash = :password_hash,
-                                password_plain = NULL,
-                                active = :active,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE firm_id = :firm_id AND login_id = :login_id
-                        ");
-                        $update->execute([
-                            'display_name' => $displayName,
-                            'user_email' => $userEmail,
-                            'role' => $role,
-                            'menu_access' => $menuAccessJson,
-                            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                            'active' => $active,
-                            'firm_id' => $firmId,
-                            'login_id' => $loginId,
-                        ]);
-                    } else {
-                        $update = db()->prepare("
-                            UPDATE app_users
-                            SET display_name = :display_name,
-                                user_email = :user_email,
-                                role = :role,
-                                password_hash = :password_hash,
-                                password_plain = NULL,
-                                active = :active,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE firm_id = :firm_id AND login_id = :login_id
-                        ");
-                        $update->execute([
-                            'display_name' => $displayName,
-                            'user_email' => $userEmail,
-                            'role' => $role,
-                            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                            'active' => $active,
-                            'firm_id' => $firmId,
-                            'login_id' => $loginId,
-                        ]);
-                    }
-                } else {
-                    if ($hasMenuAccessColumn) {
-                        $update = db()->prepare("
-                            UPDATE app_users
-                            SET display_name = :display_name,
-                                user_email = :user_email,
-                                role = :role,
-                                menu_access = :menu_access,
-                                active = :active,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE firm_id = :firm_id AND login_id = :login_id
-                        ");
-                        $update->execute([
-                            'display_name' => $displayName,
-                            'user_email' => $userEmail,
-                            'role' => $role,
-                            'menu_access' => $menuAccessJson,
-                            'active' => $active,
-                            'firm_id' => $firmId,
-                            'login_id' => $loginId,
-                        ]);
-                    } else {
-                        $update = db()->prepare("
-                            UPDATE app_users
-                            SET display_name = :display_name,
-                                user_email = :user_email,
-                                role = :role,
-                                active = :active,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE firm_id = :firm_id AND login_id = :login_id
-                        ");
-                        $update->execute([
-                            'display_name' => $displayName,
-                            'user_email' => $userEmail,
-                            'role' => $role,
-                            'active' => $active,
-                            'firm_id' => $firmId,
-                            'login_id' => $loginId,
-                        ]);
-                    }
-                }
+                $setMobile = $hasMobileColumn ? ", mobile_no = NULLIF(:mobile_no, '')" : "";
+                $setMenu = $hasMenuAccessColumn ? ", menu_access = :menu_access" : "";
+                $setPassword = $password !== '' ? ", password_hash = :password_hash, password_plain = NULL" : "";
+                $update = db()->prepare("
+                    UPDATE app_users
+                    SET display_name = :display_name,
+                        user_email = :user_email,
+                        role = :role{$setMobile}{$setMenu}{$setPassword},
+                        active = :active,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE firm_id = :firm_id AND login_id = :login_id
+                ");
+                $params = [
+                    'display_name' => $displayName,
+                    'user_email' => $userEmail,
+                    'role' => $role,
+                    'active' => $active,
+                    'firm_id' => $firmId,
+                    'login_id' => $loginId,
+                ];
+                if ($hasMobileColumn) $params['mobile_no'] = $mobileNo;
+                if ($hasMenuAccessColumn) $params['menu_access'] = $menuAccessJson;
+                if ($password !== '') $params['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+                $update->execute($params);
             } else {
-                if ($hasMenuAccessColumn) {
-                    $insert = db()->prepare("
-                        INSERT INTO app_users (
-                            firm_id, login_id, user_email, display_name, role, menu_access, password_hash, password_plain, active
-                        ) VALUES (
-                            :firm_id, :login_id, :user_email, :display_name, :role, :menu_access, :password_hash, NULL, :active
-                        )
-                    ");
-                    $insert->execute([
-                        'firm_id' => $firmId,
-                        'login_id' => $loginId,
-                        'user_email' => $userEmail,
-                        'display_name' => $displayName,
-                        'role' => $role,
-                        'menu_access' => $menuAccessJson,
-                        'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
-                        'active' => $active,
-                    ]);
-                } else {
-                    $insert = db()->prepare("
-                        INSERT INTO app_users (
-                            firm_id, login_id, user_email, display_name, role, password_hash, password_plain, active
-                        ) VALUES (
-                            :firm_id, :login_id, :user_email, :display_name, :role, :password_hash, NULL, :active
-                        )
-                    ");
-                    $insert->execute([
-                        'firm_id' => $firmId,
-                        'login_id' => $loginId,
-                        'user_email' => $userEmail,
-                        'display_name' => $displayName,
-                        'role' => $role,
-                        'password_hash' => password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT),
-                        'active' => $active,
-                    ]);
+                $cols = ['firm_id', 'login_id', 'user_email', 'display_name', 'role'];
+                $placeholders = [':firm_id', ':login_id', ':user_email', ':display_name', ':role'];
+                $params = [
+                    'firm_id' => $firmId,
+                    'login_id' => $loginId,
+                    'user_email' => $userEmail,
+                    'display_name' => $displayName,
+                    'role' => $role,
+                ];
+                if ($hasMobileColumn) {
+                    $cols[] = 'mobile_no';
+                    $placeholders[] = 'NULLIF(:mobile_no, \'\')';
+                    $params['mobile_no'] = $mobileNo;
                 }
+                if ($hasMenuAccessColumn) {
+                    $cols[] = 'menu_access';
+                    $placeholders[] = ':menu_access';
+                    $params['menu_access'] = $menuAccessJson;
+                }
+                $cols[] = 'password_hash';
+                $placeholders[] = ':password_hash';
+                $params['password_hash'] = password_hash($password !== '' ? $password : 'abcd', PASSWORD_DEFAULT);
+                $cols[] = 'password_plain';
+                $placeholders[] = 'NULL';
+                $cols[] = 'active';
+                $placeholders[] = ':active';
+                $params['active'] = $active;
+
+                $insert = db()->prepare("
+                    INSERT INTO app_users (" . implode(', ', $cols) . ")
+                    VALUES (" . implode(', ', $placeholders) . ")
+                ");
+                $insert->execute($params);
             }
         }
         writeBackendLog('save_users_success', [
@@ -3257,6 +3238,51 @@ try {
         ]);
     }
 
+    if ($action === 'delete_user') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $loginId = trim((string)($payload['login_id'] ?? ''));
+        if ($loginId === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing login_id.'], 400);
+        }
+
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT login_id, user_email FROM app_users WHERE firm_id = :firm_id AND login_id = :login_id LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'login_id' => $loginId]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            jsonOut(['ok' => false, 'error' => 'User not found.'], 404);
+        }
+        $userEmail = trim((string)($user['user_email'] ?? ''));
+
+        $checks = [
+            ["SELECT 1 FROM approval_logs WHERE firm_id = :firm_id AND user_email = :user_email LIMIT 1", ['firm_id' => $firmId, 'user_email' => $userEmail]],
+            ["SELECT 1 FROM purchase_requests WHERE firm_id = :firm_id AND (created_by = :user_email OR approved_by = :user_email) LIMIT 1", ['firm_id' => $firmId, 'user_email' => $userEmail]],
+            ["SELECT 1 FROM purchase_orders WHERE firm_id = :firm_id AND (created_by = :user_email OR approved_by = :user_email) LIMIT 1", ['firm_id' => $firmId, 'user_email' => $userEmail]],
+            ["SELECT 1 FROM reel_issue_entries WHERE firm_id = :firm_id AND created_by = :user_email LIMIT 1", ['firm_id' => $firmId, 'user_email' => $userEmail]],
+        ];
+
+        if ($userEmail !== '') {
+            foreach ($checks as [$sql, $params]) {
+                $c = $pdo->prepare($sql);
+                $c->execute($params);
+                if ($c->fetchColumn()) {
+                    jsonOut(['ok' => false, 'error' => 'User is already used in records and cannot be deleted.'], 400);
+                }
+            }
+        }
+
+        $del = $pdo->prepare("DELETE FROM app_users WHERE firm_id = :firm_id AND login_id = :login_id");
+        $del->execute(['firm_id' => $firmId, 'login_id' => $loginId]);
+
+        writeBackendLog('delete_user_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'login_id' => $loginId,
+        ]);
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
     if ($action === 'save_supplier_master') {
         $traceId = createTraceId();
         $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
@@ -3269,8 +3295,14 @@ try {
 
         $id = trim((string)($supplier['id'] ?? ''));
         $supplierCode = trim((string)($supplier['supplier_code'] ?? ''));
+        $contactPerson = trim((string)($supplier['contact_person'] ?? ''));
         $phone = trim((string)($supplier['phone_no'] ?? ''));
+        $email = trim((string)($supplier['email'] ?? ''));
+        $addressText = trim((string)($supplier['address_text'] ?? ''));
+        $districtName = trim((string)($supplier['district'] ?? $supplier['district_name'] ?? ''));
         $gstin = trim((string)($supplier['gstin'] ?? ''));
+        $stateName = trim((string)($supplier['state_name'] ?? ''));
+        $pinCode = trim((string)($supplier['pin_code'] ?? ''));
         $active = trim((string)($supplier['active'] ?? '1')) === '0' ? 0 : 1;
 
         writeBackendLog('save_supplier_master_start', [
@@ -3280,13 +3312,41 @@ try {
         ]);
 
         $pdo = db();
+        // Auto-migrate supplier master columns (safe to ignore failures).
+        try {
+            $cols = tableColumns('suppliers');
+            $migrations = [
+                ['contact_person', "ALTER TABLE suppliers ADD COLUMN contact_person VARCHAR(190) DEFAULT NULL AFTER supplier_code"],
+                ['email', "ALTER TABLE suppliers ADD COLUMN email VARCHAR(190) DEFAULT NULL AFTER phone_no"],
+                ['address_text', "ALTER TABLE suppliers ADD COLUMN address_text TEXT DEFAULT NULL AFTER email"],
+                ['district_name', "ALTER TABLE suppliers ADD COLUMN district_name VARCHAR(120) DEFAULT NULL AFTER address_text"],
+                ['state_name', "ALTER TABLE suppliers ADD COLUMN state_name VARCHAR(120) DEFAULT NULL AFTER gstin"],
+                ['pin_code', "ALTER TABLE suppliers ADD COLUMN pin_code VARCHAR(20) DEFAULT NULL AFTER state_code"],
+            ];
+            foreach ($migrations as [$colName, $sql]) {
+                if (in_array($colName, $cols, true)) continue;
+                try {
+                    $pdo->exec($sql);
+                } catch (Throwable $e) {
+                    // ignore
+                }
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
         if ($id !== '') {
             $stmt = $pdo->prepare("
                 UPDATE suppliers
                 SET supplier_name = :supplier_name,
                     supplier_code = NULLIF(:supplier_code, ''),
+                    contact_person = NULLIF(:contact_person, ''),
                     phone_no = NULLIF(:phone_no, ''),
+                    email = NULLIF(:email, ''),
+                    address_text = NULLIF(:address_text, ''),
+                    district_name = NULLIF(:district_name, ''),
                     gstin = NULLIF(:gstin, ''),
+                    state_name = NULLIF(:state_name, ''),
+                    pin_code = NULLIF(:pin_code, ''),
                     active = :active,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE firm_id = :firm_id AND id = :id
@@ -3294,20 +3354,32 @@ try {
             $stmt->execute([
                 'supplier_name' => $supplierName,
                 'supplier_code' => $supplierCode,
+                'contact_person' => $contactPerson,
                 'phone_no' => $phone,
+                'email' => $email,
+                'address_text' => $addressText,
+                'district_name' => $districtName,
                 'gstin' => $gstin,
+                'state_name' => $stateName,
+                'pin_code' => $pinCode,
                 'active' => $active,
                 'firm_id' => $firmId,
                 'id' => (int)$id,
             ]);
         } else {
             $stmt = $pdo->prepare("
-                INSERT INTO suppliers (firm_id, supplier_name, supplier_code, phone_no, gstin, active)
-                VALUES (:firm_id, :supplier_name, NULLIF(:supplier_code, ''), NULLIF(:phone_no, ''), NULLIF(:gstin, ''), :active)
+                INSERT INTO suppliers (firm_id, supplier_name, supplier_code, contact_person, phone_no, email, address_text, district_name, gstin, state_name, pin_code, active)
+                VALUES (:firm_id, :supplier_name, NULLIF(:supplier_code, ''), NULLIF(:contact_person, ''), NULLIF(:phone_no, ''), NULLIF(:email, ''), NULLIF(:address_text, ''), NULLIF(:district_name, ''), NULLIF(:gstin, ''), NULLIF(:state_name, ''), NULLIF(:pin_code, ''), :active)
                 ON DUPLICATE KEY UPDATE
                     supplier_code = COALESCE(NULLIF(VALUES(supplier_code), ''), supplier_code),
+                    contact_person = COALESCE(NULLIF(VALUES(contact_person), ''), contact_person),
                     phone_no = COALESCE(NULLIF(VALUES(phone_no), ''), phone_no),
+                    email = COALESCE(NULLIF(VALUES(email), ''), email),
+                    address_text = COALESCE(NULLIF(VALUES(address_text), ''), address_text),
+                    district_name = COALESCE(NULLIF(VALUES(district_name), ''), district_name),
                     gstin = COALESCE(NULLIF(VALUES(gstin), ''), gstin),
+                    state_name = COALESCE(NULLIF(VALUES(state_name), ''), state_name),
+                    pin_code = COALESCE(NULLIF(VALUES(pin_code), ''), pin_code),
                     active = VALUES(active),
                     updated_at = CURRENT_TIMESTAMP
             ");
@@ -3315,8 +3387,14 @@ try {
                 'firm_id' => $firmId,
                 'supplier_name' => $supplierName,
                 'supplier_code' => $supplierCode,
+                'contact_person' => $contactPerson,
                 'phone_no' => $phone,
+                'email' => $email,
+                'address_text' => $addressText,
+                'district_name' => $districtName,
                 'gstin' => $gstin,
+                'state_name' => $stateName,
+                'pin_code' => $pinCode,
                 'active' => $active,
             ]);
         }
@@ -3327,6 +3405,58 @@ try {
             'supplier_name' => $supplierName,
         ]);
 
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
+    if ($action === 'delete_supplier_master') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $supplierId = trim((string)($payload['supplier_id'] ?? ''));
+        if ($supplierId === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing supplier_id.'], 400);
+        }
+
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT id, supplier_name FROM suppliers WHERE firm_id = :firm_id AND id = :id LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'id' => (int)$supplierId]);
+        $supplier = $stmt->fetch();
+        if (!$supplier) {
+            jsonOut(['ok' => false, 'error' => 'Supplier not found.'], 404);
+        }
+        $supplierName = trim((string)($supplier['supplier_name'] ?? ''));
+
+        if ($supplierName !== '') {
+            $checks = [
+                "SELECT 1 FROM purchase_orders WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM purchase_order_items WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM reel_po_rows WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM other_po_rows WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM ge_entries WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM reel_mrr_parents WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM other_mrr_parents WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                "SELECT 1 FROM reel_issue_entries WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+            ];
+            foreach ($checks as $sql) {
+                try {
+                    $c = $pdo->prepare($sql);
+                    $c->execute(['firm_id' => $firmId, 'supplier' => $supplierName]);
+                    if ($c->fetchColumn()) {
+                        jsonOut(['ok' => false, 'error' => 'Used/linked data cannot be deleted.'], 400);
+                    }
+                } catch (Throwable $e) {
+                    // ignore missing tables in older deployments
+                }
+            }
+        }
+
+        $del = $pdo->prepare("DELETE FROM suppliers WHERE firm_id = :firm_id AND id = :id");
+        $del->execute(['firm_id' => $firmId, 'id' => (int)$supplierId]);
+
+        writeBackendLog('delete_supplier_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'supplier_id' => (int)$supplierId,
+        ]);
         jsonOut(['ok' => true, 'trace_id' => $traceId]);
     }
 
@@ -3369,6 +3499,30 @@ try {
             ");
         }
 
+        // Preload max ERP code per item type (numeric erp_code only).
+        $maxErpByType = [];
+        try {
+            if ($hasType) {
+                $maxStmt = $pdo->prepare("
+                    SELECT item_type, MAX(CAST(erp_code AS UNSIGNED)) AS max_code
+                    FROM item_master
+                    WHERE firm_id = :firm_id
+                    GROUP BY item_type
+                ");
+                $maxStmt->execute(['firm_id' => $firmId]);
+                foreach ($maxStmt->fetchAll() as $row) {
+                    $t = strtolower(trim((string)($row['item_type'] ?? 'reel'))) ?: 'reel';
+                    $maxErpByType[$t] = (int)($row['max_code'] ?? 0);
+                }
+            } else {
+                $maxStmt = $pdo->prepare("SELECT MAX(CAST(erp_code AS UNSIGNED)) AS max_code FROM item_master WHERE firm_id = :firm_id");
+                $maxStmt->execute(['firm_id' => $firmId]);
+                $maxErpByType['reel'] = (int)($maxStmt->fetchColumn() ?: 0);
+            }
+        } catch (Throwable $e) {
+            $maxErpByType = [];
+        }
+
         $saved = 0;
         foreach ($items as $item) {
             if (!is_array($item)) continue;
@@ -3383,11 +3537,18 @@ try {
             $size = $hasSize ? trim((string)($item['size'] ?? $item['size_value'] ?? '')) : '';
             $gsm = $hasGsm ? trim((string)($item['gsm'] ?? $item['gsm_value'] ?? '')) : '';
             $bf = $hasBf ? trim((string)($item['bf'] ?? $item['bf_value'] ?? '')) : '';
+            $unit = trim((string)($item['unit'] ?? $item['unit_value'] ?? ''));
 
             if ($hasType || $hasSize || $hasGsm || $hasBf) {
-                if ($type === 'mrr') {
-                    if ($erp === '' || $size === '' || $gsm === '' || $bf === '') {
+                if ($type === 'mrr' || $type === 'reel') {
+                    if ($size === '' || $gsm === '' || $bf === '') {
                         continue;
+                    }
+                    if ($erp === '') {
+                        $key = $hasType ? $type : 'reel';
+                        $next = (int)($maxErpByType[$key] ?? 0) + 1;
+                        $maxErpByType[$key] = $next;
+                        $erp = (string)$next;
                     }
                     if ($name === '') {
                         $parts = [];
@@ -3402,7 +3563,12 @@ try {
                     }
                 } else {
                     if ($name === '') continue;
-                    if ($erp === '') $erp = null;
+                    if ($erp === '') {
+                        $key = $hasType ? $type : 'reel';
+                        $next = (int)($maxErpByType[$key] ?? 0) + 1;
+                        $maxErpByType[$key] = $next;
+                        $erp = (string)$next;
+                    }
                     if ($size === '') $size = null;
                     if ($gsm === '') $gsm = null;
                     if ($bf === '') $bf = null;
@@ -3410,7 +3576,6 @@ try {
             } else {
                 if ($erp === '' || $name === '') continue;
             }
-            $unit = trim((string)($item['unit'] ?? $item['unit_value'] ?? ''));
             $active = trim((string)($item['active'] ?? '1')) === '0' ? 0 : 1;
 
             if ($hasType || $hasSize || $hasGsm || $hasBf) {
@@ -3447,6 +3612,74 @@ try {
             'trace_id' => $traceId,
             'savedItems' => $saved,
         ]);
+    }
+
+    if ($action === 'delete_item') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $itemId = trim((string)($payload['item_id'] ?? ''));
+        if ($itemId === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing item_id.'], 400);
+        }
+
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT id, erp_code, item_name FROM item_master WHERE firm_id = :firm_id AND id = :id LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'id' => (int)$itemId]);
+        $item = $stmt->fetch();
+        if (!$item) {
+            jsonOut(['ok' => false, 'error' => 'Item not found.'], 404);
+        }
+        $erp = trim((string)($item['erp_code'] ?? ''));
+
+        $depChecks = [
+            ["SELECT 1 FROM purchase_request_items WHERE firm_id = :firm_id AND item_id = :item_id LIMIT 1", ['firm_id' => $firmId, 'item_id' => (int)$itemId]],
+            ["SELECT 1 FROM purchase_order_items WHERE firm_id = :firm_id AND item_id = :item_id LIMIT 1", ['firm_id' => $firmId, 'item_id' => (int)$itemId]],
+        ];
+
+        foreach ($depChecks as [$sql, $params]) {
+            try {
+                $c = $pdo->prepare($sql);
+                $c->execute($params);
+                if ($c->fetchColumn()) {
+                    jsonOut(['ok' => false, 'error' => 'Used/linked data cannot be deleted.'], 400);
+                }
+            } catch (Throwable $e) {
+                // ignore missing tables/cols in older deployments
+            }
+        }
+
+        if ($erp !== '') {
+            $erpChecks = [
+                'reel_po_rows' => 'erp_code',
+                'other_po_rows' => 'erp_code',
+                'reel_issue_entries' => 'erp_code',
+                'reel_mrr_children' => 'erp_code',
+                'other_mrr_children' => 'erp_code',
+            ];
+            foreach ($erpChecks as $table => $col) {
+                try {
+                    $cols = tableColumns($table);
+                    if (!in_array($col, $cols, true)) continue;
+                    $c = $pdo->prepare("SELECT 1 FROM {$table} WHERE firm_id = :firm_id AND {$col} = :erp LIMIT 1");
+                    $c->execute(['firm_id' => $firmId, 'erp' => $erp]);
+                    if ($c->fetchColumn()) {
+                        jsonOut(['ok' => false, 'error' => 'Used/linked data cannot be deleted.'], 400);
+                    }
+                } catch (Throwable $e) {
+                    // ignore
+                }
+            }
+        }
+
+        $del = $pdo->prepare("DELETE FROM item_master WHERE firm_id = :firm_id AND id = :id");
+        $del->execute(['firm_id' => $firmId, 'id' => (int)$itemId]);
+
+        writeBackendLog('delete_item_success', [
+            'trace_id' => $traceId,
+            'firm_id' => $firmId,
+            'item_id' => (int)$itemId,
+        ]);
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
     }
 
     if ($action === 'save_purchase_request') {

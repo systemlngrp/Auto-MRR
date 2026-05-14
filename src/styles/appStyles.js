@@ -83,6 +83,19 @@ body {
   font-size: 13px;
 }
 
+/* Data tables */
+.data-table,
+table.table {
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td,
+table.table th,
+table.table td {
+  border: 1px solid #000;
+}
+
 body.mrr-classic-body {
   background: #d9d3c7;
 }

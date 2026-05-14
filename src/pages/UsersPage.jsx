@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 export default function UsersPage({ selectedFirm, deps, onBack, currentUser, initialView = 'list' }) {
-  const { fetchUsers, saveUsers } = deps;
+  const { fetchUsers, saveUsers, deleteUser } = deps;
   const currentUserRoleText = String(currentUser?.role || currentUser?.user?.role || '').trim().toLowerCase();
   const isAdmin = currentUserRoleText === 'admin';
 
@@ -25,6 +25,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     login_id: '',
     display_name: '',
     user_email: '',
+    mobile_no: '',
     role: '',
     menu_access: [],
     password: '',
@@ -131,6 +132,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   const validate = () => {
     const newErrors = {};
     const trimmedLoginId = String(formData.login_id).trim();
+    const trimmedMobile = String(formData.mobile_no || '').trim();
     
     if (!trimmedLoginId) {
       newErrors.login_id = 'Login ID is required';
@@ -146,6 +148,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     if (!String(formData.user_email).trim()) newErrors.user_email = 'User Email is required';
     if (!formData.role) newErrors.role = 'Role is required';
     if (editingIndex === -1 && !formData.password) newErrors.password = 'Password is required for new users';
+    if (trimmedMobile && !/^\d{10}$/.test(trimmedMobile)) newErrors.mobile_no = 'Mobile Number must be 10 digits';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -163,6 +166,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
         login_id: String(formData.login_id).trim(),
         display_name: String(formData.display_name).trim(),
         user_email: String(formData.user_email).trim(),
+        mobile_no: String(formData.mobile_no || '').trim(),
         role: String(formData.role).trim(),
         menu_access: Array.isArray(formData.menu_access) ? formData.menu_access : [],
         password: String(formData.password).trim(),
@@ -190,7 +194,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     }
   };
 
-  const handleDelete = async (index) => {
+  const handleDeactivate = async (index) => {
     if (!window.confirm('Are you sure you want to deactivate this user?')) return;
     
     const user = users[index];
@@ -210,6 +214,33 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
       setStatus('User deactivated.');
     } catch (err) {
       setStatus(err?.message || 'Could not deactivate user.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (index) => {
+    if (!selectedFirm || !deleteUser) return;
+    const user = users[index];
+    const loginId = String(user?.login_id || '').trim();
+    if (!loginId) return;
+    if (!window.confirm(`Delete user "${loginId}"? This cannot be undone.`)) return;
+
+    setIsSaving(true);
+    setStatus('');
+    try {
+      await deleteUser({
+        spreadsheetId: selectedFirm.spreadsheetId,
+        login_id: loginId,
+      });
+      const data = await fetchUsers({ spreadsheetId: selectedFirm.spreadsheetId });
+      setUsers((data || []).map((userRow) => ({
+        ...userRow,
+        menu_access: Array.isArray(userRow?.menu_access) ? userRow.menu_access : []
+      })));
+      setStatus('User deleted.');
+    } catch (err) {
+      setStatus(err?.message || 'Could not delete user.');
     } finally {
       setIsSaving(false);
     }
@@ -257,10 +288,10 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
 
   if (view === 'form') {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '540px', padding: '40px' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '620px', padding: '18px' }}>
           
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '18px' }}>
             <div style={{ display: 'inline-block', padding: '12px 20px', background: '#f9fafb', borderRadius: '50px', marginBottom: '16px', border: '1px solid #f3f4f6' }}>
                <span style={{ fontSize: '28px' }}>👤</span>
             </div>
@@ -269,12 +300,12 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
             </h2>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                 <div>
-                  <label style={labelStyle}>Login ID (Alpha-numeric, 7 to 16 chars) <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <label style={labelStyle}>Login ID <span style={{ color: '#b91c1c' }}>*</span></label>
                   <input 
                     value={formData.login_id} 
                     onChange={(e) => { setFormData({ ...formData, login_id: e.target.value }); setErrors({ ...errors, login_id: '' }); }} 
@@ -285,7 +316,6 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                     pattern="[A-Za-z0-9]{7,16}"
                     title="Alpha-numeric, 7 to 16 characters"
                     style={{ ...inputStyle('login_id'), background: editingIndex >= 0 ? '#f3f4f6' : '#fff', cursor: editingIndex >= 0 ? 'not-allowed' : 'text' }}
-                    placeholder="e.g. SMITH01"
                     autoFocus
                   />
                   {errorMsg(errors.login_id)}
@@ -294,14 +324,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
             </div>
 
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Display Name <span style={{ color: '#b91c1c' }}>*</span></label>
                   <input 
                     value={formData.display_name} 
                     onChange={(e) => { setFormData({ ...formData, display_name: e.target.value }); setErrors({ ...errors, display_name: '' }); }} 
                     style={inputStyle('display_name')}
-                    placeholder="Full name of user"
                   />
                   {errorMsg(errors.display_name)}
                 </div>
@@ -312,9 +341,23 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                     value={formData.user_email} 
                     onChange={(e) => { setFormData({ ...formData, user_email: e.target.value }); setErrors({ ...errors, user_email: '' }); }} 
                     style={inputStyle('user_email')}
-                    placeholder="email@example.com"
                   />
                   {errorMsg(errors.user_email)}
+                </div>
+                <div>
+                  <label style={labelStyle}>Mobile Number</label>
+                  <input
+                    value={formData.mobile_no}
+                    inputMode="numeric"
+                    maxLength={10}
+                    onChange={(e) => {
+                      const next = String(e.target.value || '').replace(/[^\d]/g, '').slice(0, 10);
+                      setFormData({ ...formData, mobile_no: next });
+                      setErrors({ ...errors, mobile_no: '' });
+                    }}
+                    style={inputStyle('mobile_no')}
+                  />
+                  {errorMsg(errors.mobile_no)}
                 </div>
                 <div>
                   <label style={labelStyle}>Role <span style={{ color: '#b91c1c' }}>*</span></label>
@@ -324,7 +367,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                       onChange={(e) => { setFormData({ ...formData, role: e.target.value }); setErrors({ ...errors, role: '' }); }} 
                       style={{ ...inputStyle('role'), flex: 1 }}
                     >
-                      <option value="">Select Role...</option>
+                      <option value="">Select</option>
                       {availableRoles.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                     <button 
@@ -349,7 +392,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                   </div>
                   {errorMsg(errors.role)}
                 </div>
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>Menu Access</label>
                   <div style={{ border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px 12px', background: '#fff' }}>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
@@ -371,9 +414,6 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                       >
                         Clear
                       </button>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', display: 'flex', alignItems: 'center' }}>
-                        Leave all unchecked = show all menus
-                      </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
@@ -401,14 +441,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                     </div>
                   </div>
                 </div>
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>Password {editingIndex === -1 && <span style={{ color: '#b91c1c' }}>*</span>}</label>
                   <input 
                     type="password"
                     value={formData.password} 
                     onChange={(e) => { setFormData({ ...formData, password: e.target.value }); setErrors({ ...errors, password: '' }); }} 
                     style={inputStyle('password')}
-                    placeholder={editingIndex >= 0 ? "Leave blank to keep current" : "Secure password"}
                   />
                   {errorMsg(errors.password)}
                 </div>
@@ -503,12 +542,13 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
 
           return (
         <div className="wrap" style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: '4px' }}>
-          <table className="table" style={{ minWidth: '980px' }}>
+          <table className="table data-table" style={{ minWidth: '1100px' }}>
             <thead>
               <tr>
                 <th style={{ ...headerCellStyle, width: '160px' }}>Login ID</th>
                 <th style={{ ...headerCellStyle, width: '220px' }}>Name</th>
                 <th style={{ ...headerCellStyle, width: '260px' }}>Email</th>
+                <th style={{ ...headerCellStyle, width: '160px' }}>Mobile</th>
                 <th style={{ ...headerCellStyle, width: '140px' }}>Role</th>
                 <th style={{ ...headerCellStyle, width: '120px' }}>Status</th>
                 <th style={{ ...headerCellStyle, width: '160px' }}>Actions</th>
@@ -520,6 +560,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                   <td style={{ ...bodyCellStyle, fontWeight: 900 }}>{user.login_id}</td>
                   <td style={{ ...bodyCellStyle, fontWeight: 800 }}>{user.display_name}</td>
                   <td style={{ ...bodyCellStyle, color: '#1d4ed8' }}>{user.user_email}</td>
+                  <td style={{ ...bodyCellStyle }}>{String(user.mobile_no || '').trim() || '-'}</td>
                   <td style={{ ...bodyCellStyle, textAlign: 'center' }}>
                     <span style={{ padding: '4px 10px', background: '#f3f4f6', borderRadius: '50px', fontSize: '12px', fontWeight: '800', color: '#1d4ed8', textTransform: 'uppercase' }}>
                       {user.role}
@@ -533,15 +574,24 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                     )}
                   </td>
                   <td className="c" style={{ ...bodyCellStyle, textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'flex-end' }}>
                       <button className="btn small" onClick={() => handleEdit(index)} style={{ padding: '6px 12px' }}>Edit</button>
                       <button 
                         className="btn small" 
                         style={{ background: '#dc2626', borderColor: '#dc2626', color: '#fff', padding: '6px 12px' }} 
-                        onClick={() => handleDelete(index)}
+                        onClick={() => handleDeactivate(index)}
                         disabled={isSaving}
                       >
-                        Deact.
+                        Deactivate
+                      </button>
+                      <button
+                        className="btn small"
+                        style={{ background: '#111827', borderColor: '#111827', color: '#fff', padding: '6px 12px' }}
+                        onClick={() => handleDelete(index)}
+                        disabled={isSaving}
+                        title="Delete user (only if not used)"
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>

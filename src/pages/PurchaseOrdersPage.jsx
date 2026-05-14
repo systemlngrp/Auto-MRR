@@ -71,7 +71,10 @@ export default function PurchaseOrdersPage({
   onInitialPrConsumed,
   onInitialPoConsumed,
   mode = 'make_po', // make_po | approve_po
-  currentUser
+  currentUser,
+  onOpenSupplierForm,
+  initialSupplierName,
+  onInitialSupplierConsumed
 }) {
   const {
     fetchItems,
@@ -178,6 +181,11 @@ export default function PurchaseOrdersPage({
   }, [initialPoNo, selectedFirm]);
 
   const addSupplierQuick = async () => {
+    if (typeof onOpenSupplierForm === 'function') {
+      onOpenSupplierForm();
+      return;
+    }
+    // Fallback (legacy): quick prompt add.
     if (!selectedFirm || !saveSupplierMaster) return;
     const name = window.prompt('Supplier name:', '');
     const supplierName = String(name || '').trim();
@@ -191,6 +199,22 @@ export default function PurchaseOrdersPage({
       alert(err?.message || 'Could not save supplier.');
     }
   };
+
+  useEffect(() => {
+    const name = String(initialSupplierName || '').trim();
+    if (!name) return;
+    (async () => {
+      try {
+        const data = await fetchSuppliers({ spreadsheetId: selectedFirm?.spreadsheetId });
+        setSupplierOptions(Array.isArray(data) ? data : []);
+      } catch {
+        // ignore
+      }
+      setFormData((p) => ({ ...p, supplier: name }));
+      if (typeof onInitialSupplierConsumed === 'function') onInitialSupplierConsumed();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSupplierName]);
 
   useEffect(() => {
     const supplierText = String(formData.supplier || '').trim();
@@ -423,6 +447,7 @@ export default function PurchaseOrdersPage({
   if (view === 'form') {
     const locked = isApproveMode || String(formData.status || 'draft') === 'approved';
     const isFromIndent = !!String(formData.pr_no || '').trim();
+    const itemLocked = locked || isFromIndent;
     const itemType = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
     const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'reel') === itemType && String(it?.active || '1') !== '0');
     const showErp = itemType === 'reel';
@@ -496,7 +521,6 @@ export default function PurchaseOrdersPage({
                 value={formData.po_details}
                 onChange={(e) => setFormData((p) => ({ ...p, po_details: e.target.value }))}
                 style={inputStyle('po_details')}
-                placeholder="Auto: PO No - Date"
               />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
@@ -536,7 +560,7 @@ export default function PurchaseOrdersPage({
                     <tr key={idx}>
                       {showErp ? (
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                          <select disabled={locked} value={row.erp_code} onChange={(e) => setItem(idx, 'erp_code', e.target.value)} style={{ width: '140px' }}>
+                          <select disabled={itemLocked} value={row.erp_code} onChange={(e) => setItem(idx, 'erp_code', e.target.value)} style={{ width: '140px' }}>
                             <option value="">Select ERP</option>
                             {itemOptions.map((it) => (
                               <option key={`${it.item_type}-${it.erp_code}`} value={it.erp_code}>{it.erp_code}</option>
@@ -551,12 +575,11 @@ export default function PurchaseOrdersPage({
                           value={row.supplier}
                           onChange={(e) => setItem(idx, 'supplier', e.target.value)}
                           style={{ width: '200px' }}
-                          placeholder="Select / search supplier"
                         />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input
-                          disabled={locked}
+                          disabled={itemLocked}
                           list={itemNameListId}
                           value={row.item_name}
                           onChange={(e) => {
@@ -576,17 +599,16 @@ export default function PurchaseOrdersPage({
                             }
                           }}
                           style={{ width: '220px' }}
-                          placeholder="Select / search item"
                         />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={locked} value={row.description} onChange={(e) => setItem(idx, 'description', e.target.value)} style={{ width: '240px' }} />
+                        <input disabled={itemLocked} value={row.description} onChange={(e) => setItem(idx, 'description', e.target.value)} style={{ width: '240px' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={locked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
+                        <input disabled={itemLocked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={locked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input disabled={itemLocked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>

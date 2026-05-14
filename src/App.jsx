@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, fetchItems, saveItems, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -2183,6 +2183,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [itemMasterReturnStep, setItemMasterReturnStep] = useState(3);
   const [poPrefillPrNo, setPoPrefillPrNo] = useState('');
   const [poPrefillPoNo, setPoPrefillPoNo] = useState('');
+  const [poPrefillSupplierName, setPoPrefillSupplierName] = useState('');
+  const [supplierInitialView, setSupplierInitialView] = useState('list');
+  const [supplierReturnStep, setSupplierReturnStep] = useState(3);
   const [itemMasterCreateContext, setItemMasterCreateContext] = useState(null);
   const [lastCreatedItem, setLastCreatedItem] = useState(null);
   const [tempFirm, setTempFirm] = useState(initialFirm);
@@ -3842,7 +3845,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               currentUser={currentUser}
               deps={{
                 fetchUsers,
-                saveUsers
+                saveUsers,
+                deleteUser
               }}
               onBack={() => setStep(3)}
             />
@@ -4975,7 +4979,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           initialItemType={String(itemMasterCreateContext?.itemType || '').trim()}
           deps={{
             fetchItems,
-            saveItems
+            saveItems,
+            deleteItem
           }}
           onSaved={(item) => {
             setLastCreatedItem(item || null);
@@ -5064,8 +5069,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           mode="make_po"
           initialPrNo={poPrefillPrNo}
           initialPoNo={poPrefillPoNo}
+          initialSupplierName={poPrefillSupplierName}
           onInitialPrConsumed={() => setPoPrefillPrNo('')}
           onInitialPoConsumed={() => setPoPrefillPoNo('')}
+          onInitialSupplierConsumed={() => setPoPrefillSupplierName('')}
+          onOpenSupplierForm={() => {
+            setSupplierReturnStep(16);
+            setSupplierInitialView('form');
+            setStep(18);
+          }}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
@@ -5092,6 +5104,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="approve_po"
+          initialSupplierName={poPrefillSupplierName}
+          onInitialSupplierConsumed={() => setPoPrefillSupplierName('')}
+          onOpenSupplierForm={() => {
+            setSupplierReturnStep(17);
+            setSupplierInitialView('form');
+            setStep(18);
+          }}
           deps={{
             fetchItems,
             fetchLastPurchaseInfo,
@@ -5116,11 +5135,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         <SuppliersPage
           selectedFirm={tempFirm}
+          initialView={supplierInitialView}
           deps={{
             fetchSupplierMaster,
-            saveSupplierMaster
+            saveSupplierMaster,
+            deleteSupplierMaster
           }}
-          onBack={() => setStep(3)}
+          onSaved={(supplier) => {
+            const name = String(supplier?.supplier_name || '').trim();
+            if (name) setPoPrefillSupplierName(name);
+            setSupplierInitialView('list');
+            setStep(supplierReturnStep || 3);
+          }}
+          onBack={() => {
+            setSupplierInitialView('list');
+            setStep(supplierReturnStep || 3);
+          }}
         />
       </>
     );

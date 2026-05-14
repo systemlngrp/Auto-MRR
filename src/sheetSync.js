@@ -561,6 +561,21 @@ export async function saveUsers(users = [], options = {}) {
   });
 }
 
+export async function deleteUser(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'delete_user',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    login_id: options.login_id,
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function saveItems(items = [], options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const payload = {
@@ -573,6 +588,36 @@ export async function saveItems(items = [], options = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteItem(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'delete_item',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    item_id: options.item_id,
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteSupplierMaster(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'delete_supplier_master',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    supplier_id: options.supplier_id,
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
 }
 

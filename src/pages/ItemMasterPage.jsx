@@ -15,7 +15,7 @@ function buildMrrItemName(erp, size, unit, gsm, bf) {
 }
 
 export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItemType = '', onSaved }) {
-  const { fetchItems, saveItems } = deps;
+  const { fetchItems, saveItems, deleteItem } = deps;
   const autoOpenNew = Boolean(String(initialItemType || '').trim());
   const requestedItemType = (() => {
     const t = String(initialItemType || '').trim().toLowerCase();
@@ -33,7 +33,29 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     return `${head}.${rest.join('')}`;
   };
 
+  const downloadCsv = (filename, headers, rows) => {
+    const esc = (v) => {
+      const s = String(v ?? '');
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const lines = [
+      headers.map(esc).join(','),
+      ...rows.map((r) => headers.map((h) => esc(r?.[h])).join(','))
+    ];
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const blankItem = () => ({
+    id: '',
     item_type: requestedItemType || 'reel', // 'reel' | 'other'
     erp_code: '',
     item_name: '',
@@ -53,15 +75,10 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
-
-  const computeNextErpCode = (sourceItems = []) => {
-    let maxCode = 0;
-    (Array.isArray(sourceItems) ? sourceItems : []).forEach((it) => {
-      const c = parseInt(String(it?.erp_code || '').trim(), 10);
-      if (!isNaN(c) && c > maxCode) maxCode = c;
-    });
-    return maxCode > 0 ? String(maxCode + 1) : '1';
-  };
+  const [typeFilter, setTypeFilter] = useState(requestedItemType || 'all'); // all | reel | other
+  const [sizeFilter, setSizeFilter] = useState('all');
+  const [gsmFilter, setGsmFilter] = useState('all');
+  const openedAsQuickCreate = autoOpenNew;
 
   const normalizedExistingUniqueKeys = useMemo(() => {
     const set = new Set();
@@ -78,8 +95,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
   const filteredItems = useMemo(() => {
     const query = String(search || '').trim().toLowerCase();
-    const typeFiltered = requestedItemType
-      ? items.filter((item) => String(item?.item_type || 'reel').trim().toLowerCase() === requestedItemType)
+    const effectiveTypeFilter = requestedItemType || (typeFilter === 'all' ? '' : typeFilter);
+    const typeFiltered = effectiveTypeFilter
+      ? items.filter((item) => String(item?.item_type || 'reel').trim().toLowerCase() === effectiveTypeFilter)
       : items;
     if (!query) return typeFiltered;
     return typeFiltered.filter((item) => {
@@ -87,7 +105,42 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       const name = String(item?.item_name || '').toLowerCase();
       return code.includes(query) || name.includes(query);
     });
-  }, [items, search, requestedItemType]);
+  }, [items, search, requestedItemType, typeFilter]);
+
+  const visibleItems = useMemo(() => {
+    let next = filteredItems;
+    if (sizeFilter !== 'all') {
+      next = next.filter((it) => String(it?.size || '').trim() === sizeFilter);
+    }
+    if (gsmFilter !== 'all') {
+      next = next.filter((it) => String(it?.gsm || '').trim() === gsmFilter);
+    }
+    return next;
+  }, [filteredItems, sizeFilter, gsmFilter]);
+
+  const sizeOptions = useMemo(() => {
+    const set = new Set();
+    items.forEach((it) => {
+      const t = String(it?.item_type || 'reel').trim().toLowerCase();
+      const okType = requestedItemType ? t === requestedItemType : (typeFilter === 'all' ? true : t === typeFilter);
+      if (!okType) return;
+      const v = String(it?.size || '').trim();
+      if (v) set.add(v);
+    });
+    return ['all', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [items, requestedItemType, typeFilter]);
+
+  const gsmOptions = useMemo(() => {
+    const set = new Set();
+    items.forEach((it) => {
+      const t = String(it?.item_type || 'reel').trim().toLowerCase();
+      const okType = requestedItemType ? t === requestedItemType : (typeFilter === 'all' ? true : t === typeFilter);
+      if (!okType) return;
+      const v = String(it?.gsm || '').trim();
+      if (v) set.add(v);
+    });
+    return ['all', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [items, requestedItemType, typeFilter]);
 
   useEffect(() => {
     async function loadItems() {
@@ -117,11 +170,11 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const bf = String(formData.bf || '').trim();
 
     if (type === 'mrr' || type === 'reel') {
-      if (!erp) nextErrors.erp_code = 'ERP Code is required for Reel';
       if (!size) nextErrors.size = 'Size is required for Reel';
       if (!gsm) nextErrors.gsm = 'GSM is required for Reel';
       if (!bf) nextErrors.bf = 'BF is required for Reel';
-      if (erp && normalizedExistingUniqueKeys.has(`reel:erp:${erp.toLowerCase()}`)) {
+      // ERP is generated by backend for new reel items. Only validate uniqueness for existing edits.
+      if (erp && editingIndex >= 0 && normalizedExistingUniqueKeys.has(`reel:erp:${erp.toLowerCase()}`)) {
         nextErrors.erp_code = 'ERP Code already exists (Reel)';
       }
     } else {
@@ -129,7 +182,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       if (name && normalizedExistingUniqueKeys.has(`other:name:${name.toLowerCase()}`)) {
         nextErrors.item_name = 'Item Name already exists (Other)';
       }
-      if (erp && normalizedExistingUniqueKeys.has(`other:erp:${erp.toLowerCase()}`)) {
+      if (erp && editingIndex >= 0 && normalizedExistingUniqueKeys.has(`other:erp:${erp.toLowerCase()}`)) {
         nextErrors.erp_code = 'ERP Code already exists (Other)';
       }
     }
@@ -142,7 +195,8 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     setEditingIndex(-1);
     setFormData({
       ...blankItem(),
-      erp_code: computeNextErpCode(items)
+      erp_code: '',
+      item_name: ''
     });
     setErrors({});
     setStatus('');
@@ -156,17 +210,6 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     openNew();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNew]);
-
-  useEffect(() => {
-    if (view !== 'form') return;
-    if (editingIndex >= 0) return;
-    const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
-    if (!isReelType) return;
-    if (String(formData.erp_code || '').trim()) return;
-    if (!items.length) return;
-    setFormData((prev) => ({ ...prev, erp_code: computeNextErpCode(items) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, editingIndex, formData.item_type, formData.erp_code, items.length]);
 
   const openEdit = (index) => {
     const row = items[index] || {};
@@ -196,7 +239,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     setStatus('Saving item...');
     try {
       const type = String(formData.item_type || 'reel').trim().toLowerCase() === 'other' ? 'other' : 'reel';
+      const wasNew = editingIndex < 0;
       const payload = {
+        id: String(formData.id || '').trim(),
         item_type: type,
         erp_code: String(formData.erp_code || '').trim(),
         item_name: String(formData.item_name || '').trim(),
@@ -208,7 +253,13 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       };
 
       if (type === 'reel') {
-        payload.item_name = buildMrrItemName(payload.erp_code, payload.size, payload.unit, payload.gsm, payload.bf) || payload.erp_code || 'REEL ITEM';
+        // Backend generates ERP + name for new Reel items when missing.
+        if (editingIndex >= 0) {
+          payload.item_name = buildMrrItemName(payload.erp_code, payload.size, payload.unit, payload.gsm, payload.bf) || payload.item_name || payload.erp_code || 'REEL ITEM';
+        } else {
+          payload.erp_code = '';
+          payload.item_name = '';
+        }
       } else {
         // Other items: ERP/size/gsm/bf are optional.
         if (!payload.erp_code) payload.erp_code = '';
@@ -219,20 +270,82 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
       await saveItems([payload], { spreadsheetId: selectedFirm.spreadsheetId });
       const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
-      setItems(Array.isArray(data) ? data : []);
+      const nextItems = Array.isArray(data) ? data : [];
+      setItems(nextItems);
+
+      const findSavedItem = () => {
+        if (!wasNew && payload.id) {
+          const byId = nextItems.find((it) => String(it?.id || '').trim() === String(payload.id || '').trim());
+          if (byId) return byId;
+        }
+        const targetType = type === 'other' ? 'other' : 'reel';
+        const matches = nextItems.filter((it) => {
+          const itType = String(it?.item_type || 'reel') === 'other' ? 'other' : 'reel';
+          if (itType !== targetType) return false;
+          if (String(it?.size || '').trim() !== payload.size) return false;
+          if (String(it?.gsm || '').trim() !== payload.gsm) return false;
+          if (String(it?.bf || '').trim() !== payload.bf) return false;
+          if (String(it?.unit || '').trim() !== payload.unit) return false;
+          return true;
+        });
+        if (!matches.length) return null;
+        // Prefer highest numeric ERP (latest generated).
+        const scored = matches
+          .map((it) => ({ it, erp: parseInt(String(it?.erp_code || '').trim(), 10) }))
+          .sort((a, b) => (isNaN(b.erp) ? -1 : b.erp) - (isNaN(a.erp) ? -1 : a.erp));
+        return scored[0]?.it || null;
+      };
+
+      const savedItem = findSavedItem();
+      if (savedItem) {
+        setFormData({
+          ...blankItem(),
+          ...savedItem,
+          item_type: String(savedItem?.item_type || 'reel') === 'other' ? 'other' : 'reel',
+          size: String(savedItem?.size || '').trim(),
+          gsm: String(savedItem?.gsm || '').trim(),
+          bf: String(savedItem?.bf || '').trim(),
+          active: String(savedItem?.active ?? '1') === '0' ? '0' : '1'
+        });
+        setEditingIndex(nextItems.indexOf(savedItem));
+      }
+
       setStatus('Saved.');
+      setView('list');
       if (typeof onSaved === 'function') {
         try {
-          onSaved(payload);
+          onSaved(savedItem || payload);
         } catch {
           // ignore
         }
-        onBack?.();
-      } else {
-        setView('list');
+        if (openedAsQuickCreate) {
+          onBack?.();
+        }
       }
     } catch (err) {
       setStatus(err?.message || 'Could not save item.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const doDelete = async (index) => {
+    if (!selectedFirm || !deleteItem) return;
+    const row = items[index];
+    if (!row) return;
+    const itemId = String(row?.id || '').trim();
+    const label = String(row?.erp_code || row?.item_name || '').trim() || 'this item';
+    if (!itemId) return;
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+    setIsSaving(true);
+    setStatus('Deleting item...');
+    try {
+      await deleteItem({ spreadsheetId: selectedFirm.spreadsheetId, item_id: itemId });
+      const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
+      setItems(Array.isArray(data) ? data : []);
+      setStatus('Deleted.');
+    } catch (err) {
+      setStatus(err?.message || 'Could not delete item.');
     } finally {
       setIsSaving(false);
     }
@@ -277,12 +390,19 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const isReelType = String(formData.item_type || 'reel').trim().toLowerCase() !== 'other';
     const isNewItem = editingIndex < 0;
     const itemNamePreview = isReelType
-      ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
+      ? (String(formData.erp_code || '').trim()
+        ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
+        : (isNewItem ? 'Generated after save' : buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)))
       : '';
     const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
 
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        {isSaving ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ width: 'min(720px, 100%)', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '22px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <div style={{ fontSize: '22px', fontWeight: 1000, color: '#111827' }}>{editingIndex >= 0 ? 'Edit Item' : 'New Item'}</div>
@@ -294,16 +414,13 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type{requiredMark}</div>
               <select value={formData.item_type} onChange={(e) => {
                 const nextType = String(e.target.value || 'reel');
-                const makeNextErp = () => {
-                  return computeNextErpCode(items);
-                };
                 setFormData((p) => ({
                   ...p,
                   item_type: nextType,
                   // Clear type-specific fields to reduce mistakes.
                   ...(nextType === 'other'
-                    ? { erp_code: '', size: '', gsm: '', bf: '' }
-                    : (isNewItem ? { erp_code: makeNextErp() } : {}))
+                    ? { erp_code: '', item_name: '', size: '', gsm: '', bf: '' }
+                    : (isNewItem ? { erp_code: '', item_name: '' } : {}))
                 }));
               }} style={inputStyle('item_type')}>
                 <option value="reel">Reel</option>
@@ -312,15 +429,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             </div>
             {isReelType ? (
               <div style={{ gridColumn: 'span 1' }}>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code{requiredMark}</div>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code</div>
                 <input
                   value={formData.erp_code}
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  onChange={(e) => setFormData((p) => ({ ...p, erp_code: digitsOnly(e.target.value) }))}
-                  style={smallNumericStyle('erp_code')}
-                  disabled={isNewItem}
-                  readOnly={isNewItem}
+                  style={{ ...smallNumericStyle('erp_code'), background: '#f3f4f6', color: '#6b7280' }}
+                  disabled
+                  readOnly
                 />
                 {errors.erp_code ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.erp_code}</div> : null}
               </div>
@@ -374,7 +490,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <div style={{ gridColumn: 'span 1' }} />
                 <div style={{ gridColumn: 'span 2' }}>
                   <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
-                  <input value={itemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f9fafb' }} />
+                  <input value={itemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f3f4f6', color: '#6b7280' }} />
                 </div>
               </>
             ) : (
@@ -414,28 +530,62 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ margin: 0, fontSize: '26px', fontWeight: 1000, color: '#111827' }}>Item Master</div>
-            <div style={{ marginTop: '4px', fontSize: '14px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ margin: 0, fontSize: '26px', fontWeight: 1000, color: '#111827' }}>Item Master</div>
+              <div style={{ marginTop: '4px', fontSize: '14px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
+              {!requestedItemType ? (
+                <select value={typeFilter} onChange={(e) => setTypeFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('typeFilter'), width: '140px', borderRadius: '999px' }}>
+                  <option value="all">All</option>
+                  <option value="reel">Reel</option>
+                  <option value="other">Other</option>
+                </select>
+              ) : null}
+              <select value={sizeFilter} onChange={(e) => setSizeFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}>
+                {sizeOptions.map((v) => <option key={v} value={v}>{v === 'all' ? 'Size: All' : v}</option>)}
+              </select>
+              <select value={gsmFilter} onChange={(e) => setGsmFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}>
+                {gsmOptions.map((v) => <option key={v} value={v}>{v === 'all' ? 'GSM: All' : v}</option>)}
+              </select>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  const headers = ['item_type', 'erp_code', 'item_name', 'size', 'gsm', 'bf', 'unit', 'active'];
+                  const rows = visibleItems.map((it) => ({
+                    item_type: String(it?.item_type || 'reel') === 'other' ? 'Other' : 'Reel',
+                    erp_code: String(it?.erp_code || '').trim(),
+                    item_name: String(it?.item_name || '').trim(),
+                    size: String(it?.size || '').trim(),
+                    gsm: String(it?.gsm || '').trim(),
+                    bf: String(it?.bf || '').trim(),
+                    unit: String(it?.unit || '').trim(),
+                    active: String(it?.active || '1') === '0' ? 'No' : 'Yes',
+                  }));
+                  downloadCsv('item-master.csv', headers, rows);
+                }}
+                style={{ padding: '10px 14px', fontWeight: 900 }}
+              >
+                Download Excel
+              </button>
+              <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
+              <button type="button" className="btn main" onClick={openNew} style={{ padding: '10px 14px', fontWeight: 900 }}>+ New Item</button>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
-            <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
-            <button type="button" className="btn main" onClick={openNew} style={{ padding: '10px 14px', fontWeight: 900 }}>+ New Item</button>
-          </div>
-        </div>
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-              {isLoading ? 'Loading...' : `Items: ${filteredItems.length}`}
+              {isLoading ? 'Loading...' : `Items: ${visibleItems.length}`}
             </div>
             {status ? <div style={{ fontSize: '14px', color: '#6b7280' }}>{status}</div> : null}
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
+            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
                   <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Type</th>
@@ -450,23 +600,27 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item, index) => (
-                  <tr key={`${item?.erp_code || ''}-${index}`}>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_type || 'reel') === 'other' ? 'Other' : 'Reel'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 900 }}>{String(item?.erp_code || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_name || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.size || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.gsm || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.bf || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.unit || '').trim()}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.active || '1') === '0' ? 'No' : 'Yes'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" className="btn small" onClick={() => openEdit(index)} disabled={isSaving}>Edit</button>{' '}
-                      <button type="button" className="btn small" style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => doDeactivate(index)} disabled={isSaving}>Deactivate</button>
-                    </td>
-                  </tr>
-                ))}
-                {!filteredItems.length ? (
+                {visibleItems.map((item, index) => {
+                  const originalIndex = items.indexOf(item);
+                  return (
+                    <tr key={`${item?.id || item?.erp_code || ''}-${index}`}>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_type || 'reel') === 'other' ? 'Other' : 'Reel'}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 900 }}>{String(item?.erp_code || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_name || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.size || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.gsm || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.bf || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.unit || '').trim()}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.active || '1') === '0' ? 'No' : 'Yes'}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button type="button" className="btn small" onClick={() => openEdit(originalIndex)} disabled={isSaving}>Edit</button>{' '}
+                        <button type="button" className="btn small" style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => doDeactivate(originalIndex)} disabled={isSaving}>Deactivate</button>{' '}
+                        <button type="button" className="btn small" style={{ background: '#111827', borderColor: '#111827', color: '#fff' }} onClick={() => doDelete(originalIndex)} disabled={isSaving}>Delete</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!visibleItems.length ? (
                   <tr>
                     <td colSpan={9} style={{ padding: '16px 12px', color: '#6b7280' }}>No items found.</td>
                   </tr>
