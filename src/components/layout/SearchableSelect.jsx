@@ -16,32 +16,32 @@ export default function SearchableSelect({
   const inputRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const deferredValue = useDeferredValue(value);
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const deferredDraft = useDeferredValue(draft);
 
   const normalizedOptions = useMemo(() => {
     const uniq = new Map();
     (Array.isArray(options) ? options : []).forEach((opt) => {
       const text = String(opt ?? '').trim();
       if (!text) return;
-      uniq.set(text.toLowerCase(), text);
+      if (!uniq.has(text.toLowerCase())) uniq.set(text.toLowerCase(), text);
     });
-    const compare = (a, b) => {
-      const na = Number(a);
-      const nb = Number(b);
-      const aNum = Number.isFinite(na) && String(a).trim() !== '';
-      const bNum = Number.isFinite(nb) && String(b).trim() !== '';
-      if (aNum && bNum) return na - nb;
-      return String(a).localeCompare(String(b));
-    };
-    return Array.from(uniq.values()).sort(compare);
+    // Preserve caller ordering (they may already provide numeric-sorted lists with "All" first).
+    return Array.from(uniq.values());
   }, [options]);
 
   const filteredOptions = useMemo(() => {
-    const q = String(deferredValue || '').trim().toLowerCase();
+    const q = String(deferredDraft || '').trim().toLowerCase();
     if (!q) return normalizedOptions.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
     const matches = normalizedOptions.filter((o) => String(o).toLowerCase().includes(q));
     return matches.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
-  }, [normalizedOptions, deferredValue, maxVisible]);
+  }, [normalizedOptions, deferredDraft, maxVisible]);
+
+  useEffect(() => {
+    if (open) return;
+    setDraft(String(value ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,6 +66,7 @@ export default function SearchableSelect({
 
   const applyValue = (next) => {
     onChange(next);
+    setDraft(String(next ?? ''));
     setOpen(false);
     setHighlightIndex(-1);
     requestAnimationFrame(() => inputRef.current?.focus?.());
@@ -78,12 +79,21 @@ export default function SearchableSelect({
           ref={inputRef}
           id={id}
           disabled={disabled}
-          value={value}
-          onFocus={() => { if (!disabled) setOpen(true); }}
-          onClick={() => { if (!disabled) setOpen(true); }}
+          value={draft}
+          onFocus={() => {
+            if (disabled) return;
+            setOpen(true);
+            setDraft('');
+          }}
+          onClick={() => {
+            if (disabled) return;
+            setOpen(true);
+            setDraft('');
+          }}
           onChange={(e) => {
             const next = e.target.value;
-            onChange(next);
+            setDraft(next);
+            if (allowCustom) onChange(next);
             if (!disabled) setOpen(true);
           }}
           onKeyDown={(e) => {
@@ -91,6 +101,7 @@ export default function SearchableSelect({
             if (e.key === 'Escape') {
               setOpen(false);
               setHighlightIndex(-1);
+              setDraft(String(value ?? ''));
               return;
             }
             if (e.key === 'ArrowDown') {
@@ -112,7 +123,7 @@ export default function SearchableSelect({
                 return;
               }
               if (!allowCustom) {
-                const current = String(value ?? '').trim();
+                const current = String(draft ?? '').trim();
                 const match = normalizedOptions.find((o) => o.toLowerCase() === current.toLowerCase());
                 applyValue(match || '');
               } else {
