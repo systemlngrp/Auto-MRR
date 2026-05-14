@@ -2190,6 +2190,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [supplierReturnStep, setSupplierReturnStep] = useState(3);
   const [prPrefillTab, setPrPrefillTab] = useState('');
   const [prListContext, setPrListContext] = useState('');
+  const [prInitialView, setPrInitialView] = useState('');
   const [itemMasterCreateContext, setItemMasterCreateContext] = useState(null);
   const [lastCreatedItem, setLastCreatedItem] = useState(null);
   const [tempFirm, setTempFirm] = useState(initialFirm);
@@ -3536,14 +3537,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onReelReturnData: () => setStep(21),
               onReelStock: () => setStep(26),
               onIndent: () => { setPrListContext(''); setStep(14); },
+              onIndentForm: () => {
+                setPrListContext('');
+                setPrPrefillTab('pending');
+                setPrInitialView('form');
+                setStep(14);
+              },
               onIndentTab: (tabKey) => {
                 setPrPrefillTab(String(tabKey || '').trim());
                 setPrListContext('');
+                setPrInitialView('');
                 setStep(14);
               },
               onPendingPoList: () => {
                 setPrPrefillTab('approved');
                 setPrListContext('pending_po');
+                setPrInitialView('');
                 setStep(14);
               },
               onPo: () => setStep(16),
@@ -5090,8 +5099,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           currentUser={currentUser}
           mode="manage"
           listContext={prListContext}
+          initialView={prInitialView}
           initialTab={prPrefillTab}
           onInitialTabConsumed={() => { setPrPrefillTab(''); setPrListContext(''); }}
+          onInitialViewConsumed={() => setPrInitialView('')}
           onMakePoFromPr={(prNo) => {
             setPoPrefillPrNo(String(prNo || '').trim());
             setStep(16);
@@ -5120,7 +5131,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             savePurchaseRequest,
             approvePurchaseRequest
           }}
-          onBack={() => { setPrListContext(''); setStep(3); }}
+          onBack={() => { setPrListContext(''); setPrInitialView(''); setStep(3); }}
         />
       </>
     );

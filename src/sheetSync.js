@@ -1,4 +1,34 @@
 const REQUEST_TIMEOUT_MS = Math.max(15000, Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS || 120000));
+const DEFAULT_CACHE_TTL_MS = Math.max(5000, Number(import.meta.env.VITE_DATA_CACHE_TTL_MS || 25000));
+const getCache = new Map();
+
+function cacheNow() {
+  return Date.now();
+}
+
+function cacheGet(key) {
+  const entry = getCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt && entry.expiresAt <= cacheNow()) {
+    getCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function cacheSet(key, entry) {
+  getCache.set(key, entry);
+}
+
+function invalidateCacheWhere(predicate) {
+  Array.from(getCache.keys()).forEach((key) => {
+    try {
+      if (predicate(key)) getCache.delete(key);
+    } catch {
+      // ignore
+    }
+  });
+}
 
 export const HELPER_SHEET_NAME = 'HELPER SHEET';
 export const PO_SHEET_NAME = 'PO DETAILS';
@@ -128,6 +158,27 @@ async function fetchJson(url, options = {}) {
   } finally {
     clear();
   }
+}
+
+async function fetchJsonCached(url, options = {}) {
+  const ttlMs = Number.isFinite(Number(options.ttlMs)) ? Number(options.ttlMs) : DEFAULT_CACHE_TTL_MS;
+  const key = `GET:${url}`;
+  const cached = cacheGet(key);
+  if (cached?.value) return cached.value;
+  if (cached?.promise) return cached.promise;
+
+  const promise = fetchJson(url, options)
+    .then((value) => {
+      cacheSet(key, { value, expiresAt: cacheNow() + ttlMs });
+      return value;
+    })
+    .catch((err) => {
+      getCache.delete(key);
+      throw err;
+    });
+
+  cacheSet(key, { promise, expiresAt: cacheNow() + ttlMs });
+  return promise;
 }
 
 function toQuery(params = {}) {
@@ -568,7 +619,7 @@ export async function fetchItemGroups(options = {}) {
     firm_id: firmId,
     spreadsheetId: firmId,
   });
-  const payload = await fetchJson(`${backendUrl}?${query}`);
+  const payload = await fetchJsonCached(`${backendUrl}?${query}`);
   return Array.isArray(payload?.groups) ? payload.groups : [];
 }
 
@@ -595,7 +646,7 @@ export async function fetchItems(options = {}) {
     firm_id: firmId,
     spreadsheetId: firmId
   });
-  const payload = await fetchJson(`${backendUrl}?${query}`);
+  const payload = await fetchJsonCached(`${backendUrl}?${query}`);
   return Array.isArray(payload?.items) ? payload.items : [];
 }
 
@@ -637,11 +688,14 @@ export async function saveItems(items = [], options = {}) {
     spreadsheetId: getFirmKey(options),
     items
   };
-  return fetchJson(backendUrl, {
+  const resp = await fetchJson(backendUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+  const firmId = getFirmKey(options);
+  invalidateCacheWhere((key) => key.includes(`firm_id=${encodeURIComponent(firmId)}`) && (key.includes('action=get_items') || key.includes('action=get_item_groups')));
+  return resp;
 }
 
 export async function deleteItem(options = {}) {
@@ -682,7 +736,7 @@ export async function fetchPurchaseRequests(options = {}) {
     firm_id: firmId,
     spreadsheetId: firmId
   });
-  const payload = await fetchJson(`${backendUrl}?${query}`);
+  const payload = await fetchJsonCached(`${backendUrl}?${query}`);
   return Array.isArray(payload?.purchase_requests) ? payload.purchase_requests : [];
 }
 
@@ -708,11 +762,14 @@ export async function savePurchaseRequest(pr = {}, items = [], options = {}) {
     purchase_request: pr,
     items
   };
-  return fetchJson(backendUrl, {
+  const resp = await fetchJson(backendUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+  const firmId = getFirmKey(options);
+  invalidateCacheWhere((key) => key.includes(`firm_id=${encodeURIComponent(firmId)}`) && (key.includes('action=get_purchase_requests') || key.includes('action=get_purchase_orders')));
+  return resp;
 }
 
 export async function approvePurchaseRequest(prNo, decision = 'approve', remark = '', options = {}) {
@@ -727,7 +784,9 @@ export async function approvePurchaseRequest(prNo, decision = 'approve', remark 
     remark,
     user_email: options.userEmail
   });
-  return fetchJson(`${backendUrl}?${query}`);
+  const resp = await fetchJson(`${backendUrl}?${query}`);
+  invalidateCacheWhere((key) => key.includes(`firm_id=${encodeURIComponent(firmId)}`) && (key.includes('action=get_purchase_requests') || key.includes('action=get_purchase_orders')));
+  return resp;
 }
 
 export async function fetchPurchaseOrders(options = {}) {
@@ -738,7 +797,7 @@ export async function fetchPurchaseOrders(options = {}) {
     firm_id: firmId,
     spreadsheetId: firmId
   });
-  const payload = await fetchJson(`${backendUrl}?${query}`);
+  const payload = await fetchJsonCached(`${backendUrl}?${query}`);
   return Array.isArray(payload?.purchase_orders) ? payload.purchase_orders : [];
 }
 

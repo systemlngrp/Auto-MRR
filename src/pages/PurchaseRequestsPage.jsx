@@ -87,11 +87,13 @@ export default function PurchaseRequestsPage({
   onCreatedItemConsumed,
   onMakePoFromPr,
   onOpenPoFromPr,
+  initialView = '',
   listContext = '',
   mode = 'manage', // 'manage' | 'approve'
   currentUser,
   initialTab = '',
-  onInitialTabConsumed
+  onInitialTabConsumed,
+  onInitialViewConsumed
 }) {
   const {
     fetchItems,
@@ -130,18 +132,18 @@ export default function PurchaseRequestsPage({
     setIsLoading(true);
     setStatus('Loading purchase requests...');
     try {
-      const data = await fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId });
-      const rawRows = Array.isArray(data) ? data : [];
       let map = {};
-      if (fetchPurchaseOrders) {
-        const pos = await fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId });
-        map = {};
-        (Array.isArray(pos) ? pos : []).forEach((row) => {
-          const poNo = String(row?.po_no || '').trim();
-          const prNo = String(row?.pr_no || '').trim() || inferPrNoFromPoNo(poNo);
-          if (prNo && poNo && !map[prNo]) map[prNo] = poNo;
-        });
-      }
+      const [data, pos] = await Promise.all([
+        fetchPurchaseRequests({ spreadsheetId: selectedFirm.spreadsheetId }),
+        fetchPurchaseOrders ? fetchPurchaseOrders({ spreadsheetId: selectedFirm.spreadsheetId }) : Promise.resolve([])
+      ]);
+      const rawRows = Array.isArray(data) ? data : [];
+      map = {};
+      (Array.isArray(pos) ? pos : []).forEach((row) => {
+        const poNo = String(row?.po_no || '').trim();
+        const prNo = String(row?.pr_no || '').trim() || inferPrNoFromPoNo(poNo);
+        if (prNo && poNo && !map[prNo]) map[prNo] = poNo;
+      });
       setPoByPrNo(map);
       setRows(
         rawRows.map((row) => {
@@ -262,6 +264,17 @@ export default function PurchaseRequestsPage({
     return rows.find((r) => String(r?.pr_no || '').trim() === key) || null;
   }, [rows, selectedPrNo]);
 
+  const listBusy = isLoading || isSaving;
+  const tabLabel = useMemo(() => {
+    const t = String(tab || 'pending').trim().toLowerCase();
+    if (t === 'all') return 'All';
+    if (t === 'approved') return 'Approved';
+    if (t === 'rejected') return 'Rejected';
+    if (t === 'complete' || t === 'completed') return 'Completed';
+    return 'Pending';
+  }, [tab]);
+  const tabOptions = useMemo(() => ['All', 'Pending', 'Approved', 'Completed', 'Rejected'], []);
+
   const openNew = () => {
     const displayName = String(currentUser?.display_name || currentUser?.user?.display_name || '').trim();
     setFormData({ ...blankPr(), requested_by: displayName });
@@ -270,6 +283,14 @@ export default function PurchaseRequestsPage({
     setSelectedPrNo('');
     setView('form');
   };
+
+  useEffect(() => {
+    const next = String(initialView || '').trim().toLowerCase();
+    if (next !== 'form') return;
+    openNew();
+    if (typeof onInitialViewConsumed === 'function') onInitialViewConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialView]);
 
   const openEdit = async (prNo) => {
     if (!selectedFirm) return;
@@ -691,17 +712,6 @@ export default function PurchaseRequestsPage({
     );
   }
 
-  const listBusy = isLoading || isSaving;
-  const tabLabel = useMemo(() => {
-    const t = String(tab || 'pending').trim().toLowerCase();
-    if (t === 'all') return 'All';
-    if (t === 'approved') return 'Approved';
-    if (t === 'rejected') return 'Rejected';
-    if (t === 'complete' || t === 'completed') return 'Completed';
-    return 'Pending';
-  }, [tab]);
-  const tabOptions = useMemo(() => ['All', 'Pending', 'Approved', 'Completed', 'Rejected'], []);
-
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
@@ -740,9 +750,6 @@ export default function PurchaseRequestsPage({
               />
             </div>
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
-            {!isApproveMode ? (
-              <button type="button" className="btn main" onClick={openNew} style={{ padding: '10px 14px', fontWeight: 900 }}>+ Purchase Request</button>
-            ) : null}
           </div>
         </div>
 

@@ -81,6 +81,10 @@ export default function SidebarMenu({
         <div className={`inv-submenu ${openMenuSection === 'purchase' ? 'open' : ''}`}>
           {canSee('purchase_requests') ? (
             <>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentForm?.() ?? actions?.onIndent?.()}>
+                <span>Indent Form</span>
+                {badge(0, 'gray')}
+              </button>
               <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('pending') ?? actions?.onIndent?.()}>
                 <span>Pending</span>
                 {badge(pendingCounts?.purchase_requests_pending || 0)}
