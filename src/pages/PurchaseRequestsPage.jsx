@@ -449,8 +449,8 @@ export default function PurchaseRequestsPage({
       const queue = [...missing];
       const inFlight = new Set();
 
-      const buildText = (itemsList) => {
-        const parts = (Array.isArray(itemsList) ? itemsList : [])
+      const buildParts = (itemsList) => (
+        (Array.isArray(itemsList) ? itemsList : [])
           .map((it) => {
             const name = String(it?.item_name || it?.description || it?.erp_code || '').trim();
             const qty = String(it?.qty || '').trim();
@@ -459,22 +459,22 @@ export default function PurchaseRequestsPage({
             if (!qty) return name;
             return `${name} Qty = ${qty}`;
           })
-          .filter(Boolean);
-        return parts.join(' / ');
-      };
+          .filter(Boolean)
+      );
 
       const runOne = async (prNo) => {
         try {
           const payload = await fetchPurchaseRequestDetails(prNo, { spreadsheetId: selectedFirm.spreadsheetId });
           const its = Array.isArray(payload?.items) ? payload.items : [];
           const suppliers = Array.from(new Set(its.map((it) => String(it?.supplier || '').trim()).filter(Boolean)));
-          const summary = { text: buildText(its), suppliers };
+          const parts = buildParts(its);
+          const summary = { text: parts.join(' / '), parts, suppliers };
           if (!cancelled) {
             setItemSummaryByPrNo((prev) => (prev[prNo] ? prev : { ...prev, [prNo]: summary }));
           }
         } catch {
           if (!cancelled) {
-            setItemSummaryByPrNo((prev) => (prev[prNo] ? prev : { ...prev, [prNo]: { text: '', suppliers: [] } }));
+            setItemSummaryByPrNo((prev) => (prev[prNo] ? prev : { ...prev, [prNo]: { text: '', parts: [], suppliers: [] } }));
           }
         } finally {
           inFlight.delete(prNo);
@@ -1069,7 +1069,7 @@ export default function PurchaseRequestsPage({
                   const isSelected = selectedPrNo && prNo === selectedPrNo;
                   const isHover = hoverPrNo && prNo === hoverPrNo;
                   const isRowChecked = !!selectedPrNos[prNo];
-                  const summaryText = String(itemSummaryByPrNo?.[prNo]?.text || '').trim();
+                  const summaryParts = Array.isArray(itemSummaryByPrNo?.[prNo]?.parts) ? itemSummaryByPrNo[prNo].parts : [];
                   const statusPill = {
                     display: 'inline-block',
                     padding: '4px 10px',
@@ -1115,8 +1115,23 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', fontWeight: 1000, color: '#000', whiteSpace: 'nowrap' }}>{prNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}>{row.requested_by || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', maxWidth: 360 }}>
-                          <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.35, fontSize: 12, color: '#111827' }}>
-                            {summaryText || <span style={{ color: '#9ca3af' }}>—</span>}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, alignItems: 'center', lineHeight: 1.35, fontSize: 12, color: '#111827' }}>
+                            {summaryParts.length ? summaryParts.map((part, idx) => (
+                              <span
+                                key={`${prNo}-part-${idx}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  paddingLeft: idx === 0 ? 0 : 10,
+                                  marginLeft: idx === 0 ? 0 : 10,
+                                  borderLeft: idx === 0 ? '0' : '2px solid #e5e7eb',
+                                  whiteSpace: 'normal',
+                                  wordBreak: 'break-word'
+                                }}
+                              >
+                                {part}
+                              </span>
+                            )) : <span style={{ color: '#9ca3af' }}>—</span>}
                           </div>
                         </td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.requisition_date || '-'}</td>
