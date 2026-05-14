@@ -250,6 +250,16 @@ export default function PurchaseOrdersPage({
     });
   }, [pos, tab, search]);
 
+  const tabLabel = useMemo(() => {
+    const t = String(tab || 'all').trim().toLowerCase();
+    if (t === 'draft') return 'Draft';
+    if (t === 'pending') return 'Pending';
+    if (t === 'approved') return 'Approved';
+    if (t === 'rejected') return 'Rejected';
+    return 'All';
+  }, [tab]);
+  const tabOptions = useMemo(() => ['All', 'Draft', 'Pending', 'Approved', 'Rejected'], []);
+
   const setItem = (index, key, value) => {
     setItems((prev) => {
       const next = [...prev];
@@ -656,16 +666,6 @@ export default function PurchaseOrdersPage({
       </div>
     );
   }
-
-  const tabLabel = useMemo(() => {
-    const t = String(tab || 'all').trim().toLowerCase();
-    if (t === 'draft') return 'Draft';
-    if (t === 'pending') return 'Pending';
-    if (t === 'approved') return 'Approved';
-    if (t === 'rejected') return 'Rejected';
-    return 'All';
-  }, [tab]);
-  const tabOptions = useMemo(() => ['All', 'Draft', 'Pending', 'Approved', 'Rejected'], []);
 
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
