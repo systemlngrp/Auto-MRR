@@ -74,7 +74,9 @@ export default function PurchaseOrdersPage({
   currentUser,
   onOpenSupplierForm,
   initialSupplierName,
-  onInitialSupplierConsumed
+  onInitialSupplierConsumed,
+  initialTab = '',
+  onInitialTabConsumed
 }) {
   const {
     fetchItems,
@@ -129,6 +131,16 @@ export default function PurchaseOrdersPage({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm]);
+
+  useEffect(() => {
+    const next = String(initialTab || '').trim().toLowerCase();
+    if (!next) return;
+    const allowed = new Set(['all', 'draft', 'pending', 'approved', 'rejected']);
+    if (!allowed.has(next)) return;
+    setTab(next);
+    if (typeof onInitialTabConsumed === 'function') onInitialTabConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
 
   useEffect(() => {
     async function loadItems() {

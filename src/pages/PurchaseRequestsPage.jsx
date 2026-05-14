@@ -87,7 +87,9 @@ export default function PurchaseRequestsPage({
   onMakePoFromPr,
   onOpenPoFromPr,
   mode = 'manage', // 'manage' | 'approve'
-  currentUser
+  currentUser,
+  initialTab = '',
+  onInitialTabConsumed
 }) {
   const {
     fetchItems,
@@ -161,6 +163,16 @@ export default function PurchaseRequestsPage({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm]);
+
+  useEffect(() => {
+    const next = String(initialTab || '').trim().toLowerCase();
+    if (!next) return;
+    const allowed = new Set(['all', 'pending', 'approved', 'rejected', 'complete', 'completed']);
+    if (!allowed.has(next)) return;
+    setTab(next === 'completed' ? 'complete' : next);
+    if (typeof onInitialTabConsumed === 'function') onInitialTabConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
 
   useEffect(() => {
     if (!createdItem || !createdItemContext) return;

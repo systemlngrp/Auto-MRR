@@ -2184,8 +2184,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [poPrefillPrNo, setPoPrefillPrNo] = useState('');
   const [poPrefillPoNo, setPoPrefillPoNo] = useState('');
   const [poPrefillSupplierName, setPoPrefillSupplierName] = useState('');
+  const [poPrefillTab, setPoPrefillTab] = useState('');
   const [supplierInitialView, setSupplierInitialView] = useState('list');
   const [supplierReturnStep, setSupplierReturnStep] = useState(3);
+  const [prPrefillTab, setPrPrefillTab] = useState('');
   const [itemMasterCreateContext, setItemMasterCreateContext] = useState(null);
   const [lastCreatedItem, setLastCreatedItem] = useState(null);
   const [tempFirm, setTempFirm] = useState(initialFirm);
@@ -3467,7 +3469,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
 
               onReelStock: () => setStep(26),
               onIndent: () => setStep(14),
+              onIndentTab: (tabKey) => {
+                setPrPrefillTab(String(tabKey || '').trim());
+                setStep(14);
+              },
               onPo: () => setStep(16),
+              onPoTab: (tabKey) => {
+                setPoPrefillTab(String(tabKey || '').trim());
+                setStep(16);
+              },
               onItemMaster: () => setStep(13),
               onSuppliers: () => setStep(18),
               onUsers: () => setStep(9),
@@ -4999,6 +5009,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="manage"
+          initialTab={prPrefillTab}
+          onInitialTabConsumed={() => setPrPrefillTab('')}
           onMakePoFromPr={(prNo) => {
             setPoPrefillPrNo(String(prNo || '').trim());
             setStep(16);
@@ -5041,6 +5053,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           currentUser={currentUser}
           mode="approve"
+          initialTab={prPrefillTab}
+          onInitialTabConsumed={() => setPrPrefillTab('')}
           onOpenNewItem={() => {
             setItemMasterReturnStep(15);
             setStep(13);
@@ -5070,9 +5084,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           initialPrNo={poPrefillPrNo}
           initialPoNo={poPrefillPoNo}
           initialSupplierName={poPrefillSupplierName}
+          initialTab={poPrefillTab}
           onInitialPrConsumed={() => setPoPrefillPrNo('')}
           onInitialPoConsumed={() => setPoPrefillPoNo('')}
           onInitialSupplierConsumed={() => setPoPrefillSupplierName('')}
+          onInitialTabConsumed={() => setPoPrefillTab('')}
           onOpenSupplierForm={() => {
             setSupplierReturnStep(16);
             setSupplierInitialView('form');
@@ -5105,7 +5121,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           currentUser={currentUser}
           mode="approve_po"
           initialSupplierName={poPrefillSupplierName}
+          initialTab={poPrefillTab}
           onInitialSupplierConsumed={() => setPoPrefillSupplierName('')}
+          onInitialTabConsumed={() => setPoPrefillTab('')}
           onOpenSupplierForm={() => {
             setSupplierReturnStep(17);
             setSupplierInitialView('form');
