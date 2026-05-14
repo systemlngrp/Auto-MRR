@@ -83,6 +83,12 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const openedAsQuickCreate = autoOpenNew;
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, confirmLabel: 'OK' });
 
+  const uiToInternalAll = (value) => {
+    const t = String(value || '').trim();
+    return t.toLowerCase() === 'all' ? 'all' : t;
+  };
+  const internalToUiAll = (value) => (String(value || '').trim().toLowerCase() === 'all' ? 'All' : String(value || '').trim());
+
   const normalizedExistingUniqueKeys = useMemo(() => {
     const set = new Set();
     items.forEach((item, index) => {
@@ -112,10 +118,10 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
   const visibleItems = useMemo(() => {
     let next = filteredItems;
-    if (sizeFilter !== 'all') {
+    if (String(sizeFilter || '').toLowerCase() !== 'all') {
       next = next.filter((it) => String(it?.size || '').trim() === sizeFilter);
     }
-    if (gsmFilter !== 'all') {
+    if (String(gsmFilter || '').toLowerCase() !== 'all') {
       next = next.filter((it) => String(it?.gsm || '').trim() === gsmFilter);
     }
     return next;
@@ -138,7 +144,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       if (aNum && bNum) return na - nb;
       return a.localeCompare(b);
     });
-    return ['all', ...sorted];
+    return ['All', ...sorted];
   }, [items, requestedItemType, typeFilter]);
 
   const gsmOptions = useMemo(() => {
@@ -158,7 +164,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       if (aNum && bNum) return na - nb;
       return a.localeCompare(b);
     });
-    return ['all', ...sorted];
+    return ['All', ...sorted];
   }, [items, requestedItemType, typeFilter]);
 
   useEffect(() => {
@@ -593,34 +599,56 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               <div style={{ margin: 0, fontSize: '26px', fontWeight: 1000, color: '#111827' }}>Item Master</div>
               <div style={{ marginTop: '4px', fontSize: '14px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
             </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
             {!requestedItemType ? (
-              <SearchableSelect
-                value={typeFilter}
-                onChange={(v) => setTypeFilter(String(v || 'all'))}
-                options={['all', 'reel', 'other']}
-                allowCustom={false}
-                placeholder="Type"
-                inputStyle={{ ...inputStyle('typeFilter'), width: '140px', borderRadius: '999px' }}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Type</div>
+                <SearchableSelect
+                  value={String(typeFilter || '').trim().toLowerCase() === 'all' ? 'All' : String(typeFilter || '')}
+                  onChange={(v) => setTypeFilter(String(v || 'All').trim().toLowerCase())}
+                  options={['All', 'Reel', 'Other']}
+                  allowCustom={false}
+                  placeholder="Type: All"
+                  inputStyle={{ ...inputStyle('typeFilter'), width: '140px', borderRadius: '999px' }}
+                />
+              </div>
               ) : null}
-              <SearchableSelect
-                value={sizeFilter}
-                onChange={(v) => setSizeFilter(String(v || 'all'))}
-                options={sizeOptions}
-                allowCustom={false}
-                placeholder="Size: All"
-                inputStyle={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}
-              />
-              <SearchableSelect
-                value={gsmFilter}
-                onChange={(v) => setGsmFilter(String(v || 'all'))}
-                options={gsmOptions}
-                allowCustom={false}
-                placeholder="GSM: All"
-                inputStyle={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Size</div>
+                <SearchableSelect
+                  value={internalToUiAll(sizeFilter)}
+                  onChange={(v) => setSizeFilter(uiToInternalAll(v))}
+                  options={sizeOptions}
+                  allowCustom={false}
+                  placeholder="Size: All"
+                  inputStyle={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>GSM</div>
+                <SearchableSelect
+                  value={internalToUiAll(gsmFilter)}
+                  onChange={(v) => setGsmFilter(uiToInternalAll(v))}
+                  options={gsmOptions}
+                  allowCustom={false}
+                  placeholder="GSM: All"
+                  inputStyle={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setSearch('');
+                  setTypeFilter(requestedItemType || 'all');
+                  setSizeFilter('all');
+                  setGsmFilter('all');
+                }}
+                style={{ padding: '10px 14px', fontWeight: 900 }}
+              >
+                Clear
+              </button>
               <button
                 type="button"
                 className="btn"
