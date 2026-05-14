@@ -453,11 +453,13 @@ export default function PurchaseRequestsPage({
         (Array.isArray(itemsList) ? itemsList : [])
           .map((it) => {
             const name = String(it?.item_name || it?.description || it?.erp_code || '').trim();
-            const qty = String(it?.qty || '').trim();
-            if (!name && !qty) return '';
-            if (!name) return `Qty = ${qty}`;
-            if (!qty) return name;
-            return `${name} Qty = ${qty}`;
+            const qtyNum = toNumber(it?.qty);
+            const hasQty = String(it?.qty ?? '').trim() !== '';
+            const qtyText = hasQty ? qtyNum.toFixed(2) : '';
+            if (!name && !hasQty) return '';
+            if (!name) return `(Qty = ${qtyText || '0.00'})`;
+            if (!hasQty) return name;
+            return `${name} (Qty = ${qtyText})`;
           })
           .filter(Boolean)
       );
@@ -1010,13 +1012,12 @@ export default function PurchaseRequestsPage({
                 <>
                   <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('approve')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve Selected</button>
                   <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('reject')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject Selected</button>
-                  <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('forward')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#0ea5e9', borderColor: '#0ea5e9', color: '#fff' }}>Forward Selected</button>
                 </>
               ) : null}
-              <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value) || 10)} style={{ ...inputStyle('pageSize'), width: 100, borderRadius: 999, padding: '10px 12px', fontWeight: 900 }}>
-                <option value="10">10 / page</option>
-                <option value="20">20 / page</option>
-                <option value="50">50 / page</option>
+              <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value) || 10)} style={{ ...inputStyle('pageSize'), width: 90, borderRadius: 999, padding: '10px 12px', fontWeight: 900 }}>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
               </select>
             </div>
           </div>
@@ -1124,7 +1125,8 @@ export default function PurchaseRequestsPage({
                                     padding: '2px 0',
                                     whiteSpace: 'normal',
                                     wordBreak: 'break-word',
-                                    borderBottom: idx === summaryParts.length - 1 ? '0' : '2px solid #000'
+                                    fontWeight: 300,
+                                    borderBottom: idx === summaryParts.length - 1 ? '0' : '1px solid rgba(0,0,0,0.35)'
                                   }}
                                 >
                                   {part}
@@ -1209,28 +1211,6 @@ export default function PurchaseRequestsPage({
         </div>
       </div>
 
-      {selectedPrNo ? (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: '#1d4ed8',
-            backdropFilter: 'blur(6px)',
-            borderTop: '1px solid #1d4ed8',
-            padding: '10px 18px',
-            zIndex: 10010
-          }}
-        >
-          <div style={{ maxWidth: 'none', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '12px', color: '#fff' }}>Selected: <span style={{ color: '#fff', fontWeight: 800 }}>{selectedPrNo}</span></div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn small" onClick={() => setSelectedPrNo('')} disabled={isSaving} style={{ padding: '10px 14px', fontWeight: 800, background: '#fff', color: '#1d4ed8' }}>Clear</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
