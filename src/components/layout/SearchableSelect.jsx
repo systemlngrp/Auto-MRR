@@ -15,6 +15,7 @@ export default function SearchableSelect({
   const id = useMemo(() => listId || `ss-${Math.random().toString(36).slice(2)}`, [listId]);
   const rootRef = useRef(null);
   const inputRef = useRef(null);
+  const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [draft, setDraft] = useState(String(value ?? ''));
@@ -48,8 +49,10 @@ export default function SearchableSelect({
     if (!open) return;
     const onDocDown = (e) => {
       const root = rootRef.current;
+      const menu = menuRef.current;
       if (!root) return;
       if (root.contains(e.target)) return;
+      if (menu && menu.contains(e.target)) return;
       setOpen(false);
       setHighlightIndex(-1);
 
@@ -168,6 +171,7 @@ export default function SearchableSelect({
 
       {open && !disabled && menuRect && typeof document !== 'undefined' ? createPortal(
         <div
+          ref={menuRef}
           id={`${id}-listbox`}
           role="listbox"
           style={{
