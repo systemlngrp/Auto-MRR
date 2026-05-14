@@ -569,13 +569,13 @@ export default function PurchaseRequestsPage({
                     <tr key={idx}>
                       {showErp ? (
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                          <select
+                          <SearchableSelect
                             disabled={locked}
                             value={row.erp_code}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setItem(idx, 'erp_code', value);
-                              const match = itemOptions.find((it) => String(it?.erp_code || '').trim() === String(value || '').trim());
+                            onChange={(value) => {
+                              const nextValue = String(value || '').trim();
+                              setItem(idx, 'erp_code', nextValue);
+                              const match = itemOptions.find((it) => String(it?.erp_code || '').trim() === nextValue);
                               if (match) {
                                 setItems((prev) => {
                                   const next = [...prev];
@@ -587,15 +587,21 @@ export default function PurchaseRequestsPage({
                                   return next;
                                 });
                               }
-                              hydrateLastPurchase(idx, value);
+                              hydrateLastPurchase(idx, nextValue);
                             }}
-                            style={{ width: '140px' }}
-                          >
-                            <option value="">Select ERP</option>
-                            {itemOptions.map((it) => (
-                              <option key={`${it.item_type}-${it.erp_code}`} value={it.erp_code}>{it.erp_code}</option>
-                            ))}
-                          </select>
+                            options={Array.from(new Set(itemOptions.map((it) => String(it?.erp_code || '').trim()).filter(Boolean))).sort((a, b) => {
+                              const na = Number(a);
+                              const nb = Number(b);
+                              const aNum = Number.isFinite(na) && String(a).trim() !== '';
+                              const bNum = Number.isFinite(nb) && String(b).trim() !== '';
+                              if (aNum && bNum) return na - nb;
+                              return a.localeCompare(b);
+                            })}
+                            allowCustom={false}
+                            maxVisible={1000}
+                            placeholder="Select ERP"
+                            inputStyle={{ width: 140 }}
+                          />
                         </td>
                       ) : null}
                       {!locked ? (
@@ -615,14 +621,13 @@ export default function PurchaseRequestsPage({
                         </td>
                       ) : null}
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input
+                        <SearchableSelect
                           disabled={locked}
-                          list={itemNameListId}
                           value={row.item_name}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setItem(idx, 'item_name', value);
-                            const match = itemOptions.find((it) => String(it?.item_name || '').trim() === String(value || '').trim());
+                          onChange={(value) => {
+                            const nextValue = String(value || '').trim();
+                            setItem(idx, 'item_name', nextValue);
+                            const match = itemOptions.find((it) => String(it?.item_name || '').trim() === nextValue);
                             if (match) {
                               setItems((prev) => {
                                 const next = [...prev];
@@ -634,10 +639,13 @@ export default function PurchaseRequestsPage({
                                 return next;
                               });
                             }
-                            hydrateLastPurchase(idx, showErp ? row.erp_code : value);
+                            hydrateLastPurchase(idx, showErp ? row.erp_code : nextValue);
                           }}
-                          style={{ width: '220px' }}
+                          options={itemNameOptions}
+                          allowCustom={false}
+                          maxVisible={1000}
                           placeholder="Select / search item"
+                          inputStyle={{ width: 220 }}
                         />
                         {errors[`item_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`item_${idx}`]}</div> : null}
                       </td>
@@ -661,9 +669,6 @@ export default function PurchaseRequestsPage({
                 </tbody>
               </table>
             </div>
-            <datalist id={itemNameListId}>
-              {itemNameOptions.map((name) => <option key={name} value={name} />)}
-            </datalist>
             {!locked ? (
               <div style={{ background: '#fff', padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
