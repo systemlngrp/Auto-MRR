@@ -129,7 +129,7 @@ export default function SidebarMenu({
                 {badge(pendingCounts?.purchase_requests_pending || 0)}
               </button>
               <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('approved') ?? actions?.onIndent?.()}>
-                <span>Pending PO</span>
+                <span>Approved</span>
                 {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
               </button>
               <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('complete') ?? actions?.onIndent?.()}>
@@ -153,6 +153,10 @@ export default function SidebarMenu({
         <div className={`inv-submenu ${openMenuSection === 'po' ? 'open' : ''}`}>
           {canSee('make_po') ? (
             <>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('approved') ?? actions?.onIndent?.()}>
+                <span>Pending PO</span>
+                {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
+              </button>
               <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('all') ?? actions?.onPo?.()}>
                 <span>All</span>
                 {badge(pendingCounts?.po_all || 0, 'gray')}
