@@ -628,7 +628,7 @@ export default function PurchaseOrdersPage({
                         <input disabled={itemLocked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
+                        <input disabled={true} value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={itemLocked} value={row.remark} onChange={(e) => setItem(idx, 'remark', e.target.value)} style={{ width: '160px' }} />
@@ -647,7 +647,9 @@ export default function PurchaseOrdersPage({
               {itemNameOptions.map((name) => <option key={name} value={name} />)}
             </datalist>
             <datalist id={supplierListId}>
-              {supplierOptions.map((name) => <option key={name} value={name} />)}
+              {Array.from(new Set(supplierOptions.map(s => typeof s === 'string' ? s : (s?.supplier_name || '')).filter(Boolean))).map((name) => (
+                <option key={name} value={name} />
+              ))}
             </datalist>
           </div>
         </div>

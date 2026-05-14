@@ -3530,11 +3530,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onDpmJobs: () => setStep(25),
               onPendingSheetPlant: () => setStep(20),
               onPendingPrinting: () => setStep(21),
-              onPendingReelIssueReturn: () => setStep(19),
               onReelIssueData: () => setStep(20),
               onReelReturnData: () => setStep(21),
-              onReelStock: () => setStep(27),
-
               onReelStock: () => setStep(26),
               onIndent: () => setStep(14),
               onIndentTab: (tabKey) => {
