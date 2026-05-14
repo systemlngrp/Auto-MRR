@@ -349,18 +349,26 @@ function db(): PDO
 
 function readPayload(): array
 {
+    static $cachedPayload = null;
+    if ($cachedPayload !== null) {
+        return $cachedPayload;
+    }
+
     $raw = file_get_contents('php://input');
     $decoded = json_decode($raw ?: '', true);
     if (is_array($decoded)) {
-        return $decoded;
+        $cachedPayload = $decoded;
+        return $cachedPayload;
     }
     if (!empty($_POST['payload'])) {
         $formDecoded = json_decode((string)$_POST['payload'], true);
         if (is_array($formDecoded)) {
-            return $formDecoded;
+            $cachedPayload = $formDecoded;
+            return $cachedPayload;
         }
     }
-    return [];
+    $cachedPayload = [];
+    return $cachedPayload;
 }
 
 function nowText(): string
@@ -2026,6 +2034,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
 }
 
 try {
+    $payload = readPayload();
     $action = getAction();
     $firmId = getFirmId();
 
@@ -2350,7 +2359,6 @@ try {
     if ($action === 'save_reel_issue_entry') {
         $pdo = db();
         ensureReelStockSchema($pdo);
-        $payload = readPayload();
         $jobNo = trim((string)($payload['job_no'] ?? ''));
         $ourReelNo = trim((string)($payload['our_reel_no'] ?? ''));
         $issueWeight = (float)($payload['issue_weight'] ?? 0);
@@ -3326,7 +3334,6 @@ try {
         jsonOut($result);
     }
 
-    $payload = readPayload();
     if ($action === 'save_po_rows') {
         $traceId = createTraceId();
         $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));

@@ -2219,6 +2219,21 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [reviewPreview, setReviewPreview] = useState(null);
   const [isLoadingReviewPreview, setIsLoadingReviewPreview] = useState(false);
   const [labelInitialMrr, setLabelInitialMrr] = useState('');
+  const [masterCounts, setMasterCounts] = useState({
+    item_master: 0,
+    suppliers: 0,
+    users: 0,
+    state_master: 0,
+    purchase_requests_pending: 0,
+    purchase_requests_approved: 0,
+    purchase_requests_complete: 0,
+    purchase_requests_rejected: 0,
+    po_all: 0,
+    po_draft: 0,
+    po_pending: 0,
+    po_approved: 0,
+    po_rejected: 0
+  });
   const [allApprovalRows, setAllApprovalRows] = useState([]);
   const [isLoadingAllApprovals, setIsLoadingAllApprovals] = useState(false);
   const [, setApprovalPrefetchTick] = useState(0);
@@ -2237,8 +2252,9 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     pending_md_approval: pendingGEs.filter((item) => item.pending_stage === 'pending_md_approval').length,
     pending_tally_posting: pendingGEs.filter((item) => item.pending_stage === 'pending_tally_posting').length,
     edit_ge_entry: pendingGEs.filter((item) => item.pending_stage === 'pending_mrr').length,
-    all_approvals: allApprovalRows.length
-  }), [pendingGEs, editMrrRows, allApprovalRows]);
+    all_approvals: allApprovalRows.length,
+    ...masterCounts
+  }), [pendingGEs, editMrrRows, allApprovalRows, masterCounts]);
 
   const filteredPendingGEs = useMemo(
     () => pendingFilter === 'edit_ge_entry' || pendingFilter === 'edit_mrr'
@@ -2714,6 +2730,56 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     await Promise.all(workers);
   };
 
+  const loadMasterCounts = async () => {
+    if (!tempFirm) return;
+    try {
+      const [items, suppliers, users, states, prs, pos] = await Promise.all([
+        fetchItems({ spreadsheetId: tempFirm.spreadsheetId }),
+        fetchSupplierMaster({ spreadsheetId: tempFirm.spreadsheetId }),
+        fetchUsers({ spreadsheetId: tempFirm.spreadsheetId }),
+        fetchStateMaster({ spreadsheetId: tempFirm.spreadsheetId }),
+        fetchPurchaseRequests({ spreadsheetId: tempFirm.spreadsheetId }),
+        fetchPurchaseOrders({ spreadsheetId: tempFirm.spreadsheetId })
+      ]);
+
+      const prRows = Array.isArray(prs) ? prs : [];
+      const poRowsRaw = Array.isArray(pos) ? pos : [];
+
+      const poMap = {};
+      poRowsRaw.forEach((row) => {
+        const poNo = String(row?.po_no || '').trim();
+        const prNo = String(row?.pr_no || '').trim();
+        if (prNo && poNo && !poMap[prNo]) poMap[prNo] = poNo;
+      });
+
+      setMasterCounts({
+        item_master: items?.length || 0,
+        suppliers: suppliers?.length || 0,
+        users: users?.length || 0,
+        state_master: states?.length || 0,
+        purchase_requests_pending: prRows.filter(p => String(p.status).toLowerCase().includes('pending')).length,
+        purchase_requests_approved: prRows.filter(p => {
+          const st = String(p.status).toLowerCase();
+          const prNo = String(p.pr_no || '').trim();
+          return st.includes('approved') && (!prNo || !poMap[prNo]);
+        }).length,
+        purchase_requests_complete: prRows.filter(p => {
+          const st = String(p.status).toLowerCase();
+          const prNo = String(p.pr_no || '').trim();
+          return st.includes('approved') && prNo && poMap[prNo];
+        }).length,
+        purchase_requests_rejected: prRows.filter(p => String(p.status).toLowerCase().includes('rejected')).length,
+        po_all: poRowsRaw.length,
+        po_draft: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('draft')).length,
+        po_pending: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('pending')).length,
+        po_approved: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('approved')).length,
+        po_rejected: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('rejected')).length,
+      });
+    } catch (err) {
+      console.error('Failed to load master counts:', err);
+    }
+  };
+
   const loadPendingList = async (options = {}) => {
     if (!tempFirm) return;
     const cacheKey = [String(tempFirm.id || '').trim(), String(tempType || '').trim()].join('|');
@@ -2967,6 +3033,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     if (step === 3 && tempFirm) {
       loadPendingList();
       loadEditMrrList();
+      loadMasterCounts();
     }
   }, [step, tempFirm, tempType]);
 

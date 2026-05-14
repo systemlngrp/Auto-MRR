@@ -544,6 +544,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   ...p,
                   item_type: nextType,
                   item_group: nextType === 'other' ? '' : DEFAULT_REEL_GROUP,
+                  unit: nextType === 'reel' ? 'CM' : p.unit,
                   // Clear type-specific fields to reduce mistakes.
                   ...(nextType === 'other'
                     ? { erp_code: '', item_name: '', size: '', gsm: '', bf: '' }
@@ -554,7 +555,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <option value="other">Other</option>
               </select>
             </div>
-            {isReelType ? (
+            {isReelType ? null : (
               <div style={{ gridColumn: 'span 1' }}>
                 <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>ERP Code</div>
                 <input
@@ -567,17 +568,19 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 />
                 {errors.erp_code ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.erp_code}</div> : null}
               </div>
-            ) : (
-              <div style={{ gridColumn: 'span 1' }} />
             )}
             <div style={{ gridColumn: 'span 1' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Unit</div>
-              <select value={formData.unit} onChange={(e) => setFormData((p) => ({ ...p, unit: e.target.value }))} style={inputStyle('unit')}>
-                <option value="KG">KG</option>
-                <option value="PCS">PCS</option>
-                <option value="CM">CM</option>
-                <option value="MTR">MTR</option>
-              </select>
+              {isReelType ? (
+                <input value="CM" readOnly disabled style={{ ...inputStyle('unit'), background: '#f3f4f6', color: '#6b7280' }} />
+              ) : (
+                <select value={formData.unit} onChange={(e) => setFormData((p) => ({ ...p, unit: e.target.value }))} style={inputStyle('unit')}>
+                  <option value="KG">KG</option>
+                  <option value="PCS">PCS</option>
+                  <option value="CM">CM</option>
+                  <option value="MTR">MTR</option>
+                </select>
+              )}
             </div>
             <div style={{ gridColumn: 'span 1' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Group{isReelType ? '' : requiredMark}</div>
@@ -636,10 +639,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   {errors.bf ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.bf}</div> : null}
                 </div>
                 <div style={{ gridColumn: 'span 1' }} />
-                <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Name</div>
-                  <input value={itemNamePreview} readOnly style={{ ...inputStyle('item_name'), background: '#f3f4f6', color: '#6b7280' }} />
-                </div>
+                {/* Item Name hidden for Reel type as requested */}
               </>
             ) : (
               <div style={{ gridColumn: 'span 2' }}>

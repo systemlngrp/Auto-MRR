@@ -64,14 +64,6 @@ export default function SidebarMenu({
               {badge(pendingCounts?.ge_data || 0)}
             </button>
           ) : null}
-          {canSee('download_label') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onDownloadLabel}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                Download Label {isPreparingLabels ? <span className="spinner" /> : null}
-              </span>
-              {badge(0, 'gray')}
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -103,6 +95,14 @@ export default function SidebarMenu({
                 Approvals {isLoadingAllApprovals ? <span className="spinner" /> : null}
               </span>
               {badge(pendingCounts?.all_approvals || 0)}
+            </button>
+          ) : null}
+          {canSee('download_label') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDownloadLabel}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                Download Label {isPreparingLabels ? <span className="spinner" /> : null}
+              </span>
+              {badge(0, 'gray')}
             </button>
           ) : null}
           {canSee('review') ? (
@@ -198,7 +198,7 @@ export default function SidebarMenu({
           ) : null}
           <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
             <span>State Master</span>
-            {badge(0, 'gray')}
+            {badge(pendingCounts?.state_master || 0, 'gray')}
           </button>
           {canSee('users') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onUsers}>
