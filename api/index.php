@@ -2672,6 +2672,80 @@ try {
         jsonOut(['ok' => true, 'trace_id' => $traceId]);
     }
 
+    if ($action === 'get_item_groups') {
+        $pdo = db();
+        try {
+            $pdo->exec("
+              CREATE TABLE IF NOT EXISTS item_groups (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                group_name VARCHAR(120) NOT NULL,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uniq_group_name (group_name),
+                KEY idx_group_active (active)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (Throwable $e) {
+            // ignore
+        }
+        $stmt = $pdo->prepare("SELECT id, group_name, active FROM item_groups ORDER BY group_name ASC, id ASC");
+        $stmt->execute();
+        $rows = array_map(static function (array $row): array {
+            return [
+                'id' => (string)($row['id'] ?? ''),
+                'group_name' => trim((string)($row['group_name'] ?? '')),
+                'active' => (string)($row['active'] ?? '1'),
+            ];
+        }, $stmt->fetchAll());
+        jsonOut(['ok' => true, 'groups' => $rows]);
+    }
+
+    if ($action === 'save_item_group') {
+        $traceId = createTraceId();
+        $payloadGroup = is_array($payload['group'] ?? null) ? $payload['group'] : [];
+        $name = trim((string)($payloadGroup['group_name'] ?? $payloadGroup['name'] ?? ''));
+        if ($name === '') {
+            jsonOut(['ok' => false, 'error' => 'Group name required.'], 400);
+        }
+        $active = trim((string)($payloadGroup['active'] ?? '1')) === '0' ? 0 : 1;
+
+        $pdo = db();
+        try {
+            $pdo->exec("
+              CREATE TABLE IF NOT EXISTS item_groups (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                group_name VARCHAR(120) NOT NULL,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uniq_group_name (group_name),
+                KEY idx_group_active (active)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (Throwable $e) {
+            // ignore
+        }
+
+        $stmt = $pdo->prepare("
+          INSERT INTO item_groups (group_name, active)
+          VALUES (:group_name, :active)
+          ON DUPLICATE KEY UPDATE active = VALUES(active), updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([
+            'group_name' => $name,
+            'active' => $active,
+        ]);
+
+        writeBackendLog('save_item_group_success', [
+            'trace_id' => $traceId,
+            'group_name' => $name,
+        ]);
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
     if ($action === 'get_users') {
         $selectCols = ['login_id', 'display_name', 'user_email', 'role'];
         if ($hasMobileColumn) $selectCols[] = 'mobile_no';
@@ -2732,10 +2806,12 @@ try {
         $hasSize = in_array('size_value', $cols, true);
         $hasGsm = in_array('gsm_value', $cols, true);
         $hasBf = in_array('bf_value', $cols, true);
+        $hasGroup = in_array('item_group_name', $cols, true);
 
         $select = [
             'id',
             $hasType ? 'item_type' : "'mrr' AS item_type",
+            $hasGroup ? 'item_group_name' : "'' AS item_group_name",
             'erp_code',
             'item_name',
             $hasSize ? 'size_value' : "'' AS size_value",
@@ -2803,6 +2879,7 @@ try {
             return [
                 'id' => (string)($row['id'] ?? ''),
                 'item_type' => trim((string)($row['item_type'] ?? 'mrr')) ?: 'mrr',
+                'item_group' => trim((string)($row['item_group_name'] ?? '')),
                 'erp_code' => trim((string)($row['erp_code'] ?? '')),
                 'item_name' => trim((string)($row['item_name'] ?? '')),
                 'size' => trim((string)($row['size_value'] ?? '')),
@@ -3653,28 +3730,56 @@ try {
         $hasSize = in_array('size_value', $cols, true);
         $hasGsm = in_array('gsm_value', $cols, true);
         $hasBf = in_array('bf_value', $cols, true);
+        $hasGroup = in_array('item_group_name', $cols, true);
 
         if ($hasType || $hasSize || $hasGsm || $hasBf) {
-            $stmt = $pdo->prepare("
-                INSERT INTO item_master (firm_id, item_type, erp_code, item_name, size_value, gsm_value, bf_value, unit_value, active)
-                VALUES (:firm_id, :item_type, :erp_code, :item_name, :size_value, :gsm_value, :bf_value, :unit_value, :active)
-                ON DUPLICATE KEY UPDATE
-                  item_name = VALUES(item_name),
-                  size_value = VALUES(size_value),
-                  gsm_value = VALUES(gsm_value),
-                  bf_value = VALUES(bf_value),
-                  unit_value = VALUES(unit_value),
-                  active = VALUES(active)
-            ");
+            if ($hasGroup) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO item_master (firm_id, item_type, item_group_name, erp_code, item_name, size_value, gsm_value, bf_value, unit_value, active)
+                    VALUES (:firm_id, :item_type, :item_group_name, :erp_code, :item_name, :size_value, :gsm_value, :bf_value, :unit_value, :active)
+                    ON DUPLICATE KEY UPDATE
+                      item_name = VALUES(item_name),
+                      item_group_name = VALUES(item_group_name),
+                      size_value = VALUES(size_value),
+                      gsm_value = VALUES(gsm_value),
+                      bf_value = VALUES(bf_value),
+                      unit_value = VALUES(unit_value),
+                      active = VALUES(active)
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO item_master (firm_id, item_type, erp_code, item_name, size_value, gsm_value, bf_value, unit_value, active)
+                    VALUES (:firm_id, :item_type, :erp_code, :item_name, :size_value, :gsm_value, :bf_value, :unit_value, :active)
+                    ON DUPLICATE KEY UPDATE
+                      item_name = VALUES(item_name),
+                      size_value = VALUES(size_value),
+                      gsm_value = VALUES(gsm_value),
+                      bf_value = VALUES(bf_value),
+                      unit_value = VALUES(unit_value),
+                      active = VALUES(active)
+                ");
+            }
         } else {
-            $stmt = $pdo->prepare("
-                INSERT INTO item_master (firm_id, erp_code, item_name, unit_value, active)
-                VALUES (:firm_id, :erp_code, :item_name, :unit_value, :active)
-                ON DUPLICATE KEY UPDATE
-                  item_name = VALUES(item_name),
-                  unit_value = VALUES(unit_value),
-                  active = VALUES(active)
-            ");
+            if ($hasGroup) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO item_master (firm_id, item_group_name, erp_code, item_name, unit_value, active)
+                    VALUES (:firm_id, :item_group_name, :erp_code, :item_name, :unit_value, :active)
+                    ON DUPLICATE KEY UPDATE
+                      item_name = VALUES(item_name),
+                      item_group_name = VALUES(item_group_name),
+                      unit_value = VALUES(unit_value),
+                      active = VALUES(active)
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO item_master (firm_id, erp_code, item_name, unit_value, active)
+                    VALUES (:firm_id, :erp_code, :item_name, :unit_value, :active)
+                    ON DUPLICATE KEY UPDATE
+                      item_name = VALUES(item_name),
+                      unit_value = VALUES(unit_value),
+                      active = VALUES(active)
+                ");
+            }
         }
 
         // Preload max ERP code per item type (numeric erp_code only).
@@ -3706,11 +3811,20 @@ try {
             if (!is_array($item)) continue;
             $erp = trim((string)($item['erp_code'] ?? $item['erp'] ?? ''));
             $name = trim((string)($item['item_name'] ?? $item['name'] ?? ''));
+            $groupName = $hasGroup ? trim((string)($item['item_group'] ?? $item['item_group_name'] ?? $item['group_name'] ?? '')) : '';
 
             $type = $hasType
                 ? (strtolower(trim((string)($item['item_type'] ?? $item['type'] ?? 'reel'))) ?: 'reel')
                 : 'reel';
             if ($type !== 'other' && $type !== 'mrr' && $type !== 'reel') $type = 'reel';
+
+            if ($hasGroup) {
+                if ($type === 'mrr' || $type === 'reel') {
+                    $groupName = 'Reel';
+                } else {
+                    $groupName = $groupName !== '' ? $groupName : null;
+                }
+            }
 
             $size = $hasSize ? trim((string)($item['size'] ?? $item['size_value'] ?? '')) : '';
             $gsm = $hasGsm ? trim((string)($item['gsm'] ?? $item['gsm_value'] ?? '')) : '';
@@ -3757,9 +3871,10 @@ try {
             $active = trim((string)($item['active'] ?? '1')) === '0' ? 0 : 1;
 
             if ($hasType || $hasSize || $hasGsm || $hasBf) {
-                $stmt->execute([
+                $params = [
                     'firm_id' => $firmId,
                     'item_type' => $type,
+                    'item_group_name' => $hasGroup ? $groupName : null,
                     'erp_code' => $erp,
                     'item_name' => $name,
                     'size_value' => $size !== '' ? $size : null,
@@ -3767,15 +3882,20 @@ try {
                     'bf_value' => $bf !== '' ? $bf : null,
                     'unit_value' => $unit !== '' ? $unit : null,
                     'active' => $active,
-                ]);
+                ];
+                if (!$hasGroup) unset($params['item_group_name']);
+                $stmt->execute($params);
             } else {
-                $stmt->execute([
+                $params = [
                     'firm_id' => $firmId,
+                    'item_group_name' => $hasGroup ? $groupName : null,
                     'erp_code' => $erp,
                     'item_name' => $name,
                     'unit_value' => $unit !== '' ? $unit : null,
                     'active' => $active,
-                ]);
+                ];
+                if (!$hasGroup) unset($params['item_group_name']);
+                $stmt->execute($params);
             }
             $saved++;
         }

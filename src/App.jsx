@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster, saveStateMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchItemGroups, saveItemGroup, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster, saveStateMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -4986,19 +4986,21 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return (
       <>
         {userBadge}
-        <ItemMasterPage
-          selectedFirm={tempFirm}
-          initialItemType={String(itemMasterCreateContext?.itemType || '').trim()}
-          deps={{
-            fetchItems,
-            saveItems,
-            deleteItem
-          }}
-          onSaved={(item) => {
-            setLastCreatedItem(item || null);
-          }}
-          onBack={() => setStep(itemMasterReturnStep || 3)}
-        />
+          <ItemMasterPage
+            selectedFirm={tempFirm}
+            initialItemType={String(itemMasterCreateContext?.itemType || '').trim()}
+            deps={{
+              fetchItems,
+              saveItems,
+              deleteItem,
+              fetchItemGroups,
+              saveItemGroup
+            }}
+            onSaved={(item) => {
+              setLastCreatedItem(item || null);
+            }}
+            onBack={() => setStep(itemMasterReturnStep || 3)}
+          />
       </>
     );
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
 import ConfirmModal from '../components/modals/ConfirmModal';
+import TextPromptModal from '../components/modals/TextPromptModal';
 
 function buildMrrItemName(erp, size, unit, gsm, bf) {
   const erpText = String(erp || '').trim();
@@ -17,7 +18,7 @@ function buildMrrItemName(erp, size, unit, gsm, bf) {
 }
 
 export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItemType = '', onSaved }) {
-  const { fetchItems, saveItems, deleteItem } = deps;
+  const { fetchItems, saveItems, deleteItem, fetchItemGroups, saveItemGroup } = deps;
   const autoOpenNew = Boolean(String(initialItemType || '').trim());
   const requestedItemType = (() => {
     const t = String(initialItemType || '').trim().toLowerCase();
@@ -26,6 +27,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     return '';
   })();
   const autoOpenedRef = useRef(false);
+  const DEFAULT_REEL_GROUP = 'Reel';
 
   const digitsOnly = (value) => String(value || '').replace(/[^\d]/g, '');
   const decimalOnly = (value) => {
@@ -59,6 +61,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const blankItem = () => ({
     id: '',
     item_type: requestedItemType || 'reel', // 'reel' | 'other'
+    item_group: (requestedItemType || 'reel') === 'reel' ? DEFAULT_REEL_GROUP : '',
     erp_code: '',
     item_name: '',
     size: '',
@@ -69,12 +72,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   });
 
   const [items, setItems] = useState([]);
+  const [itemGroups, setItemGroups] = useState([]);
   const [view, setView] = useState('list'); // 'list' | 'form'
   const [editingIndex, setEditingIndex] = useState(-1);
   const [formData, setFormData] = useState(blankItem());
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(requestedItemType || 'all'); // all | reel | other
@@ -82,6 +87,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const [gsmFilter, setGsmFilter] = useState('all');
   const openedAsQuickCreate = autoOpenNew;
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, confirmLabel: 'OK' });
+  const [groupPrompt, setGroupPrompt] = useState({ open: false });
 
   const uiToInternalAll = (value) => {
     const t = String(value || '').trim();
@@ -185,11 +191,40 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     loadItems();
   }, [fetchItems, selectedFirm]);
 
+  useEffect(() => {
+    async function loadGroups() {
+      if (!selectedFirm) return;
+      if (!fetchItemGroups) return;
+      setIsLoadingGroups(true);
+      try {
+        const data = await fetchItemGroups({ spreadsheetId: selectedFirm.spreadsheetId });
+        setItemGroups(Array.isArray(data) ? data : []);
+      } catch {
+        setItemGroups([]);
+      } finally {
+        setIsLoadingGroups(false);
+      }
+    }
+    loadGroups();
+  }, [fetchItemGroups, selectedFirm]);
+
+  const groupOptionsOther = useMemo(() => {
+    const groups = (Array.isArray(itemGroups) ? itemGroups : [])
+      .filter((g) => String(g?.active ?? '1') !== '0')
+      .map((g) => String(g?.group_name || '').trim())
+      .filter(Boolean)
+      .filter((name) => name.toLowerCase() !== DEFAULT_REEL_GROUP.toLowerCase());
+    const uniq = Array.from(new Set(groups));
+    uniq.sort((a, b) => a.localeCompare(b));
+    return uniq;
+  }, [itemGroups]);
+
   const validate = () => {
     const nextErrors = {};
     const type = String(formData.item_type || 'mrr').trim().toLowerCase() || 'mrr';
     const erp = String(formData.erp_code || '').trim();
     const name = String(formData.item_name || '').trim();
+    const group = String(formData.item_group || '').trim();
     const size = String(formData.size || '').trim();
     const gsm = String(formData.gsm || '').trim();
     const bf = String(formData.bf || '').trim();
@@ -203,6 +238,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         nextErrors.erp_code = 'ERP Code already exists (Reel)';
       }
     } else {
+      if (!group) nextErrors.item_group = 'Item Group is required for Other';
       if (!name) nextErrors.item_name = 'Item Name is required for Other';
       if (name && normalizedExistingUniqueKeys.has(`other:name:${name.toLowerCase()}`)) {
         nextErrors.item_name = 'Item Name already exists (Other)';
@@ -220,6 +256,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     setEditingIndex(-1);
     setFormData({
       ...blankItem(),
+      item_group: (requestedItemType || 'reel') === 'reel' ? DEFAULT_REEL_GROUP : '',
       erp_code: '',
       item_name: ''
     });
@@ -239,10 +276,12 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const openEdit = (index) => {
     const row = items[index] || {};
     setEditingIndex(index);
+    const itemType = String(row?.item_type || 'reel') === 'other' ? 'other' : 'reel';
     setFormData({
       ...blankItem(),
       ...row,
-      item_type: String(row?.item_type || 'reel') === 'other' ? 'other' : 'reel',
+      item_type: itemType,
+      item_group: itemType === 'reel' ? DEFAULT_REEL_GROUP : String(row?.item_group || '').trim(),
       size: String(row?.size || '').trim(),
       gsm: String(row?.gsm || '').trim(),
       bf: String(row?.bf || '').trim(),
@@ -268,6 +307,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       const payload = {
         id: String(formData.id || '').trim(),
         item_type: type,
+        item_group: type === 'reel' ? DEFAULT_REEL_GROUP : String(formData.item_group || '').trim(),
         erp_code: String(formData.erp_code || '').trim(),
         item_name: String(formData.item_name || '').trim(),
         size: String(formData.size || '').trim(),
@@ -323,10 +363,12 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
       const savedItem = findSavedItem();
       if (savedItem) {
+        const nextType = String(savedItem?.item_type || 'reel') === 'other' ? 'other' : 'reel';
         setFormData({
           ...blankItem(),
           ...savedItem,
-          item_type: String(savedItem?.item_type || 'reel') === 'other' ? 'other' : 'reel',
+          item_type: nextType,
+          item_group: nextType === 'reel' ? DEFAULT_REEL_GROUP : String(savedItem?.item_group || '').trim(),
           size: String(savedItem?.size || '').trim(),
           gsm: String(savedItem?.gsm || '').trim(),
           bf: String(savedItem?.bf || '').trim(),
@@ -437,7 +479,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         ? buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)
         : (isNewItem ? 'Generated after save' : buildMrrItemName(formData.erp_code, formData.size, formData.unit, formData.gsm, formData.bf)))
       : '';
-    const requiredMark = <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>;
+    const requiredMark = <span className="req-star" style={{ marginLeft: 2 }}>*</span>;
 
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
@@ -449,7 +491,40 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
           onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
           onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
         />
-        {isSaving ? (
+        <TextPromptModal
+          isOpen={!!groupPrompt.open}
+          title="Add Item Group"
+          label="Group Name"
+          placeholder="Enter group name"
+          confirmLabel="Add"
+          onCancel={() => setGroupPrompt({ open: false })}
+          onConfirm={async (name) => {
+            const groupName = String(name || '').trim();
+            if (!groupName) return;
+            if (!saveItemGroup || !fetchItemGroups || !selectedFirm) {
+              setGroupPrompt({ open: false });
+              return;
+            }
+            setGroupPrompt({ open: false });
+            setIsLoadingGroups(true);
+            try {
+              await saveItemGroup({ group_name: groupName, active: '1' }, { spreadsheetId: selectedFirm.spreadsheetId });
+              const data = await fetchItemGroups({ spreadsheetId: selectedFirm.spreadsheetId });
+              setItemGroups(Array.isArray(data) ? data : []);
+              setFormData((p) => ({ ...p, item_group: groupName }));
+              setErrors((p) => {
+                const next = { ...(p || {}) };
+                delete next.item_group;
+                return next;
+              });
+            } catch (err) {
+              setStatus(err?.message || 'Could not add group.');
+            } finally {
+              setIsLoadingGroups(false);
+            }
+          }}
+        />
+        {(isSaving || isLoadingGroups) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
           </div>
@@ -468,6 +543,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 setFormData((p) => ({
                   ...p,
                   item_type: nextType,
+                  item_group: nextType === 'other' ? '' : DEFAULT_REEL_GROUP,
                   // Clear type-specific fields to reduce mistakes.
                   ...(nextType === 'other'
                     ? { erp_code: '', item_name: '', size: '', gsm: '', bf: '' }
@@ -502,6 +578,27 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 <option value="CM">CM</option>
                 <option value="MTR">MTR</option>
               </select>
+            </div>
+            <div style={{ gridColumn: 'span 1' }}>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Item Group{isReelType ? '' : requiredMark}</div>
+              {isReelType ? (
+                <input value={DEFAULT_REEL_GROUP} readOnly disabled style={{ ...inputStyle('item_group'), background: '#f3f4f6', color: '#6b7280' }} />
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <SearchableSelect
+                      value={String(formData.item_group || '').trim()}
+                      onChange={(v) => setFormData((p) => ({ ...p, item_group: String(v || '').trim() }))}
+                      options={groupOptionsOther}
+                      allowCustom={false}
+                      placeholder="Select group"
+                      inputStyle={inputStyle('item_group')}
+                    />
+                  </div>
+                  <button type="button" className="btn" onClick={() => setGroupPrompt({ open: true })} title="Add Item Group" style={{ padding: '10px 12px', fontWeight: 1000 }}>+</button>
+                </div>
+              )}
+              {errors.item_group ? <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>{errors.item_group}</div> : null}
             </div>
             {isReelType ? (
               <>
@@ -589,7 +686,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
           onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
           onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
         />
-        {(isLoading || isSaving) ? (
+        {(isLoading || isSaving || isLoadingGroups) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
           </div>

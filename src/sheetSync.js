@@ -560,6 +560,33 @@ export async function saveStateMaster(state = {}, options = {}) {
   });
 }
 
+export async function fetchItemGroups(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_item_groups',
+    firm_id: firmId,
+    spreadsheetId: firmId,
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.groups) ? payload.groups : [];
+}
+
+export async function saveItemGroup(group = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_item_group',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    group,
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchItems(options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const firmId = getFirmKey(options);

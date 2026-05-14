@@ -395,6 +395,7 @@ CREATE TABLE IF NOT EXISTS item_master (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,
   item_type VARCHAR(20) NOT NULL DEFAULT 'mrr',
+  item_group_name VARCHAR(120) DEFAULT NULL,
   erp_code VARCHAR(120) DEFAULT NULL,
   item_name VARCHAR(255) NOT NULL,
   size_value VARCHAR(80) DEFAULT NULL,
@@ -450,6 +451,22 @@ CREATE TABLE IF NOT EXISTS purchase_request_items (
   KEY idx_pr_items (firm_id, pr_id, row_sort),
   KEY idx_pr_items_item (firm_id, item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS item_groups (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  group_name VARCHAR(120) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_group_name (group_name),
+  KEY idx_group_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO item_groups (group_name, active) VALUES
+  ('Reel', 1),
+  ('Other', 1)
+ON DUPLICATE KEY UPDATE active = VALUES(active);
 
 CREATE TABLE IF NOT EXISTS purchase_orders (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
