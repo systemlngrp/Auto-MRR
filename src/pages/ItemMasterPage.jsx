@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
 import ConfirmModal from '../components/modals/ConfirmModal';
 import TextPromptModal from '../components/modals/TextPromptModal';
@@ -82,6 +82,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [typeFilter, setTypeFilter] = useState(requestedItemType || 'all'); // all | reel | other
   const [sizeFilter, setSizeFilter] = useState('all');
   const [gsmFilter, setGsmFilter] = useState('all');
@@ -109,7 +110,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   }, [items, editingIndex]);
 
   const filteredItems = useMemo(() => {
-    const query = String(search || '').trim().toLowerCase();
+    const query = String(deferredSearch || '').trim().toLowerCase();
     const effectiveTypeFilter = requestedItemType || (typeFilter === 'all' ? '' : typeFilter);
     const typeFiltered = effectiveTypeFilter
       ? items.filter((item) => String(item?.item_type || 'reel').trim().toLowerCase() === effectiveTypeFilter)
@@ -120,7 +121,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       const name = String(item?.item_name || '').toLowerCase();
       return code.includes(query) || name.includes(query);
     });
-  }, [items, search, requestedItemType, typeFilter]);
+  }, [items, deferredSearch, requestedItemType, typeFilter]);
 
   const visibleItems = useMemo(() => {
     let next = filteredItems;
@@ -132,6 +133,30 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     }
     return next;
   }, [filteredItems, sizeFilter, gsmFilter]);
+
+  const sortedVisibleItems = useMemo(() => {
+    const toNum = (value) => {
+      const digits = String(value ?? '').replace(/[^\d]/g, '');
+      if (!digits) return null;
+      const n = Number(digits);
+      return Number.isFinite(n) ? n : null;
+    };
+    const copy = [...visibleItems];
+    copy.sort((a, b) => {
+      const aId = toNum(a?.id);
+      const bId = toNum(b?.id);
+      if (aId != null && bId != null) return bId - aId; // latest first
+
+      const aErp = toNum(a?.erp_code);
+      const bErp = toNum(b?.erp_code);
+      if (aErp != null && bErp != null) return bErp - aErp; // numeric desc
+
+      const aName = String(a?.item_name || '').trim();
+      const bName = String(b?.item_name || '').trim();
+      return aName.localeCompare(bName);
+    });
+    return copy;
+  }, [visibleItems]);
 
   const sizeOptions = useMemo(() => {
     const set = new Set();
@@ -784,6 +809,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
+                  <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>SL</th>
                   <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Type</th>
                   <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>ERP Code</th>
                   <th style={{ textAlign: 'left', padding: '12px 12px', borderBottom: '1px solid #1d4ed8', fontSize: '14px', color: '#fff' }}>Item Name</th>
@@ -796,10 +822,11 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                 </tr>
               </thead>
               <tbody>
-                {visibleItems.map((item, index) => {
+                {sortedVisibleItems.map((item, index) => {
                   const originalIndex = items.indexOf(item);
                   return (
                     <tr key={`${item?.id || item?.erp_code || ''}-${index}`}>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 900 }}>{index + 1}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_type || 'reel') === 'other' ? 'Other' : 'Reel'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 900 }}>{String(item?.erp_code || '').trim()}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(item?.item_name || '').trim()}</td>
@@ -826,9 +853,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                     </tr>
                   );
                 })}
-                {!visibleItems.length ? (
+                {!sortedVisibleItems.length ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '16px 12px', color: '#6b7280' }}>No items found.</td>
+                    <td colSpan={10} style={{ padding: '16px 12px', color: '#6b7280' }}>No items found.</td>
                   </tr>
                 ) : null}
               </tbody>
