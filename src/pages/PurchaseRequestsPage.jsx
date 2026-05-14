@@ -87,6 +87,7 @@ export default function PurchaseRequestsPage({
   onCreatedItemConsumed,
   onMakePoFromPr,
   onOpenPoFromPr,
+  listContext = '',
   mode = 'manage', // 'manage' | 'approve'
   currentUser,
   initialTab = '',
@@ -808,7 +809,11 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.required_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
+                          {!(String(listContext || '').toLowerCase() === 'pending_po' && statusText === 'approved') ? (
+                            <>
+                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
+                            </>
+                          ) : null}
                           {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
                             <>
                               <button

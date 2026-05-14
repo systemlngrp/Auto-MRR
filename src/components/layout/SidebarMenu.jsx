@@ -33,23 +33,116 @@ export default function SidebarMenu({
     <span className={`inv-badge ${forcedVariant || badgeVariant(value)}`}>{countText(value)}</span>
   );
 
-  const SidebarTitle = String(styles?.sidebarTitle || 'Inventory Management').trim();
-
   return (
     <div className="inv-sidebar">
-      <div className="inv-logo">📦 {SidebarTitle}</div>
-
       <div className="inv-menu-section">
         <button type="button" className={`inv-menu-header ${step === 3 ? 'active' : ''}`} onClick={actions?.onDashboard}>
-          <span className="inv-menu-title">▦ Dashboard</span>
-          <span className="inv-arrow">⌄</span>
+          <span className="inv-menu-title">Dashboard</span>
+          <span className="inv-arrow">v</span>
         </button>
       </div>
 
       <div className="inv-menu-section">
+        <button type="button" className={`inv-menu-header ${openMenuSection === 'master' ? 'active' : ''}`} onClick={() => safeToggle('master')}>
+          <span className="inv-menu-title">Master</span>
+          <span className={`inv-arrow ${openMenuSection === 'master' ? 'open' : ''}`}>v</span>
+        </button>
+        <div className={`inv-submenu ${openMenuSection === 'master' ? 'open' : ''}`}>
+          {canSee('item_master') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onItemMaster}>
+              <span>Item Master</span>
+              {badge(pendingCounts?.item_master || 0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('suppliers') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onSuppliers}>
+              <span>Suppliers</span>
+              {badge(pendingCounts?.suppliers || 0, 'gray')}
+            </button>
+          ) : null}
+          <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
+            <span>State Master</span>
+            {badge(pendingCounts?.state_master || 0, 'gray')}
+          </button>
+          {canSee('users') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onUsers}>
+              <span>Users</span>
+              {badge(pendingCounts?.users || 0, 'gray')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="inv-menu-section">
+        <button type="button" className={`inv-menu-header ${openMenuSection === 'purchase' ? 'active' : ''}`} onClick={() => safeToggle('purchase')}>
+          <span className="inv-menu-title">Indent</span>
+          <span className={`inv-arrow ${openMenuSection === 'purchase' ? 'open' : ''}`}>v</span>
+        </button>
+        <div className={`inv-submenu ${openMenuSection === 'purchase' ? 'open' : ''}`}>
+          {canSee('purchase_requests') ? (
+            <>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('pending') ?? actions?.onIndent?.()}>
+                <span>Pending</span>
+                {badge(pendingCounts?.purchase_requests_pending || 0)}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('approved') ?? actions?.onIndent?.()}>
+                <span>Approved</span>
+                {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('complete') ?? actions?.onIndent?.()}>
+                <span>Completed</span>
+                {badge(pendingCounts?.purchase_requests_complete || 0, 'green')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('rejected') ?? actions?.onIndent?.()}>
+                <span>Rejected</span>
+                {badge(pendingCounts?.purchase_requests_rejected || 0)}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="inv-menu-section">
+        <button type="button" className={`inv-menu-header ${openMenuSection === 'po' ? 'active' : ''}`} onClick={() => safeToggle('po')}>
+          <span className="inv-menu-title">Purchase Order</span>
+          <span className={`inv-arrow ${openMenuSection === 'po' ? 'open' : ''}`}>v</span>
+        </button>
+        <div className={`inv-submenu ${openMenuSection === 'po' ? 'open' : ''}`}>
+              {canSee('make_po') ? (
+            <>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPendingPoList?.() ?? (actions?.onIndentTab?.('approved') ?? actions?.onIndent?.())}>
+                <span>Pending PO</span>
+                {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('all') ?? actions?.onPo?.()}>
+                <span>All</span>
+                {badge(pendingCounts?.po_all || 0, 'gray')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('draft') ?? actions?.onPo?.()}>
+                <span>Draft</span>
+                {badge(pendingCounts?.po_draft || 0, 'gray')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={actions?.onApprovePo}>
+                <span>Pending Approval</span>
+                {badge(pendingCounts?.po_pending || 0)}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('approved') ?? actions?.onPo?.()}>
+                <span>Approved</span>
+                {badge(pendingCounts?.po_approved || 0, 'green')}
+              </button>
+              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('rejected') ?? actions?.onPo?.()}>
+                <span>Rejected</span>
+                {badge(pendingCounts?.po_rejected || 0)}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="inv-menu-section">
         <button type="button" className={`inv-menu-header ${openMenuSection === 'ge' ? 'active' : ''}`} onClick={() => safeToggle('ge')}>
-          <span className="inv-menu-title">🚚 Gate Entry</span>
-          <span className={`inv-arrow ${openMenuSection === 'ge' ? 'open' : ''}`}>⌄</span>
+          <span className="inv-menu-title">GE Entry</span>
+          <span className={`inv-arrow ${openMenuSection === 'ge' ? 'open' : ''}`}>v</span>
         </button>
         <div className={`inv-submenu ${openMenuSection === 'ge' ? 'open' : ''}`}>
           {canSee('new_ge') ? (
@@ -60,7 +153,7 @@ export default function SidebarMenu({
           ) : null}
           {canSee('ge_data') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onReviewGe}>
-              <span>Review Gate Entry</span>
+              <span>Review GE</span>
               {badge(pendingCounts?.ge_data || 0)}
             </button>
           ) : null}
@@ -69,8 +162,8 @@ export default function SidebarMenu({
 
       <div className="inv-menu-section">
         <button type="button" className={`inv-menu-header ${openMenuSection === 'mrr' ? 'active' : ''}`} onClick={() => safeToggle('mrr')}>
-          <span className="inv-menu-title">📄 MRR</span>
-          <span className={`inv-arrow ${openMenuSection === 'mrr' ? 'open' : ''}`}>⌄</span>
+          <span className="inv-menu-title">MRR</span>
+          <span className={`inv-arrow ${openMenuSection === 'mrr' ? 'open' : ''}`}>v</span>
         </button>
         <div className={`inv-submenu ${openMenuSection === 'mrr' ? 'open' : ''}`}>
           {canSee('pending_mrr') ? (
@@ -117,97 +210,51 @@ export default function SidebarMenu({
       </div>
 
       <div className="inv-menu-section">
-        <button type="button" className={`inv-menu-header ${openMenuSection === 'purchase' ? 'active' : ''}`} onClick={() => safeToggle('purchase')}>
-          <span className="inv-menu-title">📝 Indent</span>
-          <span className={`inv-arrow ${openMenuSection === 'purchase' ? 'open' : ''}`}>⌄</span>
+        <button type="button" className={`inv-menu-header ${openMenuSection === 'reel' ? 'active' : ''}`} onClick={() => safeToggle('reel')}>
+          <span className="inv-menu-title">Reel</span>
+          <span className={`inv-arrow ${openMenuSection === 'reel' ? 'open' : ''}`}>v</span>
         </button>
-        <div className={`inv-submenu ${openMenuSection === 'purchase' ? 'open' : ''}`}>
-          {canSee('purchase_requests') ? (
-            <>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('pending') ?? actions?.onIndent?.()}>
-                <span>Pending</span>
-                {badge(pendingCounts?.purchase_requests_pending || 0)}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('approved') ?? actions?.onIndent?.()}>
-                <span>Approved</span>
-                {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('complete') ?? actions?.onIndent?.()}>
-                <span>Completed</span>
-                {badge(pendingCounts?.purchase_requests_complete || 0, 'green')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('rejected') ?? actions?.onIndent?.()}>
-                <span>Rejected</span>
-                {badge(pendingCounts?.purchase_requests_rejected || 0)}
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="inv-menu-section">
-        <button type="button" className={`inv-menu-header ${openMenuSection === 'po' ? 'active' : ''}`} onClick={() => safeToggle('po')}>
-          <span className="inv-menu-title">🛒 Purchase Order</span>
-          <span className={`inv-arrow ${openMenuSection === 'po' ? 'open' : ''}`}>⌄</span>
-        </button>
-        <div className={`inv-submenu ${openMenuSection === 'po' ? 'open' : ''}`}>
-          {canSee('make_po') ? (
-            <>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onIndentTab?.('approved') ?? actions?.onIndent?.()}>
-                <span>Pending PO</span>
-                {badge(pendingCounts?.purchase_requests_approved || 0, 'green')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('all') ?? actions?.onPo?.()}>
-                <span>All</span>
-                {badge(pendingCounts?.po_all || 0, 'gray')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('draft') ?? actions?.onPo?.()}>
-                <span>Draft</span>
-                {badge(pendingCounts?.po_draft || 0, 'gray')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={actions?.onApprovePo}>
-                <span>Pending Approval</span>
-                {badge(pendingCounts?.po_pending || 0)}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('approved') ?? actions?.onPo?.()}>
-                <span>Approved</span>
-                {badge(pendingCounts?.po_approved || 0, 'green')}
-              </button>
-              <button type="button" className="inv-submenu-item" onClick={() => actions?.onPoTab?.('rejected') ?? actions?.onPo?.()}>
-                <span>Rejected</span>
-                {badge(pendingCounts?.po_rejected || 0)}
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="inv-menu-section">
-        <button type="button" className={`inv-menu-header ${openMenuSection === 'master' ? 'active' : ''}`} onClick={() => safeToggle('master')}>
-          <span className="inv-menu-title">🗂 Masters</span>
-          <span className={`inv-arrow ${openMenuSection === 'master' ? 'open' : ''}`}>⌄</span>
-        </button>
-        <div className={`inv-submenu ${openMenuSection === 'master' ? 'open' : ''}`}>
-          {canSee('item_master') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onItemMaster}>
-              <span>Item Master</span>
-              {badge(pendingCounts?.item_master || 0, 'gray')}
+        <div className={`inv-submenu ${openMenuSection === 'reel' ? 'open' : ''}`}>
+          {canSee('dpm_jobs') && typeof actions?.onDpmJobs === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDpmJobs}>
+              <span>DPM Jobs</span>
+              {badge(0, 'gray')}
             </button>
           ) : null}
-          {canSee('suppliers') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onSuppliers}>
-              <span>Suppliers</span>
-              {badge(pendingCounts?.suppliers || 0, 'gray')}
+          {canSee('pending_reel_issue_return') && typeof actions?.onPendingReelIssueReturn === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingReelIssueReturn}>
+              <span>Pending Jobs For Reel Issue and Return</span>
+              {badge(0, 'gray')}
             </button>
           ) : null}
-          <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
-            <span>State Master</span>
-            {badge(pendingCounts?.state_master || 0, 'gray')}
-          </button>
-          {canSee('users') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onUsers}>
-              <span>Users</span>
-              {badge(pendingCounts?.users || 0, 'gray')}
+          {canSee('pending_sheet_plant') && typeof actions?.onPendingSheetPlant === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingSheetPlant}>
+              <span>Pending Jobs For Sheet Plant</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('pending_printing') && typeof actions?.onPendingPrinting === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingPrinting}>
+              <span>Pending Jobs For Printing</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('pending_closer') && typeof actions?.onPendingCloser === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingCloser}>
+              <span>Pending Jobs For Closer</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {typeof actions?.onReelStock === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onReelStock}>
+              <span>Reel Stock</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {typeof actions?.onPendingReelIssueReturn === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingReelIssueReturn}>
+              <span>Reel Issue/Return</span>
+              {badge(0, 'gray')}
             </button>
           ) : null}
         </div>
@@ -217,7 +264,7 @@ export default function SidebarMenu({
 
       <div className="inv-footer">
         <ProfileMenu currentUser={currentUser} onLogout={onLogout} fixed={false} variant="pill" shortChars={6} zIndex={10002} placement="top" />
-        <button type="button" className="inv-logout" onClick={actions?.onBackToFirms}>↩ Back to Firms</button>
+        <button type="button" className="inv-logout" onClick={actions?.onBackToFirms}>Back to Firms</button>
       </div>
     </div>
   );
