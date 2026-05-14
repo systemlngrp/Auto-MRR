@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
+import ConfirmModal from '../components/modals/ConfirmModal';
 
 const blankItemRow = () => ({
   item_id: '',
@@ -118,6 +119,17 @@ export default function PurchaseRequestsPage({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedPrNo, setSelectedPrNo] = useState('');
   const [poByPrNo, setPoByPrNo] = useState({});
+  const [selectedPrNos, setSelectedPrNos] = useState({});
+  const [hoverPrNo, setHoverPrNo] = useState('');
+  const [itemSummaryByPrNo, setItemSummaryByPrNo] = useState({});
+  const [requesterFilter, setRequesterFilter] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortKey, setSortKey] = useState('requisition_date');
+  const [sortDir, setSortDir] = useState('desc'); // asc | desc
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', confirmLabel: 'OK', onConfirm: null });
+  const [toast, setToast] = useState({ open: false, message: '', variant: 'success' });
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve';
@@ -235,6 +247,16 @@ export default function PurchaseRequestsPage({
     return rows.filter((row) => {
       const statusOk = tab === 'all' ? true : String(row?.status || '').toLowerCase() === tab;
       if (!statusOk) return false;
+      if (String(requesterFilter || '').toLowerCase() !== 'all') {
+        const req = String(row?.requested_by || '').trim();
+        if (req !== requesterFilter) return false;
+      }
+      if (String(supplierFilter || '').toLowerCase() !== 'all') {
+        const prNo = String(row?.pr_no || '').trim();
+        const info = itemSummaryByPrNo[prNo];
+        const suppliers = Array.isArray(info?.suppliers) ? info.suppliers : [];
+        if (!suppliers.includes(supplierFilter)) return false;
+      }
       if (fromDate || toDate) {
         const rowIso = ddmmyyyyToIso(row?.requisition_date || '');
         if (rowIso) {
@@ -251,7 +273,74 @@ export default function PurchaseRequestsPage({
         row?.status
       ].some((v) => String(v || '').toLowerCase().includes(q));
     });
-  }, [rows, tab, search, fromDate, toDate]);
+  }, [rows, tab, search, fromDate, toDate, requesterFilter, supplierFilter, itemSummaryByPrNo]);
+
+  const sortedRows = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const key = String(sortKey || '').trim();
+    const getVal = (row) => {
+      if (key === 'pr_no') return String(row?.pr_no || '').trim();
+      if (key === 'requested_by') return String(row?.requested_by || '').trim();
+      if (key === 'requisition_date') return ddmmyyyyToIso(row?.requisition_date || '') || '';
+      if (key === 'required_date') return ddmmyyyyToIso(row?.required_date || '') || '';
+      if (key === 'status') return String(row?.status || '').trim().toLowerCase();
+      if (key === 'items') return String(itemSummaryByPrNo[String(row?.pr_no || '').trim()]?.text || '').trim();
+      return String(row?.pr_no || '').trim();
+    };
+    const copy = [...filteredRows];
+    copy.sort((a, b) => {
+      const av = getVal(a);
+      const bv = getVal(b);
+      const na = Number(av);
+      const nb = Number(bv);
+      const aNum = Number.isFinite(na) && String(av).trim() !== '';
+      const bNum = Number.isFinite(nb) && String(bv).trim() !== '';
+      if (aNum && bNum) return (na - nb) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+    return copy;
+  }, [filteredRows, sortKey, sortDir, itemSummaryByPrNo]);
+
+  const totalPages = useMemo(() => {
+    const ps = Number(pageSize) || 10;
+    return Math.max(1, Math.ceil(sortedRows.length / ps));
+  }, [sortedRows.length, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, requesterFilter, supplierFilter, search, fromDate, toDate, pageSize]);
+
+  const pagedRows = useMemo(() => {
+    const ps = Number(pageSize) || 10;
+    const start = (Math.max(1, Number(page) || 1) - 1) * ps;
+    return sortedRows.slice(start, start + ps);
+  }, [sortedRows, page, pageSize]);
+
+  const requesterOptions = useMemo(() => {
+    const uniq = new Set();
+    rows.forEach((r) => {
+      const v = String(r?.requested_by || '').trim();
+      if (v) uniq.add(v);
+    });
+    return ['All', ...Array.from(uniq).sort((a, b) => a.localeCompare(b))];
+  }, [rows]);
+
+  const supplierOptions = useMemo(() => {
+    const uniq = new Set();
+    Object.values(itemSummaryByPrNo).forEach((info) => {
+      (Array.isArray(info?.suppliers) ? info.suppliers : []).forEach((s) => {
+        const v = String(s || '').trim();
+        if (v) uniq.add(v);
+      });
+    });
+    return ['All', ...Array.from(uniq).sort((a, b) => a.localeCompare(b))];
+  }, [itemSummaryByPrNo]);
+
+  const selectedCount = useMemo(() => Object.values(selectedPrNos).filter(Boolean).length, [selectedPrNos]);
+  const allOnPageSelected = useMemo(() => {
+    if (!pagedRows.length) return false;
+    return pagedRows.every((r) => selectedPrNos[String(r?.pr_no || '').trim()]);
+  }, [pagedRows, selectedPrNos]);
 
   const selectedRow = useMemo(() => {
     const key = String(selectedPrNo || '').trim();
@@ -266,9 +355,78 @@ export default function PurchaseRequestsPage({
     if (t === 'approved') return 'Approved';
     if (t === 'rejected') return 'Rejected';
     if (t === 'complete' || t === 'completed') return 'Completed';
+    if (t === 'partial approved' || t === 'partial_approved' || t === 'partial-approved') return 'Partial Approved';
     return 'Pending';
   }, [tab]);
-  const tabOptions = useMemo(() => ['All', 'Pending', 'Approved', 'Completed', 'Rejected'], []);
+  const tabOptions = useMemo(() => ['All', 'Pending', 'Approved', 'Rejected', 'Completed', 'Partial Approved'], []);
+
+  const toggleSort = (key) => {
+    setSortKey((prevKey) => {
+      if (prevKey === key) {
+        setSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevKey;
+      }
+      setSortDir('asc');
+      return key;
+    });
+  };
+
+  const toggleSelectAllOnPage = () => {
+    const next = { ...selectedPrNos };
+    const target = !allOnPageSelected;
+    pagedRows.forEach((r) => {
+      const prNo = String(r?.pr_no || '').trim();
+      if (prNo) next[prNo] = target;
+    });
+    setSelectedPrNos(next);
+  };
+
+  const toggleRowSelect = (prNo) => {
+    const key = String(prNo || '').trim();
+    if (!key) return;
+    setSelectedPrNos((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const showToast = (message, variant = 'success') => {
+    setToast({ open: true, message: String(message || ''), variant });
+    setTimeout(() => setToast((t) => ({ ...t, open: false })), 2400);
+  };
+
+  const runBulkAction = (decision) => {
+    const selected = Object.keys(selectedPrNos).filter((k) => selectedPrNos[k]);
+    if (!selected.length) return;
+    const actionLabel = decision === 'approve' ? 'Approve' : decision === 'reject' ? 'Reject' : 'Forward';
+    setConfirm({
+      open: true,
+      title: `${actionLabel} Selected`,
+      message: `Are you sure you want to ${actionLabel.toLowerCase()} ${selected.length} selected PR(s)?`,
+      confirmLabel: actionLabel,
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        if (!selectedFirm) return;
+        const remark = decision === 'reject' ? window.prompt('Reject remark (optional):', '') : '';
+        setIsSaving(true);
+        try {
+          const results = await Promise.allSettled(
+            selected.map((prNo) => approvePurchaseRequest(prNo, decision, String(remark || ''), { spreadsheetId: selectedFirm.spreadsheetId, userEmail }))
+          );
+          const failed = results.filter((r) => r.status === 'rejected').length;
+          await load();
+          setSelectedPrNos({});
+          showToast(
+            failed
+              ? `${actionLabel} completed with ${failed} failure(s).`
+              : `${actionLabel} successful for ${selected.length} PR(s).`,
+            failed ? 'error' : 'success'
+          );
+        } catch (err) {
+          showToast(err?.message || `Could not ${actionLabel.toLowerCase()} selected PR(s).`, 'error');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
+  };
 
   const openNew = () => {
     const displayName = String(currentUser?.display_name || currentUser?.user?.display_name || '').trim();
@@ -276,8 +434,66 @@ export default function PurchaseRequestsPage({
     setItems([blankItemRow()]);
     setErrors({});
     setSelectedPrNo('');
+    setSelectedPrNos({});
     setView('form');
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const targetPrNos = pagedRows.map((r) => String(r?.pr_no || '').trim()).filter(Boolean);
+    const missing = targetPrNos.filter((prNo) => !itemSummaryByPrNo[prNo]);
+    if (!missing.length || !fetchPurchaseRequestDetails || !selectedFirm) return undefined;
+
+    (async () => {
+      const concurrency = 4;
+      const queue = [...missing];
+      const inFlight = new Set();
+
+      const buildText = (itemsList) => {
+        const parts = (Array.isArray(itemsList) ? itemsList : [])
+          .map((it) => {
+            const name = String(it?.item_name || it?.description || it?.erp_code || '').trim();
+            const qty = String(it?.qty || '').trim();
+            if (!name && !qty) return '';
+            if (!name) return `Qty = ${qty}`;
+            if (!qty) return name;
+            return `${name} Qty = ${qty}`;
+          })
+          .filter(Boolean);
+        return parts.join(' / ');
+      };
+
+      const runOne = async (prNo) => {
+        try {
+          const payload = await fetchPurchaseRequestDetails(prNo, { spreadsheetId: selectedFirm.spreadsheetId });
+          const its = Array.isArray(payload?.items) ? payload.items : [];
+          const suppliers = Array.from(new Set(its.map((it) => String(it?.supplier || '').trim()).filter(Boolean)));
+          const summary = { text: buildText(its), suppliers };
+          if (!cancelled) {
+            setItemSummaryByPrNo((prev) => (prev[prNo] ? prev : { ...prev, [prNo]: summary }));
+          }
+        } catch {
+          if (!cancelled) {
+            setItemSummaryByPrNo((prev) => (prev[prNo] ? prev : { ...prev, [prNo]: { text: '', suppliers: [] } }));
+          }
+        } finally {
+          inFlight.delete(prNo);
+        }
+      };
+
+      while (queue.length && !cancelled) {
+        while (inFlight.size < concurrency && queue.length) {
+          const prNo = queue.shift();
+          inFlight.add(prNo);
+          runOne(prNo);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 80));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [pagedRows, itemSummaryByPrNo, fetchPurchaseRequestDetails, selectedFirm]);
 
   useEffect(() => {
     const next = String(initialView || '').trim().toLowerCase();
@@ -686,6 +902,19 @@ export default function PurchaseRequestsPage({
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel || 'OK'}
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
+        {toast.open ? (
+          <div style={{ position: 'fixed', right: 18, top: 18, zIndex: 10060, background: toast.variant === 'error' ? '#b91c1c' : '#16a34a', color: '#fff', padding: '10px 14px', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', fontSize: 13, fontWeight: 900, maxWidth: 420 }}>
+            {toast.message}
+          </div>
+        ) : null}
         {listBusy ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
@@ -711,13 +940,22 @@ export default function PurchaseRequestsPage({
                 onChange={(v) => {
                   const next = String(v || '').trim().toLowerCase();
                   if (next === 'completed') setTab('complete');
+                  else if (next === 'partial approved' || next === 'partial_approved' || next === 'partial-approved') setTab('partial approved');
                   else if (next === 'all' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
                   else setTab('pending');
                 }}
                 options={tabOptions}
                 allowCustom={false}
                 placeholder="Status"
-                inputStyle={{ ...inputStyle('tab'), width: 160, borderRadius: 999 }}
+                inputStyle={{
+                  ...inputStyle('tab'),
+                  width: 170,
+                  borderRadius: 999,
+                  background: '#1d4ed8',
+                  borderColor: '#1d4ed8',
+                  color: '#fff',
+                  fontWeight: 1000
+                }}
               />
             </div>
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
@@ -736,6 +974,54 @@ export default function PurchaseRequestsPage({
           </div>
         </div>
 
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px', boxShadow: '0 10px 24px rgba(17, 24, 39, 0.06)' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Requester</div>
+              <SearchableSelect
+                value={String(requesterFilter || '').toLowerCase() === 'all' ? 'All' : requesterFilter}
+                onChange={(v) => setRequesterFilter(String(v || 'All').trim())}
+                options={requesterOptions}
+                allowCustom={false}
+                maxVisible={1000}
+                placeholder="Requester"
+                inputStyle={{ ...inputStyle('requesterFilter'), width: 200, borderRadius: 999 }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Supplier</div>
+              <SearchableSelect
+                value={String(supplierFilter || '').toLowerCase() === 'all' ? 'All' : supplierFilter}
+                onChange={(v) => setSupplierFilter(String(v || 'All').trim())}
+                options={supplierOptions}
+                allowCustom={false}
+                maxVisible={1000}
+                placeholder="Supplier"
+                inputStyle={{ ...inputStyle('supplierFilter'), width: 200, borderRadius: 999 }}
+              />
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {selectedCount ? (
+                <div style={{ fontSize: 12, fontWeight: 1000, color: '#111827' }}>
+                  Selected: <span style={{ color: '#1d4ed8' }}>{selectedCount}</span>
+                </div>
+              ) : null}
+              {String(tab || '').toLowerCase() === 'pending' ? (
+                <>
+                  <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('approve')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve Selected</button>
+                  <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('reject')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject Selected</button>
+                  <button type="button" className="btn small" disabled={!selectedCount || isSaving} onClick={() => runBulkAction('forward')} style={{ padding: '10px 14px', fontWeight: 1000, background: '#0ea5e9', borderColor: '#0ea5e9', color: '#fff' }}>Forward Selected</button>
+                </>
+              ) : null}
+              <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value) || 10)} style={{ ...inputStyle('pageSize'), width: 100, borderRadius: 999, padding: '10px 12px', fontWeight: 900 }}>
+                <option value="10">10 / page</option>
+                <option value="20">20 / page</option>
+                <option value="50">50 / page</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div style={{ background: '#fff', border: '1px solid #000', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 24px rgba(17, 24, 39, 0.06)' }}>
           {status ? (
             <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '12px', color: '#6b7280' }}>
@@ -746,19 +1032,44 @@ export default function PurchaseRequestsPage({
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>PR</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Requested By</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Requisition Date</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Required Date</th>
-                  <th style={{ textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Status</th>
-                  <th style={{ textAlign: 'right', padding: '12px 12px', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Action</th>
+                  {String(tab || '').toLowerCase() === 'pending' ? (
+                    <th style={{ position: 'sticky', top: 0, zIndex: 2, width: 46, textAlign: 'center', padding: '12px 10px', borderRight: '1px solid #ffffff33' }}>
+                      <input
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={(e) => { e.stopPropagation(); toggleSelectAllOnPage(); }}
+                      />
+                    </th>
+                  ) : null}
+                  <th onClick={() => toggleSort('pr_no')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    PR {sortKey === 'pr_no' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => toggleSort('requested_by')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    Requested By {sortKey === 'requested_by' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => toggleSort('items')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    Items {sortKey === 'items' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => toggleSort('requisition_date')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    Requisition Date {sortKey === 'requisition_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => toggleSort('required_date')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    Required Date {sortKey === 'required_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => toggleSort('status')} style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', padding: '12px 12px', borderRight: '1px solid #ffffff33', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px', cursor: 'pointer' }}>
+                    Status {sortKey === 'status' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th style={{ position: 'sticky', top: 0, zIndex: 2, textAlign: 'right', padding: '12px 12px', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '11px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => {
+                {pagedRows.map((row, rowIndex) => {
                   const prNo = String(row?.pr_no || '').trim();
                   const statusText = String(row?.status || 'pending').toLowerCase();
                   const isSelected = selectedPrNo && prNo === selectedPrNo;
+                  const isHover = hoverPrNo && prNo === hoverPrNo;
+                  const isRowChecked = !!selectedPrNos[prNo];
+                  const summaryText = String(itemSummaryByPrNo?.[prNo]?.text || '').trim();
                   const statusPill = {
                     display: 'inline-block',
                     padding: '4px 10px',
@@ -767,26 +1078,51 @@ export default function PurchaseRequestsPage({
                     fontWeight: 900,
                     border: '1px solid #e5e7eb',
                     background: statusText === 'approved'
-                      ? '#e0f2fe'
-                      : statusText === 'complete'
-                        ? '#dcfce7'
-                        : statusText === 'rejected'
-                          ? '#fee2e2'
-                          : '#f3f4f6',
-                    color: '#1d4ed8'
+                      ? '#dcfce7'
+                      : statusText === 'rejected'
+                        ? '#fee2e2'
+                        : (statusText === 'complete' || statusText === 'completed')
+                          ? '#dbeafe'
+                          : statusText === 'partial approved'
+                            ? '#e0f2fe'
+                            : '#ffedd5',
+                    color: statusText === 'rejected' ? '#991b1b' : statusText === 'approved' ? '#166534' : '#1d4ed8'
                   };
                   return (
                       <tr
                         key={prNo}
                         onClick={() => setSelectedPrNo(prNo)}
-                        style={{ background: isSelected ? '#fee2e2' : '#fff', cursor: 'pointer' }}
+                        onMouseEnter={() => setHoverPrNo(prNo)}
+                        onMouseLeave={() => setHoverPrNo('')}
+                        style={{
+                          background: isSelected
+                            ? '#fee2e2'
+                            : isHover
+                              ? '#f8fafc'
+                              : (rowIndex % 2 === 1 ? '#fcfcfd' : '#fff'),
+                          cursor: 'pointer'
+                        }}
                       >
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', fontWeight: 1000, color: '#000' }}>{prNo}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.requested_by || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.requisition_date || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>{row.required_date || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {String(tab || '').toLowerCase() === 'pending' ? (
+                          <td style={{ padding: '10px 10px', borderBottom: '2px solid #000', borderRight: '2px solid #000', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={isRowChecked}
+                              onChange={(e) => { e.stopPropagation(); toggleRowSelect(prNo); }}
+                            />
+                          </td>
+                        ) : null}
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', fontWeight: 1000, color: '#000', whiteSpace: 'nowrap' }}>{prNo}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}>{row.requested_by || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', maxWidth: 360 }}>
+                          <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.35, fontSize: 12, color: '#111827' }}>
+                            {summaryText || <span style={{ color: '#9ca3af' }}>—</span>}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.requisition_date || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.required_date || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {!(String(listContext || '').toLowerCase() === 'pending_po' && statusText === 'approved') ? (
                             <>
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
@@ -828,22 +1164,29 @@ export default function PurchaseRequestsPage({
                     </tr>
                   );
                 })}
-                {!filteredRows.length ? (
+                {!pagedRows.length ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                    <td colSpan={String(tab || '').toLowerCase() === 'pending' ? 7 : 6} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
           </div>
-          <div style={{ padding: '10px 12px', borderTop: '1px solid #1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ padding: '10px 12px', borderTop: '1px solid #1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              {filteredRows.length ? `Showing 1 to ${filteredRows.length} of ${filteredRows.length} entries` : 'Showing 0 entries'}
+              {sortedRows.length
+                ? (() => {
+                  const ps = Number(pageSize) || 10;
+                  const start = (Math.max(1, Number(page) || 1) - 1) * ps + 1;
+                  const end = Math.min(sortedRows.length, start + pagedRows.length - 1);
+                  return `Showing ${start} to ${end} of ${sortedRows.length} entries`;
+                })()
+                : 'Showing 0 entries'}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" className="btn small" disabled style={{ padding: '6px 10px', fontWeight: 900, opacity: 0.55 }}>{'<'}</button>
-              <button type="button" className="btn small" style={{ padding: '6px 10px', fontWeight: 1000, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff' }}>1</button>
-              <button type="button" className="btn small" disabled style={{ padding: '6px 10px', fontWeight: 900, opacity: 0.55 }}>{'>'}</button>
+              <button type="button" className="btn small" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} style={{ padding: '6px 10px', fontWeight: 900, opacity: page <= 1 ? 0.55 : 1 }}>{'<'}</button>
+              <button type="button" className="btn small" style={{ padding: '6px 10px', fontWeight: 1000, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff' }}>{page}</button>
+              <button type="button" className="btn small" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} style={{ padding: '6px 10px', fontWeight: 900, opacity: page >= totalPages ? 0.55 : 1 }}>{'>'}</button>
             </div>
           </div>
         </div>
