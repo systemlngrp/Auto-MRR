@@ -744,6 +744,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   options={sizeOptions}
                   allowCustom={false}
                   placeholder="Size: All"
+                  maxVisible={1000}
                   inputStyle={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}
                 />
               </div>
@@ -755,6 +756,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                   options={gsmOptions}
                   allowCustom={false}
                   placeholder="GSM: All"
+                  maxVisible={1000}
                   inputStyle={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}
                 />
               </div>
