@@ -1114,25 +1114,26 @@ export default function PurchaseRequestsPage({
                         ) : null}
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', fontWeight: 1000, color: '#000', whiteSpace: 'nowrap' }}>{prNo}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}>{row.requested_by || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', maxWidth: 360 }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, alignItems: 'center', lineHeight: 1.35, fontSize: 12, color: '#111827' }}>
-                            {summaryParts.length ? summaryParts.map((part, idx) => (
-                              <span
-                                key={`${prNo}-part-${idx}`}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  paddingLeft: idx === 0 ? 0 : 10,
-                                  marginLeft: idx === 0 ? 0 : 10,
-                                  borderLeft: idx === 0 ? '0' : '2px solid #e5e7eb',
-                                  whiteSpace: 'normal',
-                                  wordBreak: 'break-word'
-                                }}
-                              >
-                                {part}
-                              </span>
-                            )) : <span style={{ color: '#9ca3af' }}>—</span>}
-                          </div>
+                        <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', maxWidth: 420 }}>
+                          {summaryParts.length ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1.35, fontSize: 12, color: '#111827' }}>
+                              {summaryParts.map((part, idx) => (
+                                <div
+                                  key={`${prNo}-part-${idx}`}
+                                  style={{
+                                    padding: '2px 0',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'break-word',
+                                    borderBottom: idx === summaryParts.length - 1 ? '0' : '2px solid #000'
+                                  }}
+                                >
+                                  {part}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#9ca3af' }}>—</span>
+                          )}
                         </td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.requisition_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.required_date || '-'}</td>
