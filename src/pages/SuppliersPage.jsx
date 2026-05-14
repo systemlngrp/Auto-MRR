@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import SearchableSelect from '../components/layout/SearchableSelect';
 
 const blankSupplier = () => ({
   id: '',
@@ -15,7 +16,7 @@ const blankSupplier = () => ({
 });
 
 export default function SuppliersPage({ selectedFirm, deps, onBack, initialView = 'list', onSaved }) {
-  const { fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster } = deps;
+  const { fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster } = deps;
   const [rows, setRows] = useState([]);
   const [view, setView] = useState(initialView); // list | form
   const [formData, setFormData] = useState(blankSupplier());
@@ -24,6 +25,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [states, setStates] = useState([]);
 
   const load = async () => {
     if (!selectedFirm) return;
@@ -44,6 +46,24 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm]);
+
+  useEffect(() => {
+    async function loadStates() {
+      if (!fetchStateMaster) return;
+      try {
+        const data = await fetchStateMaster({ spreadsheetId: selectedFirm?.spreadsheetId });
+        const options = (Array.isArray(data) ? data : [])
+          .filter((r) => String(r?.active ?? '1') !== '0')
+          .map((r) => String(r?.state_name || '').trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        setStates(options);
+      } catch {
+        setStates([]);
+      }
+    }
+    loadStates();
+  }, [fetchStateMaster, selectedFirm]);
 
   const filteredRows = useMemo(() => {
     const q = String(search || '').trim().toLowerCase();
@@ -131,6 +151,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
 
   const doDelete = async (row) => {
     if (!selectedFirm || !deleteSupplierMaster) return;
+    if (String(row?.can_delete ?? '1') !== '1') return;
     const supplierId = String(row?.id || '').trim();
     const name = String(row?.supplier_name || '').trim() || 'this supplier';
     if (!supplierId) return;
@@ -195,7 +216,13 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>State</div>
-              <input value={formData.state_name} onChange={(e) => setFormData((p) => ({ ...p, state_name: e.target.value }))} style={inputStyle('state_name')} />
+              <SearchableSelect
+                value={formData.state_name}
+                onChange={(v) => setFormData((p) => ({ ...p, state_name: v }))}
+                options={states}
+                placeholder="Select state"
+                inputStyle={inputStyle('state_name')}
+              />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>District</div>
@@ -277,7 +304,17 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(row?.active ?? '1') === '0' ? 'No' : 'Yes'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button type="button" className="btn small" onClick={() => openEdit(row)} disabled={isSaving}>Open</button>{' '}
-                      <button type="button" className="btn small" onClick={() => doDelete(row)} disabled={isSaving} style={{ background: '#111827', borderColor: '#111827', color: '#fff' }}>Delete</button>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={() => doDelete(row)}
+                        disabled={isSaving || String(row?.can_delete ?? '1') !== '1'}
+                        style={String(row?.can_delete ?? '1') === '1'
+                          ? { background: '#111827', borderColor: '#111827', color: '#fff' }
+                          : { background: '#9ca3af', borderColor: '#9ca3af', color: '#fff', cursor: 'not-allowed', opacity: 0.75 }}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}

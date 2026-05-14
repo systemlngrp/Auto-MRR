@@ -101,6 +101,56 @@ CREATE TABLE IF NOT EXISTS suppliers (
   KEY idx_suppliers_code (firm_id, supplier_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS state_master (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  state_name VARCHAR(120) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_state_name (state_name),
+  KEY idx_state_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO state_master (state_name, active) VALUES
+  ('Andaman and Nicobar Islands', 1),
+  ('Andhra Pradesh', 1),
+  ('Arunachal Pradesh', 1),
+  ('Assam', 1),
+  ('Bihar', 1),
+  ('Chandigarh', 1),
+  ('Chhattisgarh', 1),
+  ('Dadra and Nagar Haveli and Daman and Diu', 1),
+  ('Delhi', 1),
+  ('Goa', 1),
+  ('Gujarat', 1),
+  ('Haryana', 1),
+  ('Himachal Pradesh', 1),
+  ('Jammu and Kashmir', 1),
+  ('Jharkhand', 1),
+  ('Karnataka', 1),
+  ('Kerala', 1),
+  ('Ladakh', 1),
+  ('Lakshadweep', 1),
+  ('Madhya Pradesh', 1),
+  ('Maharashtra', 1),
+  ('Manipur', 1),
+  ('Meghalaya', 1),
+  ('Mizoram', 1),
+  ('Nagaland', 1),
+  ('Odisha', 1),
+  ('Puducherry', 1),
+  ('Punjab', 1),
+  ('Rajasthan', 1),
+  ('Sikkim', 1),
+  ('Tamil Nadu', 1),
+  ('Telangana', 1),
+  ('Tripura', 1),
+  ('Uttar Pradesh', 1),
+  ('Uttarakhand', 1),
+  ('West Bengal', 1)
+ON DUPLICATE KEY UPDATE active = VALUES(active);
+
 CREATE TABLE IF NOT EXISTS reel_po_rows (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,

@@ -333,6 +333,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     if (!selectedFirm || !deleteItem) return;
     const row = items[index];
     if (!row) return;
+    if (String(row?.can_delete ?? '1') !== '1') return;
     const itemId = String(row?.id || '').trim();
     const label = String(row?.erp_code || row?.item_name || '').trim() || 'this item';
     if (!itemId) return;
@@ -615,7 +616,17 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button type="button" className="btn small" onClick={() => openEdit(originalIndex)} disabled={isSaving}>Edit</button>{' '}
                         <button type="button" className="btn small" style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }} onClick={() => doDeactivate(originalIndex)} disabled={isSaving}>Deactivate</button>{' '}
-                        <button type="button" className="btn small" style={{ background: '#111827', borderColor: '#111827', color: '#fff' }} onClick={() => doDelete(originalIndex)} disabled={isSaving}>Delete</button>
+                        <button
+                          type="button"
+                          className="btn small"
+                          style={String(item?.can_delete ?? '1') === '1'
+                            ? { background: '#111827', borderColor: '#111827', color: '#fff' }
+                            : { background: '#9ca3af', borderColor: '#9ca3af', color: '#fff', cursor: 'not-allowed', opacity: 0.75 }}
+                          onClick={() => doDelete(originalIndex)}
+                          disabled={isSaving || String(item?.can_delete ?? '1') !== '1'}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   );

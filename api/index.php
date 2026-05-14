@@ -2552,7 +2552,34 @@ try {
             ORDER BY supplier_name ASC, id ASC
         ");
         $stmt->execute(['firm_id' => $firmId]);
-        $rows = array_map(static function (array $row): array {
+        $pdo = db();
+        $rows = array_map(static function (array $row) use ($pdo, $firmId): array {
+            $supplierName = trim((string)($row['supplier_name'] ?? ''));
+            $canDelete = true;
+            if ($supplierName !== '') {
+                $checks = [
+                    "SELECT 1 FROM purchase_orders WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM purchase_order_items WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM reel_po_rows WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM other_po_rows WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM ge_entries WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM reel_mrr_parents WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM other_mrr_parents WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                    "SELECT 1 FROM reel_issue_entries WHERE firm_id = :firm_id AND supplier_name = :supplier LIMIT 1",
+                ];
+                foreach ($checks as $sql) {
+                    try {
+                        $c = $pdo->prepare($sql);
+                        $c->execute(['firm_id' => $firmId, 'supplier' => $supplierName]);
+                        if ($c->fetchColumn()) {
+                            $canDelete = false;
+                            break;
+                        }
+                    } catch (Throwable $e) {
+                        // ignore
+                    }
+                }
+            }
             return [
                 'id' => (string)($row['id'] ?? ''),
                 'supplier_name' => trim((string)($row['supplier_name'] ?? '')),
@@ -2565,9 +2592,84 @@ try {
                 'state_name' => trim((string)($row['state_name'] ?? '')),
                 'pin_code' => trim((string)($row['pin_code'] ?? '')),
                 'active' => (string)($row['active'] ?? '1'),
+                'can_delete' => $canDelete ? '1' : '0',
             ];
         }, $stmt->fetchAll());
         jsonOut(['ok' => true, 'suppliers' => $rows]);
+    }
+
+    if ($action === 'get_state_master') {
+        $pdo = db();
+        try {
+            $pdo->exec("
+              CREATE TABLE IF NOT EXISTS state_master (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                state_name VARCHAR(120) NOT NULL,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uniq_state_name (state_name),
+                KEY idx_state_active (active)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (Throwable $e) {
+            // ignore
+        }
+        $stmt = $pdo->prepare("SELECT id, state_name, active FROM state_master ORDER BY state_name ASC, id ASC");
+        $stmt->execute();
+        $rows = array_map(static function (array $row): array {
+            return [
+                'id' => (string)($row['id'] ?? ''),
+                'state_name' => trim((string)($row['state_name'] ?? '')),
+                'active' => (string)($row['active'] ?? '1'),
+            ];
+        }, $stmt->fetchAll());
+        jsonOut(['ok' => true, 'states' => $rows]);
+    }
+
+    if ($action === 'save_state_master') {
+        $traceId = createTraceId();
+        $payloadState = is_array($payload['state'] ?? null) ? $payload['state'] : [];
+        $name = trim((string)($payloadState['state_name'] ?? $payloadState['name'] ?? ''));
+        if ($name === '') {
+            jsonOut(['ok' => false, 'error' => 'State name required.'], 400);
+        }
+        $active = trim((string)($payloadState['active'] ?? '1')) === '0' ? 0 : 1;
+
+        $pdo = db();
+        try {
+            $pdo->exec("
+              CREATE TABLE IF NOT EXISTS state_master (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                state_name VARCHAR(120) NOT NULL,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uniq_state_name (state_name),
+                KEY idx_state_active (active)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (Throwable $e) {
+            // ignore
+        }
+
+        $stmt = $pdo->prepare("
+          INSERT INTO state_master (state_name, active)
+          VALUES (:state_name, :active)
+          ON DUPLICATE KEY UPDATE active = VALUES(active), updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([
+            'state_name' => $name,
+            'active' => $active,
+        ]);
+
+        writeBackendLog('save_state_master_success', [
+            'trace_id' => $traceId,
+            'state_name' => $name,
+        ]);
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
     }
 
     if ($action === 'get_users') {
@@ -2589,6 +2691,35 @@ try {
                 return $row;
             }, $users);
         }
+
+        // Attach can_delete flag based on references.
+        $pdo = db();
+        $users = array_map(static function (array $row) use ($pdo, $firmId): array {
+            $email = trim((string)($row['user_email'] ?? ''));
+            $canDelete = true;
+            if ($email !== '') {
+                $checks = [
+                    "SELECT 1 FROM approval_logs WHERE firm_id = :firm_id AND user_email = :user_email LIMIT 1",
+                    "SELECT 1 FROM purchase_requests WHERE firm_id = :firm_id AND (created_by = :user_email OR approved_by = :user_email) LIMIT 1",
+                    "SELECT 1 FROM purchase_orders WHERE firm_id = :firm_id AND (created_by = :user_email OR approved_by = :user_email) LIMIT 1",
+                    "SELECT 1 FROM reel_issue_entries WHERE firm_id = :firm_id AND created_by = :user_email LIMIT 1",
+                ];
+                foreach ($checks as $sql) {
+                    try {
+                        $c = $pdo->prepare($sql);
+                        $c->execute(['firm_id' => $firmId, 'user_email' => $email]);
+                        if ($c->fetchColumn()) {
+                            $canDelete = false;
+                            break;
+                        }
+                    } catch (Throwable $e) {
+                        // ignore missing tables/cols
+                    }
+                }
+            }
+            $row['can_delete'] = $canDelete ? '1' : '0';
+            return $row;
+        }, $users);
         jsonOut([
             'ok' => true,
             'users' => $users,
@@ -2622,7 +2753,53 @@ try {
         ");
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
-        $items = array_map(static function (array $row): array {
+        $pdo = db();
+        $items = array_map(static function (array $row) use ($pdo, $firmId): array {
+            $itemId = (int)($row['id'] ?? 0);
+            $erp = trim((string)($row['erp_code'] ?? ''));
+            $canDelete = true;
+            if ($itemId > 0) {
+                $checks = [
+                    "SELECT 1 FROM purchase_request_items WHERE firm_id = :firm_id AND item_id = :item_id LIMIT 1",
+                    "SELECT 1 FROM purchase_order_items WHERE firm_id = :firm_id AND item_id = :item_id LIMIT 1",
+                ];
+                foreach ($checks as $sql) {
+                    try {
+                        $c = $pdo->prepare($sql);
+                        $c->execute(['firm_id' => $firmId, 'item_id' => $itemId]);
+                        if ($c->fetchColumn()) {
+                            $canDelete = false;
+                            break;
+                        }
+                    } catch (Throwable $e) {
+                        // ignore
+                    }
+                }
+            }
+            if ($canDelete && $erp !== '') {
+                $erpChecks = [
+                    ['reel_po_rows', 'erp_code'],
+                    ['other_po_rows', 'erp_code'],
+                    ['reel_issue_entries', 'erp_code'],
+                    ['reel_mrr_children', 'erp_code'],
+                    ['other_mrr_children', 'erp_code'],
+                ];
+                foreach ($erpChecks as [$table, $col]) {
+                    try {
+                        $cols = tableColumns($table);
+                        if (!in_array($col, $cols, true)) continue;
+                        $c = $pdo->prepare("SELECT 1 FROM {$table} WHERE firm_id = :firm_id AND {$col} = :erp LIMIT 1");
+                        $c->execute(['firm_id' => $firmId, 'erp' => $erp]);
+                        if ($c->fetchColumn()) {
+                            $canDelete = false;
+                            break;
+                        }
+                    } catch (Throwable $e) {
+                        // ignore
+                    }
+                }
+            }
+
             return [
                 'id' => (string)($row['id'] ?? ''),
                 'item_type' => trim((string)($row['item_type'] ?? 'mrr')) ?: 'mrr',
@@ -2633,6 +2810,7 @@ try {
                 'bf' => trim((string)($row['bf_value'] ?? '')),
                 'unit' => trim((string)($row['unit_value'] ?? '')),
                 'active' => (string)((int)($row['active'] ?? 1)),
+                'can_delete' => $canDelete ? '1' : '0',
             ];
         }, $rows);
         jsonOut([

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster, saveStateMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -17,6 +17,7 @@ import ItemMasterPage from './pages/ItemMasterPage';
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import SuppliersPage from './pages/SuppliersPage';
+import StateMasterPage from './pages/StateMasterPage';
 import ReelIssueReturnPage from './pages/ReelIssueReturnPage';
 import SheetPlantPage from './pages/SheetPlantPage';
 import ReelPrintingPage from './pages/ReelPrintingPage';
@@ -3480,6 +3481,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               },
               onItemMaster: () => setStep(13),
               onSuppliers: () => setStep(18),
+              onStateMaster: () => setStep(28),
               onUsers: () => setStep(9),
               onBackToFirms: () => setStep(2)
             }}
@@ -5157,7 +5159,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchSupplierMaster,
             saveSupplierMaster,
-            deleteSupplierMaster
+            deleteSupplierMaster,
+            fetchStateMaster
           }}
           onSaved={(supplier) => {
             const name = String(supplier?.supplier_name || '').trim();
@@ -5169,6 +5172,21 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             setSupplierInitialView('list');
             setStep(supplierReturnStep || 3);
           }}
+        />
+      </>
+    );
+  }
+
+  if (step === 28) {
+    return (
+      <>
+        {userBadge}
+        <StateMasterPage
+          deps={{
+            fetchStateMaster,
+            saveStateMaster
+          }}
+          onBack={() => setStep(3)}
         />
       </>
     );

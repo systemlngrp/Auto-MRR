@@ -196,6 +196,10 @@ export default function SidebarMenu({
               {badge(pendingCounts?.suppliers || 0, 'gray')}
             </button>
           ) : null}
+          <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
+            <span>State Master</span>
+            {badge(0, 'gray')}
+          </button>
           {canSee('users') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onUsers}>
               <span>Users</span>
@@ -214,4 +218,3 @@ export default function SidebarMenu({
     </div>
   );
 }
-

@@ -250,12 +250,8 @@ table.table {
   border-collapse: collapse;
 }
 
-.data-table th,
-.data-table td,
-table.table th,
-table.table td {
-  border: 1px solid #000;
-}
+table { border-collapse: collapse !important; }
+table, th, td { border: 2px solid #000 !important; }
 
 body.mrr-classic-body {
   background: #d9d3c7;
@@ -363,6 +359,9 @@ body.mrr-classic-body {
   justify-content: center;
   color: var(--primary);
 }
+
+/* Required mark */
+.req-star { color: #dc2626 !important; font-weight: 900 !important; }
 
 /* Blue & White Theme Enforced */
 .btn, button, input, select, textarea, table, th, td, label, span, div, p, h1, h2, h3, h4, h5, h6 { font-weight: 400; }

@@ -223,7 +223,9 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     if (!selectedFirm || !deleteUser) return;
     const user = users[index];
     const loginId = String(user?.login_id || '').trim();
+    const canDelete = String(user?.can_delete ?? '1') === '1';
     if (!loginId) return;
+    if (!canDelete) return;
     if (!window.confirm(`Delete user "${loginId}"? This cannot be undone.`)) return;
 
     setIsSaving(true);
@@ -355,7 +357,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                       setFormData({ ...formData, mobile_no: next });
                       setErrors({ ...errors, mobile_no: '' });
                     }}
-                    style={inputStyle('mobile_no')}
+                    style={{ ...inputStyle('mobile_no'), background: '#fff' }}
                   />
                   {errorMsg(errors.mobile_no)}
                 </div>
@@ -586,9 +588,11 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
                       </button>
                       <button
                         className="btn small"
-                        style={{ background: '#111827', borderColor: '#111827', color: '#fff', padding: '6px 12px' }}
+                        style={String(user?.can_delete ?? '1') === '1'
+                          ? { background: '#111827', borderColor: '#111827', color: '#fff', padding: '6px 12px' }
+                          : { background: '#9ca3af', borderColor: '#9ca3af', color: '#fff', padding: '6px 12px', cursor: 'not-allowed', opacity: 0.75 }}
                         onClick={() => handleDelete(index)}
-                        disabled={isSaving}
+                        disabled={isSaving || String(user?.can_delete ?? '1') !== '1'}
                         title="Delete user (only if not used)"
                       >
                         Delete

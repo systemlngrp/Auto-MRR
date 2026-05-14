@@ -534,6 +534,32 @@ export async function saveSupplierMaster(supplier = {}, options = {}) {
   });
 }
 
+export async function fetchStateMaster(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const query = toQuery({
+    action: 'get_state_master',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.states) ? payload.states : [];
+}
+
+export async function saveStateMaster(state = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_state_master',
+    firm_id: getFirmKey(options),
+    spreadsheetId: getFirmKey(options),
+    state,
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchItems(options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const firmId = getFirmKey(options);
