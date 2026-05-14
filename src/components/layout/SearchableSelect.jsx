@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function SearchableSelect({
   value,
@@ -17,6 +18,7 @@ export default function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [draft, setDraft] = useState(String(value ?? ''));
+  const [menuRect, setMenuRect] = useState(null);
 
   const normalizedOptions = useMemo(() => {
     const uniq = new Map();
@@ -62,6 +64,31 @@ export default function SearchableSelect({
     document.addEventListener('mousedown', onDocDown, true);
     return () => document.removeEventListener('mousedown', onDocDown, true);
   }, [open, allowCustom, value, normalizedOptions, onChange]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    if (typeof window === 'undefined') return;
+    if (!inputRef.current) return;
+
+    const update = () => {
+      const el = inputRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuRect({
+        left: r.left,
+        top: r.bottom + 6,
+        width: r.width
+      });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
 
   const applyValue = (next) => {
     onChange(next);
@@ -137,60 +164,61 @@ export default function SearchableSelect({
           aria-expanded={open ? 'true' : 'false'}
           aria-controls={`${id}-listbox`}
         />
-
-        {open && !disabled ? (
-          <div
-            id={`${id}-listbox`}
-            role="listbox"
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              left: 0,
-              right: 0,
-              background: '#fff',
-              border: '1px solid #e5e7eb',
-              borderRadius: 10,
-              boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
-              maxHeight: 280,
-              overflowY: 'auto',
-              zIndex: 10050,
-              padding: 6
-            }}
-          >
-            {!filteredOptions.length ? (
-              <div style={{ padding: '8px 10px', fontSize: 12, color: '#6b7280' }}>No matches</div>
-            ) : (
-              filteredOptions.map((opt, idx) => {
-                const isActive = idx === highlightIndex;
-                return (
-                  <div
-                    key={`${opt}-${idx}`}
-                    role="option"
-                    aria-selected={isActive ? 'true' : 'false'}
-                    onMouseEnter={() => setHighlightIndex(idx)}
-                    onMouseDown={(e) => {
-                      // Prevent input blur before click selection.
-                      e.preventDefault();
-                      applyValue(opt);
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      background: isActive ? '#eff6ff' : '#fff',
-                      color: '#111827',
-                      fontSize: 13,
-                      fontWeight: isActive ? 900 : 600
-                    }}
-                  >
-                    {opt}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        ) : null}
       </div>
+
+      {open && !disabled && menuRect && typeof document !== 'undefined' ? createPortal(
+        <div
+          id={`${id}-listbox`}
+          role="listbox"
+          style={{
+            position: 'fixed',
+            left: menuRect.left,
+            top: menuRect.top,
+            width: menuRect.width,
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
+            maxHeight: 280,
+            overflowY: 'auto',
+            zIndex: 2147483000,
+            padding: 6
+          }}
+        >
+          {!filteredOptions.length ? (
+            <div style={{ padding: '8px 10px', fontSize: 12, color: '#6b7280' }}>No matches</div>
+          ) : (
+            filteredOptions.map((opt, idx) => {
+              const isActive = idx === highlightIndex;
+              return (
+                <div
+                  key={`${opt}-${idx}`}
+                  role="option"
+                  aria-selected={isActive ? 'true' : 'false'}
+                  onMouseEnter={() => setHighlightIndex(idx)}
+                  onMouseDown={(e) => {
+                    // Prevent input blur before click selection.
+                    e.preventDefault();
+                    applyValue(opt);
+                  }}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    background: isActive ? '#eff6ff' : '#fff',
+                    color: '#111827',
+                    fontSize: 13,
+                    fontWeight: isActive ? 900 : 600
+                  }}
+                >
+                  {opt}
+                </div>
+              );
+            })
+          )}
+        </div>,
+        document.body
+      ) : null}
     </>
   );
 }
