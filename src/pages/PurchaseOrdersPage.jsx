@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import SearchableSelect from '../components/layout/SearchableSelect';
 
 const blankItemRow = () => ({
   item_id: '',
@@ -624,13 +625,13 @@ export default function PurchaseOrdersPage({
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input disabled={itemLocked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                         <input disabled value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={locked} value={row.remark} onChange={(e) => setItem(idx, 'remark', e.target.value)} style={{ width: '160px' }} />
+                        <input disabled={itemLocked} value={row.remark} onChange={(e) => setItem(idx, 'remark', e.target.value)} style={{ width: '160px' }} />
                       </td>
                       {!locked ? (
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
@@ -654,22 +655,15 @@ export default function PurchaseOrdersPage({
     );
   }
 
-  const tabButton = (key, label) => (
-    <button
-      type="button"
-      className="btn small"
-      onClick={() => setTab(key)}
-      style={{
-        padding: '8px 10px',
-        fontWeight: 900,
-        background: tab === key ? '#1d4ed8' : '#fff',
-        borderColor: tab === key ? '#1d4ed8' : '#d1d5db',
-        color: tab === key ? '#fff' : '#1d4ed8'
-      }}
-    >
-      {label}
-    </button>
-  );
+  const tabLabel = useMemo(() => {
+    const t = String(tab || 'all').trim().toLowerCase();
+    if (t === 'draft') return 'Draft';
+    if (t === 'pending') return 'Pending';
+    if (t === 'approved') return 'Approved';
+    if (t === 'rejected') return 'Rejected';
+    return 'All';
+  }, [tab]);
+  const tabOptions = useMemo(() => ['All', 'Draft', 'Pending', 'Approved', 'Rejected'], []);
 
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
@@ -682,21 +676,32 @@ export default function PurchaseOrdersPage({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
+            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>{selectedFirm?.name || ''}</span>
+              <span style={{ background: '#e0f2fe', color: '#075985', border: '1px solid #0ea5e9', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }}>
+                View: {tabLabel}
+              </span>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PO / supplier" style={{ ...inputStyle('search'), width: '260px', borderRadius: '999px' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
+              <SearchableSelect
+                value={tabLabel}
+                onChange={(v) => {
+                  const next = String(v || '').trim().toLowerCase();
+                  if (next === 'all' || next === 'draft' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
+                  else setTab('all');
+                }}
+                options={tabOptions}
+                allowCustom={false}
+                placeholder="Status"
+                inputStyle={{ ...inputStyle('tab'), width: 160, borderRadius: 999 }}
+              />
+            </div>
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
-            <button type="button" className="btn small" onClick={load} disabled={isLoading} style={{ padding: '10px 14px', fontWeight: 900 }}>Refresh</button>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {tabButton('all', 'All')}
-          {tabButton('draft', 'Draft')}
-          {tabButton('pending', 'Pending')}
-          {tabButton('approved', 'Approved')}
-          {tabButton('rejected', 'Rejected')}
         </div>
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>

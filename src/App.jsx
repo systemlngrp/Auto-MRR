@@ -3546,6 +3546,10 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
                 setPoPrefillTab(String(tabKey || '').trim());
                 setStep(16);
               },
+              onApprovePo: () => {
+                setPoPrefillTab('pending');
+                setStep(17);
+              },
               onItemMaster: () => setStep(13),
               onSuppliers: () => setStep(18),
               onStateMaster: () => setStep(28),
