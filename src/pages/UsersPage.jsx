@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ConfirmModal from '../components/modals/ConfirmModal';
 
 export default function UsersPage({ selectedFirm, deps, onBack, currentUser, initialView = 'list' }) {
   const { fetchUsers, saveUsers, deleteUser } = deps;
@@ -41,6 +42,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', confirmLabel: 'OK', onConfirm: null });
 
   const handleSetView = (nextView) => {
     if (nextView === 'form') {
@@ -195,28 +197,40 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   };
 
   const handleDeactivate = async (index) => {
-    if (!window.confirm('Are you sure you want to deactivate this user?')) return;
-    
     const user = users[index];
-    setIsSaving(true);
-    try {
-      await saveUsers([{ ...user, active: '0' }], {
-        spreadsheetId: selectedFirm.spreadsheetId
-      });
-      
-      const data = await fetchUsers({
-        spreadsheetId: selectedFirm.spreadsheetId
-      });
-      setUsers((data || []).map((user) => ({
-        ...user,
-        menu_access: Array.isArray(user?.menu_access) ? user.menu_access : []
-      })));
-      setStatus('User deactivated.');
-    } catch (err) {
-      setStatus(err?.message || 'Could not deactivate user.');
-    } finally {
-      setIsSaving(false);
-    }
+    const loginId = String(user?.login_id || '').trim();
+    setConfirm({
+      open: true,
+      title: 'Confirm Deactivate',
+      message: `Deactivate user "${loginId || 'this user'}"?`,
+      confirmLabel: 'Deactivate',
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        const nextUser = users[index];
+        if (!nextUser) return;
+        setIsSaving(true);
+        try {
+          await saveUsers([{ ...nextUser, active: '0' }], {
+            spreadsheetId: selectedFirm.spreadsheetId
+          });
+
+          const data = await fetchUsers({
+            spreadsheetId: selectedFirm.spreadsheetId
+          });
+          setUsers((data || []).map((userRow) => ({
+            ...userRow,
+            menu_access: Array.isArray(userRow?.menu_access) ? userRow.menu_access : []
+          })));
+          setStatus('User deactivated.');
+        } catch (err) {
+          setStatus(err?.message || 'Could not deactivate user.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
+    return;
+    
   };
 
   const handleDelete = async (index) => {
@@ -226,26 +240,34 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
     const canDelete = String(user?.can_delete ?? '1') === '1';
     if (!loginId) return;
     if (!canDelete) return;
-    if (!window.confirm(`Delete user "${loginId}"? This cannot be undone.`)) return;
 
-    setIsSaving(true);
-    setStatus('');
-    try {
-      await deleteUser({
-        spreadsheetId: selectedFirm.spreadsheetId,
-        login_id: loginId,
-      });
-      const data = await fetchUsers({ spreadsheetId: selectedFirm.spreadsheetId });
-      setUsers((data || []).map((userRow) => ({
-        ...userRow,
-        menu_access: Array.isArray(userRow?.menu_access) ? userRow.menu_access : []
-      })));
-      setStatus('User deleted.');
-    } catch (err) {
-      setStatus(err?.message || 'Could not delete user.');
-    } finally {
-      setIsSaving(false);
-    }
+    setConfirm({
+      open: true,
+      title: 'Confirm Delete',
+      message: `Delete user "${loginId}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        setIsSaving(true);
+        setStatus('');
+        try {
+          await deleteUser({
+            spreadsheetId: selectedFirm.spreadsheetId,
+            login_id: loginId,
+          });
+          const data = await fetchUsers({ spreadsheetId: selectedFirm.spreadsheetId });
+          setUsers((data || []).map((userRow) => ({
+            ...userRow,
+            menu_access: Array.isArray(userRow?.menu_access) ? userRow.menu_access : []
+          })));
+          setStatus('User deleted.');
+        } catch (err) {
+          setStatus(err?.message || 'Could not delete user.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
   };
 
   const inputStyle = (fieldName) => ({
@@ -291,6 +313,19 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
   if (view === 'form') {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel || 'OK'}
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
+        {isSaving ? (
+          <div className="loading-overlay" style={{ background: 'rgba(241, 245, 249, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '620px', padding: '18px' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '18px' }}>
@@ -511,6 +546,19 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px' }}>
+      <ConfirmModal
+        isOpen={!!confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.confirmLabel || 'OK'}
+        onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+        onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+      />
+      {(isLoading || isSaving) ? (
+        <div className="loading-overlay" style={{ background: 'rgba(241, 245, 249, 0.65)' }}>
+          <div className="spinner" />
+        </div>
+      ) : null}
       <div style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <div>
@@ -530,11 +578,7 @@ export default function UsersPage({ selectedFirm, deps, onBack, currentUser, ini
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="status" style={{ marginBottom: '16px', padding: '10px 12px', display: 'inline-flex', alignItems: 'center', gap: '8px', borderRadius: '999px', border: '1px solid #e5e7eb', background: '#f8fafc', fontWeight: 900, fontSize: '12px', color: '#1d4ed8' }}>
-            <span className="spinner" /> Loading users...
-          </div>
-        ) : status ? (
+        {status ? (
           <div className="status" style={{ marginBottom: '16px', padding: '12px' }}>{status}</div>
         ) : null}
 

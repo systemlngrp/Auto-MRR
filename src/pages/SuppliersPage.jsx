@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
+import ConfirmModal from '../components/modals/ConfirmModal';
 
 const blankSupplier = () => ({
   id: '',
@@ -26,6 +27,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [states, setStates] = useState([]);
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null });
 
   const load = async () => {
     if (!selectedFirm) return;
@@ -155,23 +157,38 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
     const supplierId = String(row?.id || '').trim();
     const name = String(row?.supplier_name || '').trim() || 'this supplier';
     if (!supplierId) return;
-    if (!window.confirm(`Delete ${name}? This cannot be undone.`)) return;
-    setIsSaving(true);
-    setStatus('Deleting supplier...');
-    try {
-      await deleteSupplierMaster({ spreadsheetId: selectedFirm.spreadsheetId, supplier_id: supplierId });
-      await load();
-      setStatus('Deleted.');
-    } catch (err) {
-      setStatus(err?.message || 'Could not delete supplier.');
-    } finally {
-      setIsSaving(false);
-    }
+    setConfirm({
+      open: true,
+      title: 'Confirm Delete',
+      message: `Delete ${name}? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        setIsSaving(true);
+        setStatus('Deleting supplier...');
+        try {
+          await deleteSupplierMaster({ spreadsheetId: selectedFirm.spreadsheetId, supplier_id: supplierId });
+          await load();
+          setStatus('Deleted.');
+        } catch (err) {
+          setStatus(err?.message || 'Could not delete supplier.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
   };
 
   if (view === 'form') {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '18px', overflowY: 'auto' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel="Delete"
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
         {isLoading ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
@@ -195,7 +212,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Name *</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Supplier Name <span className="req-star">*</span></div>
               <input value={formData.supplier_name} onChange={(e) => setFormData((p) => ({ ...p, supplier_name: e.target.value }))} style={inputStyle('supplier_name')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
@@ -252,6 +269,14 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel="Delete"
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
         {isLoading ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />

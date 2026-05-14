@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import SearchableSelect from '../components/layout/SearchableSelect';
+import ConfirmModal from '../components/modals/ConfirmModal';
 
 function buildMrrItemName(erp, size, unit, gsm, bf) {
   const erpText = String(erp || '').trim();
@@ -79,6 +81,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const [sizeFilter, setSizeFilter] = useState('all');
   const [gsmFilter, setGsmFilter] = useState('all');
   const openedAsQuickCreate = autoOpenNew;
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, confirmLabel: 'OK' });
 
   const normalizedExistingUniqueKeys = useMemo(() => {
     const set = new Set();
@@ -127,7 +130,15 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       const v = String(it?.size || '').trim();
       if (v) set.add(v);
     });
-    return ['all', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+    const sorted = Array.from(set).sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      const aNum = Number.isFinite(na) && String(a).trim() !== '';
+      const bNum = Number.isFinite(nb) && String(b).trim() !== '';
+      if (aNum && bNum) return na - nb;
+      return a.localeCompare(b);
+    });
+    return ['all', ...sorted];
   }, [items, requestedItemType, typeFilter]);
 
   const gsmOptions = useMemo(() => {
@@ -139,14 +150,22 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
       const v = String(it?.gsm || '').trim();
       if (v) set.add(v);
     });
-    return ['all', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+    const sorted = Array.from(set).sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      const aNum = Number.isFinite(na) && String(a).trim() !== '';
+      const bNum = Number.isFinite(nb) && String(b).trim() !== '';
+      if (aNum && bNum) return na - nb;
+      return a.localeCompare(b);
+    });
+    return ['all', ...sorted];
   }, [items, requestedItemType, typeFilter]);
 
   useEffect(() => {
     async function loadItems() {
       if (!selectedFirm) return;
       setIsLoading(true);
-      setStatus('Loading items...');
+      setStatus('');
       try {
         const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
         setItems(Array.isArray(data) ? data : []);
@@ -337,37 +356,54 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
     const itemId = String(row?.id || '').trim();
     const label = String(row?.erp_code || row?.item_name || '').trim() || 'this item';
     if (!itemId) return;
-    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
-    setIsSaving(true);
-    setStatus('Deleting item...');
-    try {
-      await deleteItem({ spreadsheetId: selectedFirm.spreadsheetId, item_id: itemId });
-      const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
-      setItems(Array.isArray(data) ? data : []);
-      setStatus('Deleted.');
-    } catch (err) {
-      setStatus(err?.message || 'Could not delete item.');
-    } finally {
-      setIsSaving(false);
-    }
+    setConfirm({
+      open: true,
+      title: 'Confirm Delete',
+      message: `Delete ${label}? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        setIsSaving(true);
+        setStatus('Deleting item...');
+        try {
+          await deleteItem({ spreadsheetId: selectedFirm.spreadsheetId, item_id: itemId });
+          const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
+          setItems(Array.isArray(data) ? data : []);
+          setStatus('Deleted.');
+        } catch (err) {
+          setStatus(err?.message || 'Could not delete item.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
   };
 
   const doDeactivate = async (index) => {
     const row = items[index];
     if (!row) return;
-    if (!window.confirm('Deactivate this item?')) return;
-    setIsSaving(true);
-    setStatus('Deactivating item...');
-    try {
-      await saveItems([{ ...row, active: '0' }], { spreadsheetId: selectedFirm.spreadsheetId });
-      const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
-      setItems(Array.isArray(data) ? data : []);
-      setStatus('Deactivated.');
-    } catch (err) {
-      setStatus(err?.message || 'Could not deactivate item.');
-    } finally {
-      setIsSaving(false);
-    }
+    setConfirm({
+      open: true,
+      title: 'Confirm Deactivate',
+      message: 'Deactivate this item?',
+      confirmLabel: 'Deactivate',
+      onConfirm: async () => {
+        setConfirm((p) => ({ ...p, open: false }));
+        setIsSaving(true);
+        setStatus('Deactivating item...');
+        try {
+          await saveItems([{ ...row, active: '0' }], { spreadsheetId: selectedFirm.spreadsheetId });
+          const data = await fetchItems({ spreadsheetId: selectedFirm.spreadsheetId });
+          setItems(Array.isArray(data) ? data : []);
+          setStatus('Deactivated.');
+        } catch (err) {
+          setStatus(err?.message || 'Could not deactivate item.');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    });
+    return;
   };
 
   const inputStyle = (field) => ({
@@ -399,6 +435,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
 
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: '28px 18px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel || 'OK'}
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
         {isSaving ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
@@ -531,26 +575,52 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+        <ConfirmModal
+          isOpen={!!confirm.open}
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel || 'OK'}
+          onConfirm={confirm.onConfirm || (() => setConfirm((p) => ({ ...p, open: false })))}
+          onCancel={() => setConfirm((p) => ({ ...p, open: false }))}
+        />
+        {(isLoading || isSaving) ? (
+          <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+            <div className="spinner" />
+          </div>
+        ) : null}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ margin: 0, fontSize: '26px', fontWeight: 1000, color: '#111827' }}>Item Master</div>
               <div style={{ marginTop: '4px', fontSize: '14px', color: '#6b7280' }}>{selectedFirm?.name || ''}</div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
-              {!requestedItemType ? (
-                <select value={typeFilter} onChange={(e) => setTypeFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('typeFilter'), width: '140px', borderRadius: '999px' }}>
-                  <option value="all">All</option>
-                  <option value="reel">Reel</option>
-                  <option value="other">Other</option>
-                </select>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ERP / name" style={{ ...inputStyle('search'), width: '240px', borderRadius: '999px' }} />
+            {!requestedItemType ? (
+              <SearchableSelect
+                value={typeFilter}
+                onChange={(v) => setTypeFilter(String(v || 'all'))}
+                options={['all', 'reel', 'other']}
+                allowCustom={false}
+                placeholder="Type"
+                inputStyle={{ ...inputStyle('typeFilter'), width: '140px', borderRadius: '999px' }}
+              />
               ) : null}
-              <select value={sizeFilter} onChange={(e) => setSizeFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}>
-                {sizeOptions.map((v) => <option key={v} value={v}>{v === 'all' ? 'Size: All' : v}</option>)}
-              </select>
-              <select value={gsmFilter} onChange={(e) => setGsmFilter(String(e.target.value || 'all'))} style={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}>
-                {gsmOptions.map((v) => <option key={v} value={v}>{v === 'all' ? 'GSM: All' : v}</option>)}
-              </select>
+              <SearchableSelect
+                value={sizeFilter}
+                onChange={(v) => setSizeFilter(String(v || 'all'))}
+                options={sizeOptions}
+                allowCustom={false}
+                placeholder="Size: All"
+                inputStyle={{ ...inputStyle('sizeFilter'), width: '140px', borderRadius: '999px' }}
+              />
+              <SearchableSelect
+                value={gsmFilter}
+                onChange={(v) => setGsmFilter(String(v || 'all'))}
+                options={gsmOptions}
+                allowCustom={false}
+                placeholder="GSM: All"
+                inputStyle={{ ...inputStyle('gsmFilter'), width: '140px', borderRadius: '999px' }}
+              />
               <button
                 type="button"
                 className="btn"
@@ -580,9 +650,9 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-              {isLoading ? 'Loading...' : `Items: ${visibleItems.length}`}
+              {`Items: ${visibleItems.length}`}
             </div>
-            {status ? <div style={{ fontSize: '14px', color: '#6b7280' }}>{status}</div> : null}
+            {!isLoading && status ? <div style={{ fontSize: '14px', color: '#6b7280' }}>{status}</div> : null}
           </div>
 
           <div style={{ overflowX: 'auto' }}>
