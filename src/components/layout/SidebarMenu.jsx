@@ -50,7 +50,7 @@ export default function SidebarMenu({
         <div className={`inv-submenu ${openMenuSection === 'master' ? 'open' : ''}`}>
           {canSee('item_master') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onItemMaster}>
-              <span>Item Master</span>
+              <span>Item</span>
               {badge(pendingCounts?.item_master || 0, 'gray')}
             </button>
           ) : null}
@@ -61,7 +61,7 @@ export default function SidebarMenu({
             </button>
           ) : null}
           <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
-            <span>State Master</span>
+            <span>State</span>
             {badge(pendingCounts?.state_master || 0, 'gray')}
           </button>
           {canSee('users') ? (
