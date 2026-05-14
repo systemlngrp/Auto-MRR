@@ -6,13 +6,8 @@ const blankItemRow = () => ({
   pr_item_id: '',
   erp_code: '',
   item_name: '',
-  description: '',
   unit: 'PCS',
   qty: '',
-  rate: '',
-  amount: '',
-  last_po_date: '',
-  last_po_rate: '',
   remark: ''
 });
 
@@ -327,15 +322,11 @@ export default function PurchaseRequestsPage({
     setItems((prev) => {
       const next = [...prev];
       const row = { ...(next[index] || blankItemRow()), [key]: value };
-      if (key === 'qty' || key === 'rate') {
-        row.amount = formatAmount(toNumber(row.qty) * toNumber(row.rate));
-      }
       if (key === 'erp_code') {
         const match = itemMaster.find((it) => String(it?.item_type || 'mrr') === itemMasterType && String(it?.erp_code || '').trim() === String(value || '').trim());
         if (match) {
           row.item_id = String(match.id || '').trim();
           if (!String(row.item_name || '').trim()) row.item_name = String(match.item_name || '').trim();
-          if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
           if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
         }
       }
@@ -345,7 +336,6 @@ export default function PurchaseRequestsPage({
         if (match) {
           row.item_id = String(match.id || '').trim();
           if (shouldShowErp && String(match.erp_code || '').trim()) row.erp_code = String(match.erp_code || '').trim();
-          if (!String(row.description || '').trim()) row.description = String(match.item_name || '').trim();
           if (!String(row.unit || '').trim()) row.unit = String(match.unit || 'PCS').trim();
         } else {
           row.item_id = '';
@@ -398,9 +388,7 @@ export default function PurchaseRequestsPage({
       if (!String(it.item_id || '').trim()) {
         next[`item_${idx}`] = 'Select item from Item Master';
       }
-      if (!String(it.description || it.item_name || it.erp_code || '').trim()) {
-        next[`item_${idx}`] = 'Item description required';
-      }
+      if (!String(it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item required';
       if (!String(it.qty || '').trim()) {
         next[`qty_${idx}`] = 'Qty required';
       }
@@ -570,13 +558,8 @@ export default function PurchaseRequestsPage({
                     {showErp ? <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>ERP{requiredMark}</th> : null}
                     {!locked ? <th style={{ width: '46px', padding: '6px 6px', borderBottom: '1px solid #000' }} /> : null}
                     <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Item{requiredMark}</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Description</th>
                     <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Unit</th>
                     <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Qty{requiredMark}</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Rate</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Date</th>
-                    <th style={{ textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Last PO Rate</th>
                     <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid #000', color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>Remark</th>
                     {!locked ? <th style={{ padding: '6px 10px', borderBottom: '1px solid #000' }} /> : null}
                   </tr>
@@ -599,7 +582,6 @@ export default function PurchaseRequestsPage({
                                   const nextRow = { ...(next[idx] || blankItemRow()) };
                                   nextRow.erp_code = String(match.erp_code || '').trim();
                                   nextRow.item_name = String(match.item_name || '').trim();
-                                  if (!String(nextRow.description || '').trim()) nextRow.description = String(match.item_name || '').trim();
                                   nextRow.unit = String(match.unit || nextRow.unit || 'PCS').trim();
                                   next[idx] = nextRow;
                                   return next;
@@ -647,7 +629,6 @@ export default function PurchaseRequestsPage({
                                 const nextRow = { ...(next[idx] || blankItemRow()) };
                                 nextRow.item_name = String(match.item_name || '').trim();
                                 if (showErp && String(match.erp_code || '').trim()) nextRow.erp_code = String(match.erp_code || '').trim();
-                                if (!String(nextRow.description || '').trim()) nextRow.description = String(match.item_name || '').trim();
                                 nextRow.unit = String(match.unit || nextRow.unit || 'PCS').trim();
                                 next[idx] = nextRow;
                                 return next;
@@ -661,26 +642,11 @@ export default function PurchaseRequestsPage({
                         {errors[`item_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`item_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={locked} value={row.description} onChange={(e) => setItem(idx, 'description', e.target.value)} style={{ width: '240px' }} />
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled value={row.unit} style={{ width: '80px', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                         <input disabled={locked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled value={row.last_po_date} style={{ width: '120px', background: '#f9fafb' }} />
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled value={row.last_po_rate} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={locked} value={row.remark} onChange={(e) => setItem(idx, 'remark', e.target.value)} style={{ width: '160px' }} />

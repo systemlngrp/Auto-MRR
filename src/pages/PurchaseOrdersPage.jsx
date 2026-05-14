@@ -12,6 +12,8 @@ const blankItemRow = () => ({
   qty: '',
   rate: '',
   amount: '',
+  last_po_date: '',
+  last_po_rate: '',
   remark: ''
 });
 
@@ -81,6 +83,7 @@ export default function PurchaseOrdersPage({
 }) {
   const {
     fetchItems,
+    fetchLastPurchaseInfo,
     fetchSuppliers,
     saveSupplierMaster,
     fetchPurchaseOrders,
@@ -99,6 +102,7 @@ export default function PurchaseOrdersPage({
   const [pos, setPos] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [supplierOptions, setSupplierOptions] = useState([]);
+  const [lastPurchaseByKey, setLastPurchaseByKey] = useState({});
 
   const [view, setView] = useState('list'); // list | form
   const [formData, setFormData] = useState(blankPo());
@@ -294,6 +298,35 @@ export default function PurchaseOrdersPage({
     });
   };
 
+  const hydrateLastPurchase = async (rowIndex, selectedKey, typeOverride) => {
+    if (!selectedFirm || !fetchLastPurchaseInfo) return;
+    const keyText = String(selectedKey || '').trim();
+    if (!keyText) return;
+    const itemType = String(typeOverride || formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
+    const cacheKey = `${itemType}:${keyText}`;
+    let info = lastPurchaseByKey[cacheKey];
+    if (!info) {
+      try {
+        const fetched = await fetchLastPurchaseInfo([keyText], itemType, { spreadsheetId: selectedFirm.spreadsheetId });
+        const first = Array.isArray(fetched) ? fetched[0] : null;
+        info = first || { key: keyText, po_date: '', last_rate: '' };
+        setLastPurchaseByKey((prev) => ({ ...prev, [cacheKey]: info }));
+      } catch {
+        info = { key: keyText, po_date: '', last_rate: '' };
+        setLastPurchaseByKey((prev) => ({ ...prev, [cacheKey]: info }));
+      }
+    }
+
+    setItems((prev) => {
+      const next = [...prev];
+      const row = { ...(next[rowIndex] || blankItemRow()) };
+      row.last_po_date = String(info?.po_date || '');
+      row.last_po_rate = String(info?.last_rate || '');
+      next[rowIndex] = row;
+      return next;
+    });
+  };
+
   const validate = () => {
     const next = {};
     if (!String(formData.po_date || '').trim()) next.po_date = 'PO date required';
@@ -305,7 +338,7 @@ export default function PurchaseOrdersPage({
     }
     meaningfulItems.forEach((it, idx) => {
       if (!String(it.item_id || '').trim()) next[`item_${idx}`] = 'Select item from Item Master';
-      if (!String(it.description || it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item description required';
+      if (!String(it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item required';
       if (!String(it.qty || '').trim()) next[`qty_${idx}`] = 'Qty required';
     });
     setErrors(next);
@@ -569,11 +602,12 @@ export default function PurchaseOrdersPage({
                     {showErp ? <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>ERP</th> : null}
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Supplier{requiredMark}</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Description{requiredMark}</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Qty{requiredMark}</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Date</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Rate</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Remark</th>
                     {!locked ? <th style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }} /> : null}
                   </tr>
@@ -583,7 +617,16 @@ export default function PurchaseOrdersPage({
                     <tr key={idx}>
                       {showErp ? (
                         <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                          <select disabled={itemLocked} value={row.erp_code} onChange={(e) => setItem(idx, 'erp_code', e.target.value)} style={{ width: '140px' }}>
+                          <select
+                            disabled={itemLocked}
+                            value={row.erp_code}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setItem(idx, 'erp_code', value);
+                              hydrateLastPurchase(idx, value, itemType);
+                            }}
+                            style={{ width: '140px' }}
+                          >
                             <option value="">Select ERP</option>
                             {itemOptions.map((it) => (
                               <option key={`${it.item_type}-${it.erp_code}`} value={it.erp_code}>{it.erp_code}</option>
@@ -619,13 +662,11 @@ export default function PurchaseOrdersPage({
                                 next[idx] = nextRow;
                                 return next;
                               });
+                              hydrateLastPurchase(idx, showErp ? match.erp_code : match.item_name, itemType);
                             }
                           }}
                           style={{ width: '220px' }}
                         />
-                      </td>
-                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input disabled={itemLocked} value={row.description} onChange={(e) => setItem(idx, 'description', e.target.value)} style={{ width: '240px' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={itemLocked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
@@ -635,10 +676,16 @@ export default function PurchaseOrdersPage({
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={itemLocked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                         <input disabled={true} value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
+                      </td>
+                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
+                        <input disabled value={row.last_po_date} style={{ width: '120px', background: '#f9fafb' }} />
+                      </td>
+                      <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
+                        <input disabled value={row.last_po_rate} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={itemLocked} value={row.remark} onChange={(e) => setItem(idx, 'remark', e.target.value)} style={{ width: '160px' }} />
