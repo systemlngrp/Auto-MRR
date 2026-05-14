@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function SearchableSelect({
   value,
@@ -17,7 +17,6 @@ export default function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [draft, setDraft] = useState(String(value ?? ''));
-  const deferredDraft = useDeferredValue(draft);
 
   const normalizedOptions = useMemo(() => {
     const uniq = new Map();
@@ -31,11 +30,11 @@ export default function SearchableSelect({
   }, [options]);
 
   const filteredOptions = useMemo(() => {
-    const q = String(deferredDraft || '').trim().toLowerCase();
+    const q = String(draft || '').trim().toLowerCase();
     if (!q) return normalizedOptions.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
     const matches = normalizedOptions.filter((o) => String(o).toLowerCase().includes(q));
     return matches.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
-  }, [normalizedOptions, deferredDraft, maxVisible]);
+  }, [normalizedOptions, draft, maxVisible]);
 
   useEffect(() => {
     if (open) return;
