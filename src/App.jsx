@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchItemGroups, saveItemGroup, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster, saveStateMaster, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchItemGroups, saveItemGroup, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchStateMaster, saveStateMaster, fetchMasterCounts, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -2259,6 +2259,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const pendingListCacheRef = useRef(new Map());
   const editMrrCacheRef = useRef(new Map());
   const allApprovalsCacheRef = useRef({ key: '', rows: [] });
+  const masterCountsLoadRef = useRef(new Map());
   const safeEditData = editData && typeof editData === 'object' ? editData : null;
 
   const pendingCounts = useMemo(() => ({
@@ -2750,48 +2751,13 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const loadMasterCounts = async () => {
     if (!tempFirm) return;
     try {
-      const [items, suppliers, users, states, prs, pos] = await Promise.all([
-        fetchItems({ spreadsheetId: tempFirm.spreadsheetId }),
-        fetchSupplierMaster({ spreadsheetId: tempFirm.spreadsheetId }),
-        fetchUsers({ spreadsheetId: tempFirm.spreadsheetId }),
-        fetchStateMaster({ spreadsheetId: tempFirm.spreadsheetId }),
-        fetchPurchaseRequests({ spreadsheetId: tempFirm.spreadsheetId }),
-        fetchPurchaseOrders({ spreadsheetId: tempFirm.spreadsheetId })
-      ]);
-
-      const prRows = Array.isArray(prs) ? prs : [];
-      const poRowsRaw = Array.isArray(pos) ? pos : [];
-
-      const poMap = {};
-      poRowsRaw.forEach((row) => {
-        const poNo = String(row?.po_no || '').trim();
-        const prNo = String(row?.pr_no || '').trim();
-        if (prNo && poNo && !poMap[prNo]) poMap[prNo] = poNo;
-      });
-
-      setMasterCounts({
-        item_master: items?.length || 0,
-        suppliers: suppliers?.length || 0,
-        users: users?.length || 0,
-        state_master: states?.length || 0,
-        purchase_requests_pending: prRows.filter(p => String(p.status).toLowerCase().includes('pending')).length,
-        purchase_requests_approved: prRows.filter(p => {
-          const st = String(p.status).toLowerCase();
-          const prNo = String(p.pr_no || '').trim();
-          return st.includes('approved') && (!prNo || !poMap[prNo]);
-        }).length,
-        purchase_requests_complete: prRows.filter(p => {
-          const st = String(p.status).toLowerCase();
-          const prNo = String(p.pr_no || '').trim();
-          return st.includes('approved') && prNo && poMap[prNo];
-        }).length,
-        purchase_requests_rejected: prRows.filter(p => String(p.status).toLowerCase().includes('rejected')).length,
-        po_all: poRowsRaw.length,
-        po_draft: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('draft')).length,
-        po_pending: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('pending')).length,
-        po_approved: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('approved')).length,
-        po_rejected: poRowsRaw.filter(p => String(p.status).toLowerCase().includes('rejected')).length,
-      });
+      const firmKey = String(tempFirm.spreadsheetId || tempFirm.id || '').trim();
+      const now = Date.now();
+      const last = Number(masterCountsLoadRef.current.get(firmKey) || 0);
+      if (last > 0 && (now - last) < 30000) return;
+      masterCountsLoadRef.current.set(firmKey, now);
+      const counts = await fetchMasterCounts({ spreadsheetId: tempFirm.spreadsheetId });
+      setMasterCounts((prev) => ({ ...prev, ...(counts || {}) }));
     } catch (err) {
       console.error('Failed to load master counts:', err);
     }
@@ -3050,9 +3016,14 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     if (step === 3 && tempFirm) {
       loadPendingList();
       loadEditMrrList();
-      loadMasterCounts();
     }
   }, [step, tempFirm, tempType]);
+
+  useEffect(() => {
+    if (step === 3 && tempFirm) {
+      loadMasterCounts();
+    }
+  }, [step, tempFirm]);
 
   useEffect(() => {
     if (step === 3 && firms?.length) {

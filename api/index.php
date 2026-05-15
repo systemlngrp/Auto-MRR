@@ -334,6 +334,7 @@ function db(): PDO
         $pdo = new PDO($dsn, $db['username'] ?? '', $db['password'] ?? '', [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_PERSISTENT => true,
         ]);
     } catch (Throwable $e) {
         $message = $e->getMessage();
@@ -3131,6 +3132,89 @@ try {
             ];
         }, $rows);
         jsonOut(['ok' => true, 'purchase_orders' => $pos]);
+    }
+
+    if ($action === 'get_master_counts') {
+        $auth = requireAuthenticated();
+        $firmIdText = trim((string)($firmId ?? ''));
+        $authFirm = trim((string)($auth['firm_id'] ?? ''));
+        if ($firmIdText !== '' && $authFirm !== '' && $authFirm !== $firmIdText) {
+            jsonOut(['ok' => false, 'error' => 'Access denied for this firm.'], 403);
+        }
+
+        ensureSessionStarted();
+        $cacheTtl = 60;
+        $cacheKey = $firmIdText !== '' ? $firmIdText : 'default';
+        $cacheBucket = is_array($_SESSION['master_counts_cache'] ?? null) ? $_SESSION['master_counts_cache'] : [];
+        $cached = is_array($cacheBucket[$cacheKey] ?? null) ? $cacheBucket[$cacheKey] : null;
+        if (is_array($cached) && (int)($cached['ts'] ?? 0) > 0 && (time() - (int)$cached['ts']) < $cacheTtl) {
+            jsonOut(['ok' => true, 'counts' => (array)($cached['data'] ?? [])]);
+        }
+
+        $pdo = db();
+        $firmParam = $firmIdText !== '' ? $firmIdText : $firmId;
+
+        $countTable = static function (PDO $pdo, string $sql, array $params = []): int {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return (int)($stmt->fetchColumn() ?: 0);
+        };
+
+        $itemCount = $countTable($pdo, "SELECT COUNT(*) FROM item_master WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $supplierCount = $countTable($pdo, "SELECT COUNT(*) FROM suppliers WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $userCount = $countTable($pdo, "SELECT COUNT(*) FROM users WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $stateCount = $countTable($pdo, "SELECT COUNT(*) FROM state_master");
+
+        $stmt = $pdo->prepare("
+            SELECT
+              SUM(CASE WHEN LOWER(COALESCE(pr.status_text, 'pending')) LIKE '%pending%' THEN 1 ELSE 0 END) AS pr_pending,
+              SUM(CASE WHEN LOWER(COALESCE(pr.status_text, '')) LIKE '%rejected%' THEN 1 ELSE 0 END) AS pr_rejected,
+              SUM(CASE WHEN LOWER(COALESCE(pr.status_text, '')) LIKE '%approved%' AND EXISTS (
+                SELECT 1 FROM purchase_orders po WHERE po.firm_id = pr.firm_id AND po.pr_id = pr.id LIMIT 1
+              ) THEN 1 ELSE 0 END) AS pr_complete,
+              SUM(CASE WHEN LOWER(COALESCE(pr.status_text, '')) LIKE '%approved%' AND NOT EXISTS (
+                SELECT 1 FROM purchase_orders po WHERE po.firm_id = pr.firm_id AND po.pr_id = pr.id LIMIT 1
+              ) THEN 1 ELSE 0 END) AS pr_approved
+            FROM purchase_requests pr
+            WHERE pr.firm_id = :firm_id
+        ");
+        $stmt->execute(['firm_id' => $firmParam]);
+        $prAgg = $stmt->fetch() ?: [];
+
+        $stmt2 = $pdo->prepare("
+            SELECT
+              COUNT(*) AS po_all,
+              SUM(CASE WHEN LOWER(COALESCE(status_text, '')) LIKE '%draft%' THEN 1 ELSE 0 END) AS po_draft,
+              SUM(CASE WHEN LOWER(COALESCE(status_text, '')) LIKE '%pending%' THEN 1 ELSE 0 END) AS po_pending,
+              SUM(CASE WHEN LOWER(COALESCE(status_text, '')) LIKE '%approved%' THEN 1 ELSE 0 END) AS po_approved,
+              SUM(CASE WHEN LOWER(COALESCE(status_text, '')) LIKE '%rejected%' THEN 1 ELSE 0 END) AS po_rejected
+            FROM purchase_orders
+            WHERE firm_id = :firm_id
+        ");
+        $stmt2->execute(['firm_id' => $firmParam]);
+        $poAgg = $stmt2->fetch() ?: [];
+
+        $counts = [
+            'item_master' => $itemCount,
+            'suppliers' => $supplierCount,
+            'users' => $userCount,
+            'state_master' => (int)($stateCount ?: 0),
+            'purchase_requests_pending' => (int)($prAgg['pr_pending'] ?? 0),
+            'purchase_requests_approved' => (int)($prAgg['pr_approved'] ?? 0),
+            'purchase_requests_complete' => (int)($prAgg['pr_complete'] ?? 0),
+            'purchase_requests_rejected' => (int)($prAgg['pr_rejected'] ?? 0),
+            'po_all' => (int)($poAgg['po_all'] ?? 0),
+            'po_draft' => (int)($poAgg['po_draft'] ?? 0),
+            'po_pending' => (int)($poAgg['po_pending'] ?? 0),
+            'po_approved' => (int)($poAgg['po_approved'] ?? 0),
+            'po_rejected' => (int)($poAgg['po_rejected'] ?? 0),
+        ];
+
+        $_SESSION['master_counts_cache'] = array_merge($cacheBucket, [
+            $cacheKey => ['ts' => time(), 'data' => $counts],
+        ]);
+
+        jsonOut(['ok' => true, 'counts' => $counts]);
     }
 
     if ($action === 'get_purchase_order_details') {

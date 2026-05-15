@@ -801,6 +801,18 @@ export async function fetchPurchaseOrders(options = {}) {
   return Array.isArray(payload?.purchase_orders) ? payload.purchase_orders : [];
 }
 
+export async function fetchMasterCounts(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_master_counts',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJsonCached(`${backendUrl}?${query}`);
+  return (payload && payload.counts && typeof payload.counts === 'object') ? payload.counts : {};
+}
+
 export async function fetchPurchaseOrderDetails(poNo, options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const firmId = getFirmKey(options);
