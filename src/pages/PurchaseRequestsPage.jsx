@@ -920,7 +920,7 @@ export default function PurchaseRequestsPage({
   }
 
   return (
-    <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
+    <div style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb', minHeight: '100vh' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
         <ConfirmModal
           isOpen={!!confirm.open}

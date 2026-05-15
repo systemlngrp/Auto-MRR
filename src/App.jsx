@@ -84,11 +84,27 @@ function normalizeAppPath(pathname) {
   return '/';
 }
 
+let lastNavTime = 0;
+let navCount = 0;
+
 function syncBrowserPath(nextPath, { replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const normalizedTarget = normalizeAppPath(nextPath);
   const currentPath = normalizeAppPath(getCurrentPathname());
   if (!normalizedTarget || normalizedTarget === currentPath) return;
+
+  const now = Date.now();
+  if (now - lastNavTime < 1000) {
+    navCount++;
+    if (navCount > 10) {
+      console.warn('Navigation loop detected and blocked in syncBrowserPath.');
+      return;
+    }
+  } else {
+    navCount = 0;
+  }
+  lastNavTime = now;
+
   const method = replace ? 'replaceState' : 'pushState';
   window.history[method]({}, '', normalizedTarget);
 }
