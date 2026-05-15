@@ -1158,18 +1158,11 @@ export default function PurchaseOrdersPage({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>{selectedFirm?.name || ''}</span>
-              <span style={{ background: '#e0f2fe', color: '#075985', border: '1px solid #0ea5e9', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }}>
-                View: {tabLabel}
-              </span>
-            </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PO / supplier" style={{ ...inputStyle('search'), width: '260px', borderRadius: '999px' }} />
             {!isApproveMode ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <SearchableSelect
                   value={tabLabel}
                   onChange={(v) => {
