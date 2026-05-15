@@ -2237,7 +2237,16 @@ try {
 
     if ($action === 'gemini_generate') {
         // Proxy Gemini requests so API keys remain server-side (not in frontend bundles).
-        $auth = requireAuthenticated();
+        // NOTE: This endpoint is used by the UI to extract data from uploaded invoice / packing slip photos.
+        // If your deployment requires login, keep `$_SESSION['auth']` populated via the `login` action.
+        // If you want to allow this endpoint without login, set `ALLOW_PUBLIC_GEMINI_PROXY=1` on the server.
+        $auth = sessionAuth();
+        $loginId = trim((string)($auth['login_id'] ?? ''));
+        $allowPublic = strtolower(trim((string)(getenv('ALLOW_PUBLIC_GEMINI_PROXY') ?: ($_ENV['ALLOW_PUBLIC_GEMINI_PROXY'] ?? ''))));
+        $publicEnabled = in_array($allowPublic, ['1', 'true', 'yes', 'on'], true);
+        if ($loginId === '' && !$publicEnabled) {
+            jsonOut(['ok' => false, 'error' => 'Authentication required. Please login again.'], 401);
+        }
         $payload = json_decode(file_get_contents('php://input'), true);
         if (!is_array($payload)) {
             jsonOut(['ok' => false, 'error' => 'Invalid JSON payload.'], 400);
@@ -2251,15 +2260,11 @@ try {
         // Ensure firm scoping when present (frontend passes firm_id to authenticate).
         $firmIdText = trim((string)($firmId ?? ''));
         $authFirm = trim((string)($auth['firm_id'] ?? ''));
-        if ($firmIdText !== '' && $authFirm !== '' && $authFirm !== $firmIdText) {
+        if ($loginId !== '' && $firmIdText !== '' && $authFirm !== '' && $authFirm !== $firmIdText) {
             jsonOut(['ok' => false, 'error' => 'Access denied for this firm.'], 403);
         }
 
-        $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: getenv('GOOGLE_GEMINI_API_KEY') ?: getenv('GCP_GEMINI_API_KEY') ?: ''));
-        if ($apiKey === '') {
-            // Allow using the same name as the frontend build var in hosting panels (server-side env).
-            $apiKey = trim((string)(getenv('VITE_GEMINI_API_KEY') ?: ''));
-        }
+        $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '') ?: getenv('GOOGLE_GEMINI_API_KEY') ?: getenv('GCP_GEMINI_API_KEY') ?: ''));
         if ($apiKey === '') {
             jsonOut(['ok' => false, 'error' => 'Missing GEMINI_API_KEY on server. Set it in your hosting environment variables.'], 500);
         }
