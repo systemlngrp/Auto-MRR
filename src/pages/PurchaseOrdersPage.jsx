@@ -33,6 +33,13 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : 0;
 }
 
+function isFiniteNumberText(value) {
+  const t = String(value ?? '').trim();
+  if (!t) return false;
+  const num = Number(t);
+  return Number.isFinite(num);
+}
+
 function formatAmount(value) {
   const num = toNumber(value);
   if (!num) return '';
@@ -63,6 +70,182 @@ function inferPrNoFromPoNo(poNo) {
   if (/^PO\s+/i.test(text)) return text.replace(/^PO\s+/i, 'PR ');
   if (/^PO/i.test(text)) return text.replace(/^PO/i, 'PR');
   return '';
+}
+
+let jsPdfLoaderPromise = null;
+
+function ensureJsPdfLoaded_() {
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (jsPdfLoaderPromise) return jsPdfLoaderPromise;
+
+  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.jspdf?.jsPDF) resolve(window.jspdf.jsPDF);
+      else reject(new Error('jsPDF loaded but not available on window.'));
+    };
+    script.onerror = () => reject(new Error('Could not load jsPDF library.'));
+    document.head.appendChild(script);
+  });
+
+  return jsPdfLoaderPromise;
+}
+
+function fileSafeName_(value) {
+  return String(value || 'purchase-order').replace(/[^\w.-]+/g, '_');
+}
+
+async function downloadPurchaseOrderPdfDirect(firm, po, items = []) {
+  const poNo = String(po?.po_no || '').trim() || 'purchase-order';
+  try {
+    const jsPDFClass = await ensureJsPdfLoaded_();
+    const pdf = new jsPDFClass({ orientation: 'p', unit: 'pt', format: 'a4' });
+
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 36;
+    let y = margin;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(18);
+    pdf.text('PURCHASE ORDER', pageWidth / 2, y, { align: 'center' });
+    y += 22;
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(String(firm?.name || ''), pageWidth / 2, y, { align: 'center' });
+    y += 18;
+
+    pdf.setDrawColor(180);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 16;
+
+    const fields = [
+      ['PO No', po?.po_no || ''],
+      ['PR No', po?.pr_no || inferPrNoFromPoNo(po?.po_no) || ''],
+      ['PO Date', po?.po_date || ''],
+      ['Supplier', po?.supplier || ''],
+      ['Status', po?.status || '']
+    ];
+
+    fields.forEach(([label, value]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text(`${label}:`, margin, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(String(value || ''), margin + 95, y);
+      y += 16;
+    });
+
+    const details = String(po?.po_details || '').trim();
+    if (details) {
+      y += 6;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text('PO Details:', margin, y);
+      y += 12;
+      pdf.setFont('helvetica', 'normal');
+      const wrapped = pdf.splitTextToSize(details, pageWidth - margin * 2);
+      pdf.text(wrapped, margin, y);
+      y += wrapped.length * 12 + 6;
+    }
+
+    const remark = String(po?.remark || '').trim();
+    if (remark) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text('Remark:', margin, y);
+      y += 12;
+      pdf.setFont('helvetica', 'normal');
+      const wrapped = pdf.splitTextToSize(remark, pageWidth - margin * 2);
+      pdf.text(wrapped, margin, y);
+      y += wrapped.length * 12 + 6;
+    }
+
+    y += 6;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(11);
+    pdf.text('ITEMS', margin, y);
+    y += 10;
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 14;
+
+    const colX = {
+      sno: margin,
+      item: margin + 34,
+      qty: pageWidth - margin - 160,
+      rate: pageWidth - margin - 95,
+      amt: pageWidth - margin
+    };
+
+    const drawHeader = () => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.text('S#', colX.sno, y);
+      pdf.text('Item', colX.item, y);
+      pdf.text('Qty', colX.qty, y, { align: 'right' });
+      pdf.text('Rate', colX.rate, y, { align: 'right' });
+      pdf.text('Amount', colX.amt, y, { align: 'right' });
+      y += 10;
+      pdf.setDrawColor(200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 12;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+    };
+
+    drawHeader();
+
+    const cleanItems = (Array.isArray(items) ? items : []).filter((it) => Object.values(it || {}).some((v) => String(v ?? '').trim() !== ''));
+    let total = 0;
+
+    for (let i = 0; i < cleanItems.length; i++) {
+      const it = cleanItems[i] || {};
+      const name = String(it?.description || it?.item_name || it?.erp_code || '').trim();
+      const qty = String(it?.qty || '').trim();
+      const rate = String(it?.rate || '').trim();
+      const amountNum = toNumber(it?.amount) || (toNumber(qty) * toNumber(rate));
+      total += amountNum;
+
+      const itemText = name || '-';
+      const wrapped = pdf.splitTextToSize(itemText, colX.qty - colX.item - 8);
+      const rowHeight = Math.max(1, wrapped.length) * 11;
+
+      if (y + rowHeight > pageHeight - margin - 40) {
+        pdf.addPage();
+        y = margin;
+        drawHeader();
+      }
+
+      pdf.text(String(i + 1), colX.sno, y);
+      pdf.text(wrapped, colX.item, y);
+      pdf.text(String(qty || ''), colX.qty, y, { align: 'right' });
+      pdf.text(String(rate || ''), colX.rate, y, { align: 'right' });
+      pdf.text(formatAmount(amountNum), colX.amt, y, { align: 'right' });
+
+      y += rowHeight;
+      y += 4;
+    }
+
+    y += 10;
+    if (y > pageHeight - margin - 30) {
+      pdf.addPage();
+      y = margin;
+    }
+    pdf.setDrawColor(120);
+    pdf.line(pageWidth - margin - 220, y, pageWidth - margin, y);
+    y += 14;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10);
+    pdf.text('Total', pageWidth - margin - 110, y, { align: 'right' });
+    pdf.text(formatAmount(total), pageWidth - margin, y, { align: 'right' });
+
+    pdf.save(`${fileSafeName_(poNo)}.pdf`);
+  } catch (err) {
+    alert((err && err.message) ? err.message : 'Could not download PO PDF.');
+  }
 }
 
 export default function PurchaseOrdersPage({
@@ -96,7 +279,7 @@ export default function PurchaseOrdersPage({
 
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
-  const [tab, setTab] = useState('all');
+  const [tab, setTab] = useState(() => (mode === 'approve_po' ? 'pending' : 'all'));
   const [search, setSearch] = useState('');
 
   const [pos, setPos] = useState([]);
@@ -262,7 +445,7 @@ export default function PurchaseOrdersPage({
     if (t === 'rejected') return 'Rejected';
     return 'All';
   }, [tab]);
-  const tabOptions = useMemo(() => ['All', 'Draft', 'Pending', 'Approved', 'Rejected'], []);
+  const tabOptions = useMemo(() => (isApproveMode ? ['Pending'] : ['All', 'Draft', 'Pending', 'Approved', 'Rejected']), [isApproveMode]);
 
   const setItem = (index, key, value) => {
     setItems((prev) => {
@@ -340,6 +523,9 @@ export default function PurchaseOrdersPage({
       if (!String(it.item_id || '').trim()) next[`item_${idx}`] = 'Select item from Item Master';
       if (!String(it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item required';
       if (!String(it.qty || '').trim()) next[`qty_${idx}`] = 'Qty required';
+      if (!String(it.rate || '').trim()) next[`rate_${idx}`] = 'Rate required';
+      else if (!isFiniteNumberText(it.rate)) next[`rate_${idx}`] = 'Rate must be numeric';
+      if (String(it.qty || '').trim() && !isFiniteNumberText(it.qty)) next[`qty_${idx}`] = 'Qty must be numeric';
     });
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -467,6 +653,10 @@ export default function PurchaseOrdersPage({
       setStatus(message);
       setView('list');
       await load();
+
+      if (poNo && window.confirm('PO saved. Download PO PDF now?')) {
+        await downloadPurchaseOrderPdfDirect(selectedFirm, { ...poPayload, po_no: poNo }, meaningfulItems);
+      }
     } catch (err) {
       setStatus(err?.message || 'Could not save PO.');
     } finally {
@@ -525,6 +715,17 @@ export default function PurchaseOrdersPage({
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button type="button" className="btn" onClick={() => setView('list')} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
+              {String(formData.po_no || '').trim() ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={isSaving}
+                  onClick={() => downloadPurchaseOrderPdfDirect(selectedFirm, formData, items)}
+                  style={{ padding: '10px 14px', fontWeight: 900, background: '#0f766e', borderColor: '#0f766e', color: '#fff' }}
+                >
+                  Download PO PDF
+                </button>
+              ) : null}
               {!locked ? (
                 <>
                   {!isFromIndent ? (
@@ -672,11 +873,12 @@ export default function PurchaseOrdersPage({
                         <input disabled={itemLocked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={itemLocked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input type="number" step="0.01" disabled={itemLocked} value={row.qty} onChange={(e) => setItem(idx, 'qty', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input type="number" step="0.01" disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        {errors[`rate_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`rate_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                         <input disabled={true} value={row.amount} style={{ width: '90px', textAlign: 'right', background: '#f9fafb' }} />
@@ -734,21 +936,23 @@ export default function PurchaseOrdersPage({
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PO / supplier" style={{ ...inputStyle('search'), width: '260px', borderRadius: '999px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
-              <SearchableSelect
-                value={tabLabel}
-                onChange={(v) => {
-                  const next = String(v || '').trim().toLowerCase();
-                  if (next === 'all' || next === 'draft' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
-                  else setTab('all');
-                }}
-                options={tabOptions}
-                allowCustom={false}
-                placeholder="Status"
-                inputStyle={{ ...inputStyle('tab'), width: 160, borderRadius: 999 }}
-              />
-            </div>
+            {!isApproveMode ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
+                <SearchableSelect
+                  value={tabLabel}
+                  onChange={(v) => {
+                    const next = String(v || '').trim().toLowerCase();
+                    if (next === 'all' || next === 'draft' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
+                    else setTab('all');
+                  }}
+                  options={tabOptions}
+                  allowCustom={false}
+                  placeholder="Status"
+                  inputStyle={{ ...inputStyle('tab'), width: 160, borderRadius: 999 }}
+                />
+              </div>
+            ) : null}
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
           </div>
         </div>

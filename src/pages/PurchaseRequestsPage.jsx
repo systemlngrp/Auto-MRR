@@ -133,6 +133,7 @@ export default function PurchaseRequestsPage({
 
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve';
+  const isPendingPoContext = String(listContext || '').trim().toLowerCase() === 'pending_po';
 
   const load = async () => {
     if (!selectedFirm) return;
@@ -184,6 +185,11 @@ export default function PurchaseRequestsPage({
     if (typeof onInitialTabConsumed === 'function') onInitialTabConsumed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
+
+  useEffect(() => {
+    if (!isPendingPoContext) return;
+    setTab('approved');
+  }, [isPendingPoContext]);
 
   useEffect(() => {
     if (!createdItem || !createdItemContext) return;
@@ -245,14 +251,19 @@ export default function PurchaseRequestsPage({
   const filteredRows = useMemo(() => {
     const q = String(search || '').trim().toLowerCase();
     return rows.filter((row) => {
-      const statusOk = tab === 'all' ? true : String(row?.status || '').toLowerCase() === tab;
+      const statusText = String(row?.status || '').toLowerCase();
+      const prNo = String(row?.pr_no || '').trim();
+      const hasPo = !!(prNo && poByPrNo[prNo]);
+      const pendingPoOk = !isPendingPoContext || (statusText === 'approved' && !hasPo);
+      if (!pendingPoOk) return false;
+
+      const statusOk = tab === 'all' ? true : statusText === tab;
       if (!statusOk) return false;
       if (String(requesterFilter || '').toLowerCase() !== 'all') {
         const req = String(row?.requested_by || '').trim();
         if (req !== requesterFilter) return false;
       }
       if (String(supplierFilter || '').toLowerCase() !== 'all') {
-        const prNo = String(row?.pr_no || '').trim();
         const info = itemSummaryByPrNo[prNo];
         const suppliers = Array.isArray(info?.suppliers) ? info.suppliers : [];
         if (!suppliers.includes(supplierFilter)) return false;
@@ -667,6 +678,12 @@ export default function PurchaseRequestsPage({
       await approvePurchaseRequest(prNo, decision, String(remark || ''), { spreadsheetId: selectedFirm.spreadsheetId, userEmail });
       await load();
       setSelectedPrNo('');
+      if (decision === 'approve') {
+        setToast({ open: true, message: 'Indent approved. It will now appear in Pending PO list.', variant: 'success' });
+      } else {
+        setToast({ open: true, message: 'Indent rejected.', variant: 'success' });
+      }
+      window.setTimeout(() => setToast((p) => ({ ...p, open: false })), 2600);
     } catch (err) {
       alert(err?.message || 'Could not update PR.');
     } finally {
@@ -925,44 +942,57 @@ export default function PurchaseRequestsPage({
         <div style={{ width: '100%', margin: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests'}</div>
+            <div style={{ fontSize: '26px', fontWeight: 1000, color: isPendingPoContext ? '#c2410c' : '#1d4ed8' }}>
+              {isPendingPoContext ? 'Pending PO (Approved Indents)' : (isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests')}
+            </div>
             <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span>{selectedFirm?.name || ''}</span>
-              <span style={{ background: '#e0f2fe', color: '#075985', border: '1px solid #0ea5e9', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }}>
-                View: {tabLabel}
+              <span style={isPendingPoContext
+                ? { background: '#ffedd5', color: '#9a3412', border: '1px solid #fb923c', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }
+                : { background: '#e0f2fe', color: '#075985', border: '1px solid #0ea5e9', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }
+              }>
+                {isPendingPoContext ? 'Action: Create PO' : `View: ${tabLabel}`}
               </span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PR / user" style={{ ...inputStyle('search'), width: '260px', borderRadius: '999px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
-              <SearchableSelect
-                value={tabLabel}
-                onChange={(v) => {
-                  const next = String(v || '').trim().toLowerCase();
-                  if (next === 'completed') setTab('complete');
-                  else if (next === 'partial approved' || next === 'partial_approved' || next === 'partial-approved') setTab('partial approved');
-                  else if (next === 'all' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
-                  else setTab('pending');
-                }}
-                options={tabOptions}
-                allowCustom={false}
-                placeholder="Status"
-                inputStyle={{
-                  ...inputStyle('tab'),
-                  width: 170,
-                  borderRadius: 999,
-                  background: '#1d4ed8',
-                  borderColor: '#1d4ed8',
-                  color: '#fff',
-                  fontWeight: 1000
-                }}
-              />
-            </div>
+            {!isPendingPoContext ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
+                <SearchableSelect
+                  value={tabLabel}
+                  onChange={(v) => {
+                    const next = String(v || '').trim().toLowerCase();
+                    if (next === 'completed') setTab('complete');
+                    else if (next === 'partial approved' || next === 'partial_approved' || next === 'partial-approved') setTab('partial approved');
+                    else if (next === 'all' || next === 'pending' || next === 'approved' || next === 'rejected') setTab(next);
+                    else setTab('pending');
+                  }}
+                  options={tabOptions}
+                  allowCustom={false}
+                  placeholder="Status"
+                  inputStyle={{
+                    ...inputStyle('tab'),
+                    width: 170,
+                    borderRadius: 999,
+                    background: '#1d4ed8',
+                    borderColor: '#1d4ed8',
+                    color: '#fff',
+                    fontWeight: 1000
+                  }}
+                />
+              </div>
+            ) : null}
             <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 14px', fontWeight: 800 }}>Back</button>
           </div>
         </div>
+
+        {isPendingPoContext ? (
+          <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: '12px', padding: '10px 12px', marginBottom: '12px', color: '#9a3412', fontSize: 12, fontWeight: 900 }}>
+            Showing only approved indents where PO is not created yet.
+          </div>
+        ) : null}
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1141,11 +1171,23 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.required_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {!(String(listContext || '').toLowerCase() === 'pending_po' && statusText === 'approved') ? (
+                          {!isPendingPoContext ? (
                             <>
                               <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
                             </>
-                          ) : null}
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="btn small"
+                                onClick={(e) => { e.stopPropagation(); openEdit(prNo); }}
+                                disabled={isSaving}
+                                style={{ background: '#fff7ed', borderColor: '#fdba74', color: '#9a3412' }}
+                              >
+                                View Indent
+                              </button>{' '}
+                            </>
+                          )}
                           {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
                             <>
                               <button

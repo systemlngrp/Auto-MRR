@@ -300,8 +300,21 @@ export default function PoDetailsPage({
       if (!String(formData.description).trim()) newErrors.description = 'Description is required';
     }
 
-    if (!String(formData.rate).trim()) newErrors.rate = 'Rate is required';
-    if (!String(formData.quantity).trim()) newErrors.quantity = 'Quantity is required';
+    const rateText = String(formData.rate ?? '').trim();
+    if (!rateText) newErrors.rate = 'Rate is required';
+    else {
+      const rateNum = Number(rateText);
+      if (!Number.isFinite(rateNum)) newErrors.rate = 'Rate must be numeric';
+      else if (rateNum <= 0) newErrors.rate = 'Rate must be greater than 0';
+    }
+
+    const qtyText = String(formData.quantity ?? '').trim();
+    if (!qtyText) newErrors.quantity = 'Quantity is required';
+    else {
+      const qtyNum = Number(qtyText);
+      if (!Number.isFinite(qtyNum)) newErrors.quantity = 'Quantity must be numeric';
+      else if (qtyNum <= 0) newErrors.quantity = 'Quantity must be greater than 0';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
