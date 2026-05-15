@@ -2043,6 +2043,9 @@ try {
     $payload = readPayload();
     $action = getAction();
     $firmId = getFirmId();
+    // Ensure dotenv-style config (api/.env, project .env) is loaded early so env vars
+    // like GEMINI_API_KEY / ALLOW_PUBLIC_GEMINI_PROXY are available for all actions.
+    getConfig();
 
     if ($action === 'health') {
         try {
@@ -2086,6 +2089,43 @@ try {
                 ],
             ], 500);
         }
+    }
+
+    if ($action === 'gemini_env') {
+        $auth = sessionAuth();
+        $loginId = trim((string)($auth['login_id'] ?? ''));
+        $allowPublicRaw = (string)(
+            getenv('ALLOW_PUBLIC_GEMINI_PROXY')
+            ?: ($_ENV['ALLOW_PUBLIC_GEMINI_PROXY'] ?? '')
+            ?: ($_SERVER['ALLOW_PUBLIC_GEMINI_PROXY'] ?? '')
+        );
+        $allowPublic = strtolower(trim($allowPublicRaw));
+        $publicEnabled = in_array($allowPublic, ['1', 'true', 'yes', 'on'], true);
+        $apiKeyPresent = trim((string)(
+            getenv('GEMINI_API_KEY')
+            ?: ($_ENV['GEMINI_API_KEY'] ?? '')
+            ?: ($_SERVER['GEMINI_API_KEY'] ?? '')
+            ?: getenv('GOOGLE_GEMINI_API_KEY')
+            ?: getenv('GCP_GEMINI_API_KEY')
+            ?: ''
+        )) !== '';
+
+        jsonOut([
+            'ok' => true,
+            'php' => [
+                'version' => PHP_VERSION,
+                'sapi' => PHP_SAPI,
+            ],
+            'session' => [
+                'active' => session_status() === PHP_SESSION_ACTIVE,
+                'login_id_present' => $loginId !== '',
+            ],
+            'env' => [
+                'allow_public_raw_present' => trim($allowPublicRaw) !== '',
+                'allow_public_enabled' => $publicEnabled,
+                'gemini_api_key_present' => $apiKeyPresent,
+            ],
+        ]);
     }
 
     $normalizeMenuAccess = static function ($value): ?string {
@@ -2242,7 +2282,11 @@ try {
         // If you want to allow this endpoint without login, set `ALLOW_PUBLIC_GEMINI_PROXY=1` on the server.
         $auth = sessionAuth();
         $loginId = trim((string)($auth['login_id'] ?? ''));
-        $allowPublic = strtolower(trim((string)(getenv('ALLOW_PUBLIC_GEMINI_PROXY') ?: ($_ENV['ALLOW_PUBLIC_GEMINI_PROXY'] ?? ''))));
+        $allowPublic = strtolower(trim((string)(
+            getenv('ALLOW_PUBLIC_GEMINI_PROXY')
+            ?: ($_ENV['ALLOW_PUBLIC_GEMINI_PROXY'] ?? '')
+            ?: ($_SERVER['ALLOW_PUBLIC_GEMINI_PROXY'] ?? '')
+        )));
         $publicEnabled = in_array($allowPublic, ['1', 'true', 'yes', 'on'], true);
         if ($loginId === '' && !$publicEnabled) {
             jsonOut(['ok' => false, 'error' => 'Authentication required. Please login again.'], 401);
@@ -2264,17 +2308,25 @@ try {
             jsonOut(['ok' => false, 'error' => 'Access denied for this firm.'], 403);
         }
 
-        $apiKey = trim((string)(getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '') ?: getenv('GOOGLE_GEMINI_API_KEY') ?: getenv('GCP_GEMINI_API_KEY') ?: ''));
+        $apiKey = trim((string)(
+            getenv('GEMINI_API_KEY')
+            ?: ($_ENV['GEMINI_API_KEY'] ?? '')
+            ?: ($_SERVER['GEMINI_API_KEY'] ?? '')
+            ?: getenv('GOOGLE_GEMINI_API_KEY')
+            ?: getenv('GCP_GEMINI_API_KEY')
+            ?: ''
+        ));
         if ($apiKey === '') {
             jsonOut(['ok' => false, 'error' => 'Missing GEMINI_API_KEY on server. Set it in your hosting environment variables.'], 500);
         }
 
         $url = 'https://generativelanguage.googleapis.com/v1/models/' . rawurlencode($model) . ':generateContent?key=' . rawurlencode($apiKey);
+        $requestJson = json_encode($requestBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $options = [
             'http' => [
                 'method' => 'POST',
                 'header' => "Content-Type: application/json\r\n",
-                'content' => json_encode($requestBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'content' => $requestJson,
                 'timeout' => 120,
             ],
         ];
@@ -2286,7 +2338,58 @@ try {
             $status = (int)$m[1];
         }
         if ($responseText === false) {
-            jsonOut(['ok' => false, 'error' => 'Gemini request failed.'], 502);
+            $lastError = error_get_last();
+            $detail = is_array($lastError) ? trim((string)($lastError['message'] ?? '')) : '';
+
+            // Fallback to cURL on hosts where allow_url_fopen or stream wrappers are restricted.
+            if (function_exists('curl_init')) {
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $requestJson);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+                $curlBody = curl_exec($ch);
+                $curlErr = trim((string)curl_error($ch));
+                $curlCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                curl_close($ch);
+
+                if ($curlBody === false) {
+                    jsonOut([
+                        'ok' => false,
+                        'error' => 'Gemini request failed.',
+                        'detail' => $curlErr !== '' ? $curlErr : ($detail !== '' ? $detail : 'Unknown network error'),
+                        'hint' => 'Check outbound HTTPS access from hosting and DNS/SSL support.',
+                    ], 502);
+                }
+
+                $decodedCurl = json_decode((string)$curlBody, true);
+                if ($curlCode >= 400) {
+                    jsonOut($decodedCurl ?: [
+                        'ok' => false,
+                        'error' => 'Gemini request failed.',
+                        'detail' => 'Upstream returned HTTP ' . $curlCode,
+                    ], $curlCode);
+                }
+                if (!is_array($decodedCurl)) {
+                    jsonOut([
+                        'ok' => false,
+                        'error' => 'Gemini returned invalid JSON.',
+                        'detail' => 'Upstream HTTP ' . ($curlCode ?: 0),
+                    ], 502);
+                }
+                jsonOut($decodedCurl, 200);
+            }
+
+            jsonOut([
+                'ok' => false,
+                'error' => 'Gemini request failed.',
+                'detail' => $detail !== '' ? $detail : 'Unknown network error',
+                'hint' => 'Host may block HTTPS streams; enable allow_url_fopen or cURL in PHP.',
+            ], 502);
         }
         $decoded = json_decode($responseText, true);
         if ($status >= 400) {
