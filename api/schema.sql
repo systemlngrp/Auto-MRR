@@ -578,3 +578,76 @@ CREATE TABLE IF NOT EXISTS reel_return_entries (
   KEY idx_reel_return_reel (firm_id, our_reel_no),
   KEY idx_reel_return_job (firm_id, job_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sales_orders (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  order_id VARCHAR(64) NOT NULL,
+  order_date VARCHAR(40) DEFAULT NULL,
+  company_name VARCHAR(255) DEFAULT NULL,
+  po_number VARCHAR(120) DEFAULT NULL,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  qty DECIMAL(18,3) DEFAULT NULL,
+  rate DECIMAL(18,2) DEFAULT NULL,
+  
+  scheduled_date_1 VARCHAR(40) DEFAULT NULL,
+  qty_1 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_2 VARCHAR(40) DEFAULT NULL,
+  qty_2 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_3 VARCHAR(40) DEFAULT NULL,
+  qty_3 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_4 VARCHAR(40) DEFAULT NULL,
+  qty_4 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_5 VARCHAR(40) DEFAULT NULL,
+  qty_5 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_6 VARCHAR(40) DEFAULT NULL,
+  qty_6 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_7 VARCHAR(40) DEFAULT NULL,
+  qty_7 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_8 VARCHAR(40) DEFAULT NULL,
+  qty_8 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_9 VARCHAR(40) DEFAULT NULL,
+  qty_9 DECIMAL(18,3) DEFAULT NULL,
+  scheduled_date_10 VARCHAR(40) DEFAULT NULL,
+  qty_10 DECIMAL(18,3) DEFAULT NULL,
+  
+  order_by VARCHAR(190) DEFAULT NULL,
+  order_timestamp VARCHAR(40) DEFAULT NULL,
+  email_id VARCHAR(190) DEFAULT NULL,
+  po_type VARCHAR(40) DEFAULT NULL,
+  salesman_email VARCHAR(190) DEFAULT NULL,
+  sales_person VARCHAR(190) DEFAULT NULL,
+  remarks TEXT DEFAULT NULL,
+  
+  last_billing_rate_1 DECIMAL(18,2) DEFAULT NULL,
+  last_billing_date_1 VARCHAR(40) DEFAULT NULL,
+  last_billing_rate_2 DECIMAL(18,2) DEFAULT NULL,
+  last_billing_date_2 VARCHAR(40) DEFAULT NULL,
+  last_rapc_1 DECIMAL(18,3) DEFAULT NULL,
+  last_rapc_2 DECIMAL(18,3) DEFAULT NULL,
+  
+  approved_timestamp VARCHAR(40) DEFAULT NULL,
+  approved_email VARCHAR(190) DEFAULT NULL,
+  
+  total_pending_qty DECIMAL(18,3) DEFAULT NULL,
+  total_pending_order_value DECIMAL(18,2) DEFAULT NULL,
+  punch_date VARCHAR(40) DEFAULT NULL,
+  
+  status_text VARCHAR(40) NOT NULL DEFAULT 'pending_approval', -- pending_approval, pending_scheduling, pending_jobs, approved, cancelled
+  
+  cancel_timestamp VARCHAR(40) DEFAULT NULL,
+  cancel_by VARCHAR(190) DEFAULT NULL,
+  cancel_reason TEXT DEFAULT NULL,
+  cancel_qty DECIMAL(18,3) DEFAULT NULL,
+  cancel_qty_reason TEXT DEFAULT NULL,
+  cancel_qty_timestamp VARCHAR(40) DEFAULT NULL,
+  cancel_qty_username_email VARCHAR(190) DEFAULT NULL,
+  
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_sales_order_id (firm_id, order_id),
+  KEY idx_sales_order_status (firm_id, status_text),
+  KEY idx_sales_order_company (firm_id, company_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

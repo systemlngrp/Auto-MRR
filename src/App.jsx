@@ -26,6 +26,7 @@ import ReelReturnPage from './pages/ReelReturnPage';
 import ReelIssueDataPage from './pages/ReelIssueDataPage';
 import DpmJobsPage from './pages/DpmJobsPage';
 import ReelStockPage from './pages/ReelStockPage';
+import OrderFormPage from './pages/OrderFormPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3553,6 +3554,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onItemMaster: () => setStep(13),
               onSuppliers: () => setStep(18),
               onStateMaster: () => setStep(28),
+              onOrderForm: () => setStep(30),
+              onOrderPendingApproval: () => setStep(31),
+              onOrderPendingScheduling: () => setStep(32),
+              onOrderPendingJobs: () => setStep(33),
+              onOrderApproved: () => setStep(34),
+              onOrderCancelled: () => setStep(35),
               onUsers: () => setStep(9),
               onBackToFirms: () => setStep(2)
             }}
@@ -5337,6 +5344,151 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         {userBadge}
         <ReelStockPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
       </>
+    );
+  }
+
+  if (step === 30) {
+    return (
+      <>
+        {userBadge}
+        <OrderFormPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchSuppliers,
+            fetchItems
+          }}
+          onBack={() => setStep(3)}
+          onSaved={(data) => {
+            console.log('Order Form Saved:', data);
+            setStep(3);
+          }}
+        />
+      </>
+    );
+  }
+
+  if (step === 31) {
+    const columns = ['Order Id', 'Order Date', 'Company Name', 'PO Number', 'ERP Code', 'Item', 'Qty', 'Rate', 'PO Type', 'Order By', 'Order Timestamp', 'Email Id', 'Salesman Email', 'Sales Person', 'Last Billing Rate 1', 'Last Billing Date 1', 'Last Billing Rate 2', 'Last Billing Date 2', 'Last RAPC 1', 'Last RAPC 2', 'Remarks', 'Approved Timestamp', 'Approved Email'];
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Pending Approval (Orders)</h2>
+            <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+          </div>
+          <div style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', marginBottom: '18px' }}>
+            <div style={{ fontWeight: 900, color: '#1d4ed8', marginBottom: '4px' }}>Columns:</div>
+            <div style={{ fontSize: '11px', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {columns.map(c => <span key={c} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>{c}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Under Development</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>This module is currently being implemented. Please check back later.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 32) {
+    const columns = ['Order Id', 'Order Date', 'Company Name', 'PO Number', 'ERP Code', 'Item', 'Qty', 'Rate', 'Scheduled Date 1', 'Qty 1', 'Scheduled Date 2', 'Qty 2', 'Scheduled Date 3', 'Qty 3', 'Scheduled Date 4', 'Qty 4', 'Scheduled Date 5', 'Qty 5', 'Scheduled Date 6', 'Qty 6', 'Scheduled Date 7', 'Qty 7', 'Scheduled Date 8', 'Qty 8', 'Scheduled Date 9', 'Qty 9', 'Scheduled Date 10', 'Qty 10', 'Total Pending Qty', 'Total Pending Order value', 'Punch Date', 'Remarks'];
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Pending Scheduling</h2>
+            <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+          </div>
+          <div style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', marginBottom: '18px' }}>
+            <div style={{ fontWeight: 900, color: '#1d4ed8', marginBottom: '4px' }}>Columns:</div>
+            <div style={{ fontSize: '11px', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {columns.map(c => <span key={c} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>{c}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Under Development</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>This module is currently being implemented. Please check back later.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 33) {
+    const columns = ['Order Id', 'Order Date', 'Company Name', 'PO Number', 'ERP Code', 'Item', 'Qty', 'Rate', 'Scheduled Date 1', 'Qty 1', 'Scheduled Date 2', 'Qty 2', 'Scheduled Date 3', 'Qty 3', 'Scheduled Date 4', 'Qty 4', 'Scheduled Date 5', 'Qty 5', 'Scheduled Date 6', 'Qty 6', 'Scheduled Date 7', 'Qty 7', 'Scheduled Date 8', 'Qty 8', 'Scheduled Date 9', 'Qty 9', 'Scheduled Date 10', 'Qty 10', 'Total Pending Qty', 'Total Pending Order value', 'Punch Date', 'Remarks'];
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Pending Jobs</h2>
+            <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+          </div>
+          <div style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', marginBottom: '18px' }}>
+            <div style={{ fontWeight: 900, color: '#1d4ed8', marginBottom: '4px' }}>Columns:</div>
+            <div style={{ fontSize: '11px', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {columns.map(c => <span key={c} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>{c}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Under Development</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>This module is currently being implemented. Please check back later.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 34) {
+    const columns = ['Order Id', 'Order Date', 'Company Name', 'PO Number', 'ERP Code', 'Item', 'Qty', 'Rate', 'PO Type', 'Order By', 'Order Timestamp', 'Email Id', 'Salesman Email', 'Sales Person', 'Last Billing Rate 1', 'Last Billing Date 1', 'Last Billing Rate 2', 'Last Billing Date 2', 'Last RAPC 1', 'Last RAPC 2', 'Remarks', 'Approved Timestamp', 'Approved Email'];
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Approved Orders</h2>
+            <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+          </div>
+          <div style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', marginBottom: '18px' }}>
+            <div style={{ fontWeight: 900, color: '#1d4ed8', marginBottom: '4px' }}>Columns:</div>
+            <div style={{ fontSize: '11px', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {columns.map(c => <span key={c} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>{c}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Under Development</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>This module is currently being implemented. Please check back later.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 35) {
+    const columns = ['Order Id', 'Order Date', 'Company Name', 'PO Number', 'ERP Code', 'Item', 'Qty', 'Cancel Timestamp', 'Cancel By', 'Cancel Reason', 'Cancel Qty', 'Cancel Qty Reason', 'Cancel Qty Timestamp', 'Cancel Qty Username / Email', 'Remarks'];
+    return (
+      <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: 'var(--bg)', backdropFilter: 'blur(12px)' }}>
+        {userBadge}
+        <div style={{ margin: 0, background: '#fff', padding: '24px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>Cancelled Orders</h2>
+            <button type="button" className="btn" onClick={() => setStep(3)} style={{ padding: '10px 16px', fontWeight: 700 }}>Back</button>
+          </div>
+          <div style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', marginBottom: '18px' }}>
+            <div style={{ fontWeight: 900, color: '#1d4ed8', marginBottom: '4px' }}>Columns:</div>
+            <div style={{ fontSize: '11px', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {columns.map(c => <span key={c} style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>{c}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: '18px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', color: '#1d4ed8', maxWidth: '740px' }}>
+            <div style={{ fontWeight: 900, marginBottom: '6px' }}>Under Development</div>
+            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>This module is currently being implemented. Please check back later.</div>
+          </div>
+        </div>
+      </div>
     );
   }
 

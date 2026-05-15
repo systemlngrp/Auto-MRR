@@ -165,6 +165,51 @@ export default function SidebarMenu({
       </div>
 
       <div className="inv-menu-section">
+        <button type="button" className={`inv-menu-header ${openMenuSection === 'orders' ? 'active' : ''}`} onClick={() => safeToggle('orders')}>
+          <span className="inv-menu-title">Orders</span>
+          <span className={`inv-arrow ${openMenuSection === 'orders' ? 'open' : ''}`}>v</span>
+        </button>
+        <div className={`inv-submenu ${openMenuSection === 'orders' ? 'open' : ''}`}>
+          {canSee('order_form') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderForm}>
+              <span>Order Form</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('order_pending_approval') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingApproval}>
+              <span>Pending Approval</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('order_pending_scheduling') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingScheduling}>
+              <span>Pending Scheduling</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('order_pending_jobs') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingJobs}>
+              <span>Pending Jobs</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('order_approved') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderApproved}>
+              <span>Approved Orders</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('order_cancelled') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderCancelled}>
+              <span>Cancelled Orders</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="inv-menu-section">
         <button type="button" className={`inv-menu-header ${openMenuSection === 'mrr' ? 'active' : ''}`} onClick={() => safeToggle('mrr')}>
           <span className="inv-menu-title">MRR</span>
           <span className={`inv-arrow ${openMenuSection === 'mrr' ? 'open' : ''}`}>v</span>
