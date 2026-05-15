@@ -464,7 +464,16 @@ export default function PurchaseOrdersPage({
 
       const buildParts = (itemsList) => (
         (Array.isArray(itemsList) ? itemsList : [])
-          .map((it) => String(it?.item_name || it?.description || it?.erp_code || '').trim())
+          .map((it) => {
+            const name = String(it?.item_name || it?.description || it?.erp_code || '').trim();
+            const qtyNum = toNumber(it?.qty);
+            const hasQty = String(it?.qty ?? '').trim() !== '';
+            const qtyText = hasQty ? qtyNum.toFixed(2) : '';
+            if (!name && !hasQty) return '';
+            if (!name) return `(Qty = ${qtyText || '0.00'})`;
+            if (!hasQty) return name;
+            return `${name} (Qty = ${qtyText})`;
+          })
           .filter(Boolean)
       );
 
@@ -1253,13 +1262,23 @@ export default function PurchaseOrdersPage({
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.supplier || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, lineHeight: 1.2 }}>
-                          {summaryParts.length ? summaryParts.map((t, idx) => (
-                            <span key={idx} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 999, padding: '3px 8px', fontSize: 11, fontWeight: 800 }}>
-                              {t}
-                            </span>
-                          )) : <span style={{ color: '#6b7280' }}>-</span>}
-                        </div>
+                        {summaryParts.length ? (
+                          <div style={{ fontSize: 12, lineHeight: 1.25 }}>
+                            {summaryParts.map((t, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  padding: '4px 0',
+                                  borderBottom: idx === summaryParts.length - 1 ? '0' : '1px solid #e5e7eb'
+                                }}
+                              >
+                                {t}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#6b7280' }}>-</span>
+                        )}
                       </td>
                       <td style={{ padding: '10px 8px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
