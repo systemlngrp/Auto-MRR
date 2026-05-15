@@ -704,6 +704,25 @@ export default function PurchaseOrdersPage({
     }
   };
 
+  const [downloadingPoNo, setDownloadingPoNo] = useState('');
+
+  const downloadPoPdfFromList = async (poNo) => {
+    if (!selectedFirm) return;
+    const cleanPoNo = String(poNo || '').trim();
+    if (!cleanPoNo) return;
+    setDownloadingPoNo(cleanPoNo);
+    try {
+      const payload = await fetchPurchaseOrderDetails(cleanPoNo, { spreadsheetId: selectedFirm.spreadsheetId });
+      const po = payload?.purchase_order || { po_no: cleanPoNo };
+      const its = Array.isArray(payload?.items) ? payload.items : [];
+      await downloadPurchaseOrderPdfDirect(selectedFirm, { ...po, po_no: cleanPoNo }, its);
+    } catch (err) {
+      showToast(err?.message || 'Could not download PO PDF.', 'error');
+    } finally {
+      setDownloadingPoNo('');
+    }
+  };
+
   const runBulkAction = async (decision) => {
     const selected = Object.keys(selectedPoNos).filter((k) => selectedPoNos[k]);
     if (!selected.length) return;
@@ -1128,13 +1147,26 @@ export default function PurchaseOrdersPage({
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>{' '}
-                        {statusText === 'pending' ? (
-                          <>
-                            <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
-                            <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                          </>
-                        ) : null}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>
+                            {statusText === 'pending' ? (
+                              <>
+                                <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
+                                <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                              </>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            className="btn small"
+                            onClick={() => downloadPoPdfFromList(poNo)}
+                            disabled={isSaving || downloadingPoNo === poNo}
+                            style={{ background: '#0f766e', borderColor: '#0f766e', color: '#fff' }}
+                          >
+                            {downloadingPoNo === poNo ? 'Downloading...' : 'Download PDF'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
