@@ -221,11 +221,11 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Contact Number</div>
-              <input value={formData.phone_no} onChange={(e) => setFormData((p) => ({ ...p, phone_no: e.target.value }))} style={inputStyle('phone_no')} />
+              <input type="number" inputMode="numeric" value={formData.phone_no} onChange={(e) => setFormData((p) => ({ ...p, phone_no: e.target.value }))} style={inputStyle('phone_no')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Email</div>
-              <input value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} style={inputStyle('email')} />
+              <input type="email" value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} style={inputStyle('email')} />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>GST No.</div>
@@ -247,7 +247,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>PIN Code</div>
-              <input value={formData.pin_code} onChange={(e) => setFormData((p) => ({ ...p, pin_code: e.target.value }))} style={inputStyle('pin_code')} />
+              <input type="number" inputMode="numeric" value={formData.pin_code} onChange={(e) => setFormData((p) => ({ ...p, pin_code: e.target.value }))} style={inputStyle('pin_code')} />
             </div>
             <div style={{ gridColumn: 'span 4' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>Address</div>
