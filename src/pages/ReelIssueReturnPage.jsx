@@ -16,11 +16,11 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
   const [dpmJobs, setDpmJobs] = useState([]);
 
   // Manual entry states
-  const [manualIssue, setManualIssue] = useState({ our_reel: '', weight: '' });
-  const [manualReturn, setManualReturn] = useState({ our_reel: '', weight: '' });
+  const [manualIssueRows, setManualIssueRows] = useState([{ our_reel: '', weight: '' }]);
+  const [manualReturnRows, setManualReturnRows] = useState([{ our_reel: '', weight: '' }]);
   const [isSavingManual, setIsSavingManual] = useState(false);
-  const manualIssueActive = Boolean(String(manualIssue.our_reel || '').trim() || String(manualIssue.weight || '').trim());
-  const manualReturnActive = Boolean(String(manualReturn.our_reel || '').trim() || String(manualReturn.weight || '').trim());
+  const manualIssueActive = manualIssueRows.some((r) => String(r?.our_reel || '').trim() || String(r?.weight || '').trim());
+  const manualReturnActive = manualReturnRows.some((r) => String(r?.our_reel || '').trim() || String(r?.weight || '').trim());
   const disableManualIssue = manualReturnActive;
   const disableManualReturn = manualIssueActive;
 
@@ -238,21 +238,30 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
 
   const onManualIssue = async () => {
     if (!activeDetail || isSavingManual) return;
-    const ourReel = String(manualIssue.our_reel || '').trim();
-    const weight = Number(manualIssue.weight);
-    if (!ourReel || !weight) {
-      alert('Enter Our Reel No and Weight.');
+    const entries = manualIssueRows
+      .map((r) => ({ ourReel: String(r?.our_reel || '').trim(), weight: Number(r?.weight) }))
+      .filter((r) => r.ourReel !== '' || (Number.isFinite(r.weight) && r.weight > 0));
+    if (!entries.length) {
+      alert('Enter at least 1 Our Reel No and Weight.');
+      return;
+    }
+    const invalid = entries.find((e) => !e.ourReel || !Number.isFinite(e.weight) || e.weight <= 0);
+    if (invalid) {
+      alert('Each Issue row needs Our Reel No and valid Weight.');
       return;
     }
     setIsSavingManual(true);
     try {
-      await saveReelIssue({
-        'JOB NO.': activeDetail.job,
-        'Date': new Date().toLocaleDateString('en-GB'),
-        'Our Reel Number': ourReel,
-        'Weight': String(weight)
-      }, selectedFirm);
-      setManualIssue({ our_reel: '', weight: '' });
+      for (const entry of entries) {
+        // eslint-disable-next-line no-await-in-loop
+        await saveReelIssue({
+          'JOB NO.': activeDetail.job,
+          'Date': new Date().toLocaleDateString('en-GB'),
+          'Our Reel Number': entry.ourReel,
+          'Weight': String(entry.weight)
+        }, selectedFirm);
+      }
+      setManualIssueRows([{ our_reel: '', weight: '' }]);
       await loadFromSheets();
     } catch (err) {
       alert(err?.message || 'Failed to save manual issue.');
@@ -263,21 +272,30 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
 
   const onManualReturn = async () => {
     if (!activeDetail || isSavingManual) return;
-    const ourReel = String(manualReturn.our_reel || '').trim();
-    const weight = Number(manualReturn.weight);
-    if (!ourReel || !weight) {
-      alert('Select Reel and enter Return Weight.');
+    const entries = manualReturnRows
+      .map((r) => ({ ourReel: String(r?.our_reel || '').trim(), weight: Number(r?.weight) }))
+      .filter((r) => r.ourReel !== '' || (Number.isFinite(r.weight) && r.weight > 0));
+    if (!entries.length) {
+      alert('Select at least 1 Issued Reel and Return Weight.');
+      return;
+    }
+    const invalid = entries.find((e) => !e.ourReel || !Number.isFinite(e.weight) || e.weight <= 0);
+    if (invalid) {
+      alert('Each Return row needs Issued Reel and valid Weight.');
       return;
     }
     setIsSavingManual(true);
     try {
-      await saveReelReturn({
-        'JOB': activeDetail.job,
-        'Date': new Date().toLocaleDateString('en-GB'),
-        'Our Reel Number': ourReel,
-        'Weight': String(weight)
-      }, selectedFirm);
-      setManualReturn({ our_reel: '', weight: '' });
+      for (const entry of entries) {
+        // eslint-disable-next-line no-await-in-loop
+        await saveReelReturn({
+          'JOB': activeDetail.job,
+          'Date': new Date().toLocaleDateString('en-GB'),
+          'Our Reel Number': entry.ourReel,
+          'Weight': String(entry.weight)
+        }, selectedFirm);
+      }
+      setManualReturnRows([{ our_reel: '', weight: '' }]);
       await loadFromSheets();
     } catch (err) {
       alert(err?.message || 'Failed to save manual return.');
@@ -449,20 +467,56 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7', marginBottom: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>+ MANUAL REEL ISSUE</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
+                  {manualIssueRows.map((r, rowIdx) => (
+                    <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: '8px', marginBottom: rowIdx === manualIssueRows.length - 1 ? 0 : 8, alignItems: 'center' }}>
+                      <div>
+                        <input
+                          list="available-reels"
+                          disabled={disableManualIssue || isSavingManual}
+                          value={r.our_reel}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setManualIssueRows((prev) => {
+                              const copy = [...prev];
+                              copy[rowIdx] = { ...(copy[rowIdx] || { our_reel: '', weight: '' }), our_reel: next };
+                              return copy;
+                            });
+                            if (manualReturnActive) setManualReturnRows([{ our_reel: '', weight: '' }]);
+                          }}
+                          placeholder="Type / select Our Reel No"
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            background: (disableManualIssue || isSavingManual) ? '#f3f4f6' : '#fff',
+                            color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
+                          }}
+                        />
+                        {rowIdx === 0 ? (
+                          <datalist id="available-reels">
+                            {availableReels.map((reel, idx) => (
+                              <option key={idx} value={reel} />
+                            ))}
+                          </datalist>
+                        ) : null}
+                      </div>
                       <input
-                        list="available-reels"
+                        inputMode="decimal"
                         disabled={disableManualIssue || isSavingManual}
-                        value={manualIssue.our_reel}
+                        placeholder="Issue Weight"
+                        value={r.weight}
                         onChange={(e) => {
                           const next = e.target.value;
-                          setManualIssue((p) => ({ ...p, our_reel: next }));
-                          if (manualReturnActive) setManualReturn({ our_reel: '', weight: '' });
+                          setManualIssueRows((prev) => {
+                            const copy = [...prev];
+                            copy[rowIdx] = { ...(copy[rowIdx] || { our_reel: '', weight: '' }), weight: next };
+                            return copy;
+                          });
+                          if (manualReturnActive) setManualReturnRows([{ our_reel: '', weight: '' }]);
                         }}
-                        placeholder="Type / select Our Reel No"
                         style={{
-                          width: '100%',
                           padding: '8px',
                           border: '1px solid #d1d5db',
                           borderRadius: '8px',
@@ -471,31 +525,29 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                           color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
                         }}
                       />
-                      <datalist id="available-reels">
-                        {availableReels.map((reel, idx) => (
-                          <option key={idx} value={reel} />
-                        ))}
-                      </datalist>
+                      <button
+                        type="button"
+                        className="btn small"
+                        title="Remove row"
+                        disabled={disableManualIssue || isSavingManual || manualIssueRows.length <= 1}
+                        onClick={() => setManualIssueRows((prev) => prev.length <= 1 ? prev : prev.filter((_, i) => i !== rowIdx))}
+                        style={{ padding: '6px 0', background: '#111827', borderColor: '#111827', color: '#fff', opacity: (disableManualIssue || isSavingManual || manualIssueRows.length <= 1) ? 0.4 : 1 }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <input
-                      inputMode="decimal"
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      className="btn small"
+                      title="Add row"
                       disabled={disableManualIssue || isSavingManual}
-                      placeholder="Issue Weight"
-                      value={manualIssue.weight}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setManualIssue((p) => ({ ...p, weight: next }));
-                        if (manualReturnActive) setManualReturn({ our_reel: '', weight: '' });
-                      }}
-                      style={{
-                        padding: '8px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        background: (disableManualIssue || isSavingManual) ? '#f3f4f6' : '#fff',
-                        color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
-                      }}
-                    />
+                      onClick={() => setManualIssueRows((prev) => [...prev, { our_reel: '', weight: '' }])}
+                      style={{ padding: '8px 12px', fontWeight: 1000 }}
+                    >
+                      +
+                    </button>
                   </div>
                   {disableManualIssue ? (
                     <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 900, color: '#6b7280' }}>
@@ -515,20 +567,57 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>- MANUAL REEL RETURN</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
+                  {manualReturnRows.map((r, rowIdx) => (
+                    <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: '8px', marginBottom: rowIdx === manualReturnRows.length - 1 ? 0 : 8, alignItems: 'center' }}>
+                      <div>
+                        <input
+                          list="issued-reels"
+                          disabled={disableManualReturn || isSavingManual}
+                          value={r.our_reel}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setManualReturnRows((prev) => {
+                              const copy = [...prev];
+                              copy[rowIdx] = { ...(copy[rowIdx] || { our_reel: '', weight: '' }), our_reel: next };
+                              return copy;
+                            });
+                            if (manualIssueActive) setManualIssueRows([{ our_reel: '', weight: '' }]);
+                          }}
+                          placeholder="Type / select Issued Reel"
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            background: (disableManualReturn || isSavingManual) ? '#f3f4f6' : '#fff',
+                            color: (disableManualReturn || isSavingManual) ? '#6b7280' : '#111'
+                          }}
+                        />
+                        {rowIdx === 0 ? (
+                          <datalist id="issued-reels">
+                            {activeDetail.issuedRowsForJob.map((row, idx) => {
+                              const reel = String(row?.['Our Reel Number'] || row?.['QR Scan'] || row?.['Supplier Reel No.'] || '').trim();
+                              return reel ? <option key={idx} value={reel} /> : null;
+                            })}
+                          </datalist>
+                        ) : null}
+                      </div>
                       <input
-                        list="issued-reels"
+                        inputMode="decimal"
                         disabled={disableManualReturn || isSavingManual}
-                        value={manualReturn.our_reel}
+                        placeholder="Return Weight"
+                        value={r.weight}
                         onChange={(e) => {
                           const next = e.target.value;
-                          setManualReturn((p) => ({ ...p, our_reel: next }));
-                          if (manualIssueActive) setManualIssue({ our_reel: '', weight: '' });
+                          setManualReturnRows((prev) => {
+                            const copy = [...prev];
+                            copy[rowIdx] = { ...(copy[rowIdx] || { our_reel: '', weight: '' }), weight: next };
+                            return copy;
+                          });
+                          if (manualIssueActive) setManualIssueRows([{ our_reel: '', weight: '' }]);
                         }}
-                        placeholder="Type / select Issued Reel"
                         style={{
-                          width: '100%',
                           padding: '8px',
                           border: '1px solid #d1d5db',
                           borderRadius: '8px',
@@ -537,32 +626,29 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                           color: (disableManualReturn || isSavingManual) ? '#6b7280' : '#111'
                         }}
                       />
-                      <datalist id="issued-reels">
-                        {activeDetail.issuedRowsForJob.map((r, idx) => {
-                          const reel = String(r?.['Our Reel Number'] || r?.['QR Scan'] || r?.['Supplier Reel No.'] || '').trim();
-                          return reel ? <option key={idx} value={reel} /> : null;
-                        })}
-                      </datalist>
+                      <button
+                        type="button"
+                        className="btn small"
+                        title="Remove row"
+                        disabled={disableManualReturn || isSavingManual || manualReturnRows.length <= 1}
+                        onClick={() => setManualReturnRows((prev) => prev.length <= 1 ? prev : prev.filter((_, i) => i !== rowIdx))}
+                        style={{ padding: '6px 0', background: '#111827', borderColor: '#111827', color: '#fff', opacity: (disableManualReturn || isSavingManual || manualReturnRows.length <= 1) ? 0.4 : 1 }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <input
-                      inputMode="decimal"
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      className="btn small"
+                      title="Add row"
                       disabled={disableManualReturn || isSavingManual}
-                      placeholder="Return Weight"
-                      value={manualReturn.weight}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setManualReturn((p) => ({ ...p, weight: next }));
-                        if (manualIssueActive) setManualIssue({ our_reel: '', weight: '' });
-                      }}
-                      style={{
-                        padding: '8px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        background: (disableManualReturn || isSavingManual) ? '#f3f4f6' : '#fff',
-                        color: (disableManualReturn || isSavingManual) ? '#6b7280' : '#111'
-                      }}
-                    />
+                      onClick={() => setManualReturnRows((prev) => [...prev, { our_reel: '', weight: '' }])}
+                      style={{ padding: '8px 12px', fontWeight: 1000 }}
+                    >
+                      +
+                    </button>
                   </div>
                   {disableManualReturn ? (
                     <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 900, color: '#6b7280' }}>

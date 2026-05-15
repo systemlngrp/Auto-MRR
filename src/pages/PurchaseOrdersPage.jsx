@@ -734,10 +734,6 @@ export default function PurchaseOrdersPage({
       setStatus(message);
       setView('list');
       await load();
-
-      if (poNo && window.confirm('PO saved. Download PO PDF now?')) {
-        await downloadPurchaseOrderPdfDirect(selectedFirm, { ...poPayload, po_no: poNo }, meaningfulItems);
-      }
     } catch (err) {
       setStatus(err?.message || 'Could not save PO.');
     } finally {
@@ -1010,7 +1006,7 @@ export default function PurchaseOrdersPage({
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Unit</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Qty{requiredMark}</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Rate{requiredMark}</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Date</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '1px solid #e5e7eb' }}>Last PO Rate</th>
@@ -1086,7 +1082,23 @@ export default function PurchaseOrdersPage({
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input type="number" step="0.01" disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input
+                          type="number"
+                          step="0.01"
+                          inputMode="decimal"
+                          required
+                          disabled={locked}
+                          value={row.rate}
+                          onChange={(e) => setItem(idx, 'rate', e.target.value)}
+                          placeholder="0.00"
+                          style={{
+                            ...inputStyle(`rate_${idx}`),
+                            width: '90px',
+                            textAlign: 'right',
+                            padding: '6px 8px',
+                            borderRadius: '6px'
+                          }}
+                        />
                         {errors[`rate_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`rate_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
