@@ -723,6 +723,68 @@ export default function PurchaseOrdersPage({
     }
   };
 
+  const PdfIcon = ({ size = 18 }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"
+        fill="currentColor"
+        opacity="0.12"
+      />
+      <path
+        d="M14 2v5a2 2 0 0 0 2 2h5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.6 16.8h8.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.1 19.9h7.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.2 10.8h9.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.2 13.8h9.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 9.2h8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+
   const runBulkAction = async (decision) => {
     const selected = Object.keys(selectedPoNos).filter((k) => selectedPoNos[k]);
     if (!selected.length) return;
@@ -1147,24 +1209,24 @@ export default function PurchaseOrdersPage({
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                            <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>
-                            {statusText === 'pending' ? (
-                              <>
-                                <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
-                                <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                              </>
-                            ) : null}
-                          </div>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>
+                          {statusText === 'pending' ? (
+                            <>
+                              <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>
+                              <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                            </>
+                          ) : null}
                           <button
                             type="button"
                             className="btn small"
                             onClick={() => downloadPoPdfFromList(poNo)}
                             disabled={isSaving || downloadingPoNo === poNo}
-                            style={{ background: '#0f766e', borderColor: '#0f766e', color: '#fff' }}
+                            title="Download PDF"
+                            aria-label="Download PDF"
+                            style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            {downloadingPoNo === poNo ? 'Downloading...' : 'Download PDF'}
+                            {downloadingPoNo === poNo ? '...' : <PdfIcon size={18} />}
                           </button>
                         </div>
                       </td>
