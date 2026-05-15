@@ -290,6 +290,7 @@ export default function PurchaseOrdersPage({
   const [search, setSearch] = useState('');
 
   const [pos, setPos] = useState([]);
+  const [poItemSummaryByNo, setPoItemSummaryByNo] = useState({});
   const [itemMaster, setItemMaster] = useState([]);
   const [supplierOptions, setSupplierOptions] = useState([]);
   const [lastPurchaseByKey, setLastPurchaseByKey] = useState({});
@@ -442,9 +443,62 @@ export default function PurchaseOrdersPage({
       const statusOk = tab === 'all' ? true : String(row?.status || '').toLowerCase() === tab;
       if (!statusOk) return false;
       if (!q) return true;
-      return [row?.po_no, row?.supplier, row?.po_date, row?.status].some((v) => String(v || '').toLowerCase().includes(q));
+      const summaryParts = Array.isArray(poItemSummaryByNo?.[String(row?.po_no || '').trim()]?.parts)
+        ? poItemSummaryByNo[String(row?.po_no || '').trim()].parts
+        : [];
+      return [row?.po_no, row?.supplier, row?.po_date, row?.status, summaryParts.join(' / ')].some((v) => String(v || '').toLowerCase().includes(q));
     });
-  }, [pos, tab, search]);
+  }, [pos, tab, search, poItemSummaryByNo]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedFirm || typeof fetchPurchaseOrderDetails !== 'function') return undefined;
+    const targetPoNos = filteredPos.map((r) => String(r?.po_no || '').trim()).filter(Boolean);
+    const missing = targetPoNos.filter((poNo) => !poItemSummaryByNo[poNo]);
+    if (!missing.length) return undefined;
+
+    (async () => {
+      const concurrency = 4;
+      const queue = [...missing];
+      const inFlight = new Set();
+
+      const buildParts = (itemsList) => (
+        (Array.isArray(itemsList) ? itemsList : [])
+          .map((it) => String(it?.item_name || it?.description || it?.erp_code || '').trim())
+          .filter(Boolean)
+      );
+
+      const runOne = async (poNo) => {
+        try {
+          const payload = await fetchPurchaseOrderDetails(poNo, { spreadsheetId: selectedFirm.spreadsheetId });
+          const its = Array.isArray(payload?.items) ? payload.items : [];
+          const parts = buildParts(its);
+          const summary = { text: parts.join(' / '), parts };
+          if (!cancelled) {
+            setPoItemSummaryByNo((prev) => (prev[poNo] ? prev : { ...prev, [poNo]: summary }));
+          }
+        } catch {
+          if (!cancelled) {
+            setPoItemSummaryByNo((prev) => (prev[poNo] ? prev : { ...prev, [poNo]: { text: '', parts: [] } }));
+          }
+        } finally {
+          inFlight.delete(poNo);
+        }
+      };
+
+      while (queue.length && !cancelled) {
+        while (inFlight.size < concurrency && queue.length) {
+          const poNo = queue.shift();
+          inFlight.add(poNo);
+          runOne(poNo);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 80));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [filteredPos, fetchPurchaseOrderDetails, selectedFirm, poItemSummaryByNo]);
 
   const tabLabel = useMemo(() => {
     const t = String(tab || 'all').trim().toLowerCase();
@@ -1175,24 +1229,15 @@ export default function PurchaseOrdersPage({
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>PO</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Supplier</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>PO Date</th>
-                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Status</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px' }}>Action</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px' }}>Items</th>
+                  <th style={{ textAlign: 'right', padding: '10px 8px', width: 210 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPos.map((row) => {
                   const poNo = String(row?.po_no || '').trim();
                   const statusText = String(row?.status || 'draft').toLowerCase();
-                  const statusPill = {
-                    display: 'inline-block',
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    fontSize: '11px',
-                    fontWeight: 900,
-                    border: '1px solid #e5e7eb',
-                    background: statusText === 'approved' ? '#e0f2fe' : statusText === 'rejected' ? '#fee2e2' : '#f3f4f6',
-                    color: '#1d4ed8'
-                  };
+                  const summaryParts = Array.isArray(poItemSummaryByNo?.[poNo]?.parts) ? poItemSummaryByNo[poNo].parts : [];
                   return (
                     <tr key={poNo}>
                       {isApproveMode && tab === 'pending' ? (
@@ -1207,9 +1252,17 @@ export default function PurchaseOrdersPage({
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#000' }}>{poNo}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.supplier || '-'}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, lineHeight: 1.2 }}>
+                          {summaryParts.length ? summaryParts.map((t, idx) => (
+                            <span key={idx} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 999, padding: '3px 8px', fontSize: 11, fontWeight: 800 }}>
+                              {t}
+                            </span>
+                          )) : <span style={{ color: '#6b7280' }}>-</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 8px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>
                           {statusText === 'pending' ? (
                             <>

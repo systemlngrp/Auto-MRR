@@ -5116,7 +5116,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           listContext={prListContext}
           initialView={prInitialView}
           initialTab={prPrefillTab}
-          onInitialTabConsumed={() => { setPrPrefillTab(''); setPrListContext(''); }}
+          onInitialTabConsumed={() => { setPrPrefillTab(''); }}
           onInitialViewConsumed={() => setPrInitialView('')}
           onMakePoFromPr={(prNo) => {
             setPoPrefillPrNo(String(prNo || '').trim());

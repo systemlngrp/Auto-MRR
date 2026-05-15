@@ -177,8 +177,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  text-align: left;
   cursor: pointer;
   transition: 0.2s;
+}
+
+.inv-submenu-item > span {
+  flex: 1;
+  text-align: left;
 }
 
 .inv-submenu-item:disabled {
