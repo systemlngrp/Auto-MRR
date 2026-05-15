@@ -19,6 +19,10 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
   const [manualIssue, setManualIssue] = useState({ our_reel: '', weight: '' });
   const [manualReturn, setManualReturn] = useState({ our_reel: '', weight: '' });
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const manualIssueActive = Boolean(String(manualIssue.our_reel || '').trim() || String(manualIssue.weight || '').trim());
+  const manualReturnActive = Boolean(String(manualReturn.our_reel || '').trim() || String(manualReturn.weight || '').trim());
+  const disableManualIssue = manualReturnActive;
+  const disableManualReturn = manualIssueActive;
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
@@ -449,10 +453,23 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                     <div>
                       <input
                         list="available-reels"
+                        disabled={disableManualIssue || isSavingManual}
                         value={manualIssue.our_reel}
-                        onChange={e => setManualIssue(p => ({ ...p, our_reel: e.target.value }))}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setManualIssue((p) => ({ ...p, our_reel: next }));
+                          if (manualReturnActive) setManualReturn({ our_reel: '', weight: '' });
+                        }}
                         placeholder="Type / select Our Reel No"
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          background: (disableManualIssue || isSavingManual) ? '#f3f4f6' : '#fff',
+                          color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
+                        }}
                       />
                       <datalist id="available-reels">
                         {availableReels.map((reel, idx) => (
@@ -462,13 +479,36 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                     </div>
                     <input
                       inputMode="decimal"
+                      disabled={disableManualIssue || isSavingManual}
                       placeholder="Issue Weight"
                       value={manualIssue.weight}
-                      onChange={e => setManualIssue(p => ({ ...p, weight: e.target.value }))}
-                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setManualIssue((p) => ({ ...p, weight: next }));
+                        if (manualReturnActive) setManualReturn({ our_reel: '', weight: '' });
+                      }}
+                      style={{
+                        padding: '8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        background: (disableManualIssue || isSavingManual) ? '#f3f4f6' : '#fff',
+                        color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
+                      }}
                     />
                   </div>
-                  <button type="button" className="btn main small" style={{ width: '100%', marginTop: '8px' }} disabled={isSavingManual} onClick={onManualIssue}>
+                  {disableManualIssue ? (
+                    <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 900, color: '#6b7280' }}>
+                      Clear Return fields to Issue a reel.
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn main small"
+                    style={{ width: '100%', marginTop: '8px', opacity: (disableManualIssue || isSavingManual) ? 0.6 : 1 }}
+                    disabled={isSavingManual || disableManualIssue}
+                    onClick={onManualIssue}
+                  >
                     {isSavingManual ? 'Saving...' : 'Issue Reel'}
                   </button>
                 </div>
@@ -479,10 +519,23 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                     <div>
                       <input
                         list="issued-reels"
+                        disabled={disableManualReturn || isSavingManual}
                         value={manualReturn.our_reel}
-                        onChange={e => setManualReturn(p => ({ ...p, our_reel: e.target.value }))}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setManualReturn((p) => ({ ...p, our_reel: next }));
+                          if (manualIssueActive) setManualIssue({ our_reel: '', weight: '' });
+                        }}
                         placeholder="Type / select Issued Reel"
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px', background: '#fff' }}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          background: (disableManualReturn || isSavingManual) ? '#f3f4f6' : '#fff',
+                          color: (disableManualReturn || isSavingManual) ? '#6b7280' : '#111'
+                        }}
                       />
                       <datalist id="issued-reels">
                         {activeDetail.issuedRowsForJob.map((r, idx) => {
@@ -493,13 +546,36 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                     </div>
                     <input
                       inputMode="decimal"
+                      disabled={disableManualReturn || isSavingManual}
                       placeholder="Return Weight"
                       value={manualReturn.weight}
-                      onChange={e => setManualReturn(p => ({ ...p, weight: e.target.value }))}
-                      style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '12px' }}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setManualReturn((p) => ({ ...p, weight: next }));
+                        if (manualIssueActive) setManualIssue({ our_reel: '', weight: '' });
+                      }}
+                      style={{
+                        padding: '8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        background: (disableManualReturn || isSavingManual) ? '#f3f4f6' : '#fff',
+                        color: (disableManualReturn || isSavingManual) ? '#6b7280' : '#111'
+                      }}
                     />
                   </div>
-                  <button type="button" className="btn main small" style={{ width: '100%', marginTop: '8px', background: '#dc2626' }} disabled={isSavingManual} onClick={onManualReturn}>
+                  {disableManualReturn ? (
+                    <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 900, color: '#6b7280' }}>
+                      Clear Issue fields to Return a reel.
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn main small"
+                    style={{ width: '100%', marginTop: '8px', background: '#dc2626', opacity: (disableManualReturn || isSavingManual) ? 0.6 : 1 }}
+                    disabled={isSavingManual || disableManualReturn}
+                    onClick={onManualReturn}
+                  >
                     {isSavingManual ? 'Saving...' : 'Return Reel'}
                   </button>
                 </div>

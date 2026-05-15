@@ -441,6 +441,20 @@ function getNextSequenceValue(string $firmId, string $seqName, int $initialValue
     }
 }
 
+function getSequenceLastValue(string $firmId, string $seqName, int $fallback = 0): int
+{
+    $pdo = db();
+    try {
+        $stmt = $pdo->prepare("SELECT last_value FROM app_sequences WHERE firm_id = :firm_id AND seq_name = :seq_name LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'seq_name' => $seqName]);
+        $val = $stmt->fetchColumn();
+        if ($val === false || $val === null) return $fallback;
+        return (int)$val;
+    } catch (Throwable $e) {
+        return $fallback;
+    }
+}
+
 function fiscalYearText(DateTimeInterface $dt): string
 {
     // India FY: Apr-Mar. Example: May 2026 => "26-27"
@@ -1937,9 +1951,14 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
         ]);
     }
 
+    $ourReelValues = [];
     foreach ($helperRows as $index => $item) {
         if (!is_array($item)) {
             continue;
+        }
+        $ourReelText = trim((string)(value($item, 'our_reel_number', 'reel_no') ?: ''));
+        if ($ourReelText !== '') {
+            $ourReelValues[] = $ourReelText;
         }
         $helperData = array_merge($parentData, $item, [
             'mrr_number' => value($item, 'mrr_number') ?: $mrrNumber,
@@ -2005,6 +2024,20 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'bf_value' => value($helperData, 'bf') ?: null,
             'extra_json' => json_encode($helperData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
+    }
+
+    // Keep REELNO sequence aligned with saved reel numbers.
+    try {
+        $maxOurReel = numericSuffixMax($ourReelValues, '');
+        if ($maxOurReel > 0) {
+            $seqName = 'REELNO:' . strtoupper($firmId);
+            $pdo->prepare("INSERT IGNORE INTO app_sequences (firm_id, seq_name, last_value) VALUES (:firm_id, :seq_name, :initial)")
+                ->execute(['firm_id' => $firmId, 'seq_name' => $seqName, 'initial' => $maxOurReel]);
+            $pdo->prepare("UPDATE app_sequences SET last_value = GREATEST(last_value, :v) WHERE firm_id = :firm_id AND seq_name = :seq_name")
+                ->execute(['firm_id' => $firmId, 'seq_name' => $seqName, 'v' => $maxOurReel]);
+        }
+    } catch (Throwable $e) {
+        // ignore
     }
 
     $updateGe = $pdo->prepare("
@@ -2617,10 +2650,33 @@ try {
             $mrrVal = $mrrVal - 1;
         }
 
+        // Reel "Our Reel Number" seed (numeric). Uses an app sequence so you can set it in phpMyAdmin.
+        // IMPORTANT: this must be read-only (no increment), otherwise every refresh would consume numbers.
+        $reelSeed = 0;
+        try {
+            $cols = tableColumns('reel_mrr_children');
+            if (in_array('our_reel_no', $cols, true)) {
+                $stmt = $pdo->prepare("SELECT MAX(CAST(our_reel_no AS UNSIGNED)) AS max_code FROM reel_mrr_children WHERE firm_id = :firm_id");
+                $stmt->execute(['firm_id' => $firmId]);
+                $currentMax = (int)($stmt->fetchColumn() ?: 0);
+                // If sequence is not configured yet, fall back to current max from data.
+                $seqName = 'REELNO:' . strtoupper($firmId);
+                try {
+                    $ins = $pdo->prepare("INSERT IGNORE INTO app_sequences (firm_id, seq_name, last_value) VALUES (:firm_id, :seq_name, :initial)");
+                    $ins->execute(['firm_id' => $firmId, 'seq_name' => $seqName, 'initial' => $currentMax]);
+                } catch (Throwable $e) {
+                }
+                $reelSeed = getSequenceLastValue($firmId, $seqName, $currentMax);
+            }
+        } catch (Throwable $e) {
+            $reelSeed = 0;
+        }
+
         jsonOut([
             'ok' => true,
             'mrr' => $mrrVal,
             'ge' => $geVal,
+            'reel' => $reelSeed,
         ]);
     }
 
@@ -4043,8 +4099,10 @@ try {
                     }
                     if ($erp === '') {
                         $key = $hasType ? $type : 'reel';
-                        $next = (int)($maxErpByType[$key] ?? 0) + 1;
-                        $maxErpByType[$key] = $next;
+                        $currentMax = (int)($maxErpByType[$key] ?? 0);
+                        $next = getNextSequenceValue($firmId, 'ERP:' . strtoupper($firmId) . ':' . $key, $currentMax);
+                        // Keep local max in sync for subsequent items in the same request payload.
+                        $maxErpByType[$key] = max($currentMax, $next);
                         $erp = (string)$next;
                     }
                     if ($name === '') {
@@ -4062,8 +4120,9 @@ try {
                     if ($name === '') continue;
                     if ($erp === '') {
                         $key = $hasType ? $type : 'reel';
-                        $next = (int)($maxErpByType[$key] ?? 0) + 1;
-                        $maxErpByType[$key] = $next;
+                        $currentMax = (int)($maxErpByType[$key] ?? 0);
+                        $next = getNextSequenceValue($firmId, 'ERP:' . strtoupper($firmId) . ':' . $key, $currentMax);
+                        $maxErpByType[$key] = max($currentMax, $next);
                         $erp = (string)$next;
                     }
                     if ($size === '') $size = null;

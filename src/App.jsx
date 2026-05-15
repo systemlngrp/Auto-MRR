@@ -6441,10 +6441,12 @@ function App() {
   const fetchHelperSheetReelSeed = async () => {
     if (!selectedFirm) return;
     try {
-      const helperSheet = getSheetName(selectedFirm.helper, mrrType);
-      const payload = await fetchSheetRange(helperSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl);
-      const maxReel = getMaxOurReelNoFromSheetPayload(payload);
-      setHelperSheetReelSeed(maxReel);
+      const mrrSheet = getSheetName(selectedFirm.mrr, mrrType);
+      const baseDate = invoice.date || packing.date || new Date().toLocaleDateString('en-GB');
+      const prefix = `${getFirmCode(selectedFirm)}/${getFinancialYearLabel(baseDate)}/`;
+      const data = await fetchLatestMrrGe(mrrSheet, selectedFirm.spreadsheetId, selectedFirm.scriptUrl, prefix, 'GE ENTRY');
+      const seed = Number(data?.reel) || 0;
+      setHelperSheetReelSeed(seed);
     } catch (err) {
       console.warn('Could not load last reel number from item records:', err?.message || err);
       setHelperSheetReelSeed(0);
