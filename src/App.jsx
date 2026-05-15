@@ -78,9 +78,11 @@ function getCurrentPathname() {
 }
 
 function normalizeAppPath(pathname) {
-  const path = String(pathname || '').trim().toLowerCase();
+  let path = String(pathname || '').trim().toLowerCase();
+  if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+  if (path === '' || path === '/index.html') path = '/';
   const known = new Set(Object.values(APP_ROUTES));
-  if (known.has(path)) return path;
+  if (path === '/' || known.has(path)) return path;
   return '/';
 }
 
@@ -91,15 +93,12 @@ function syncBrowserPath(nextPath, { replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const normalizedTarget = normalizeAppPath(nextPath);
   const currentPath = normalizeAppPath(getCurrentPathname());
-  if (!normalizedTarget || normalizedTarget === currentPath) return;
+  if (normalizedTarget === currentPath) return;
 
   const now = Date.now();
-  if (now - lastNavTime < 1000) {
+  if (now - lastNavTime < 600) {
     navCount++;
-    if (navCount > 10) {
-      console.warn('Navigation loop detected and blocked in syncBrowserPath.');
-      return;
-    }
+    if (navCount > 10) return;
   } else {
     navCount = 0;
   }
