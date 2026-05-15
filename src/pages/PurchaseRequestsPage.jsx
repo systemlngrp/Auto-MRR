@@ -112,6 +112,7 @@ export default function PurchaseRequestsPage({
   const [view, setView] = useState('list'); // list | form
   const [formData, setFormData] = useState(blankPr());
   const [items, setItems] = useState([blankItemRow()]);
+  const [showHeaderRemark, setShowHeaderRemark] = useState(false);
   const [itemMasterType, setItemMasterType] = useState('reel'); // reel | other (for dropdown)
   const [itemMaster, setItemMaster] = useState([]);
   const [lastPurchaseByKey, setLastPurchaseByKey] = useState({});
@@ -443,6 +444,7 @@ export default function PurchaseRequestsPage({
     const displayName = String(currentUser?.display_name || currentUser?.user?.display_name || '').trim();
     setFormData({ ...blankPr(), requested_by: displayName });
     setItems([blankItemRow()]);
+    setShowHeaderRemark(false);
     setErrors({});
     setSelectedPrNo('');
     setSelectedPrNos({});
@@ -538,6 +540,7 @@ export default function PurchaseRequestsPage({
       })) : [blankItemRow()]);
       setErrors({});
       setSelectedPrNo(String(prNo || '').trim());
+      setShowHeaderRemark(!!String(pr?.remark || '').trim());
       setView('form');
       setStatus('');
     } catch (err) {
@@ -776,10 +779,28 @@ export default function PurchaseRequestsPage({
                 style={inputStyle('required_date')}
               />
             </div>
-            <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Remark</div>
-              <input disabled={locked} value={formData.remark} onChange={(e) => setFormData((p) => ({ ...p, remark: e.target.value }))} style={inputStyle('remark')} />
-            </div>
+            {showHeaderRemark ? (
+              <div style={{ gridColumn: 'span 4' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Remark (Optional)</div>
+                  {!locked ? (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        setFormData((p) => ({ ...p, remark: '' }));
+                        setShowHeaderRemark(false);
+                      }}
+                      style={{ padding: '6px 10px', fontWeight: 900 }}
+                      title="Remove remark"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                <input disabled={locked} value={formData.remark} onChange={(e) => setFormData((p) => ({ ...p, remark: e.target.value }))} style={inputStyle('remark')} />
+              </div>
+            ) : null}
           </div>
 
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
@@ -909,7 +930,7 @@ export default function PurchaseRequestsPage({
               <div style={{ background: '#fff', padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="button" className="btn" onClick={() => setItems((p) => [...p, blankItemRow()])} disabled={busy} style={{ padding: '9px 14px', fontWeight: 1000, borderRadius: '12px' }}>+ Item</button>
                 <button type="button" className="btn main" disabled={busy} onClick={save} style={{ padding: '9px 16px', fontWeight: 1100, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff', borderRadius: '12px' }}>
-                  {busy ? 'Saving...' : 'Save PR'}
+                  {busy ? 'Saving...' : 'Save'}
                 </button>
               </div>
             ) : null}
