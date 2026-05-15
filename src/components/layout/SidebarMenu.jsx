@@ -60,6 +60,12 @@ export default function SidebarMenu({
               {badge(pendingCounts?.suppliers || 0, 'gray')}
             </button>
           ) : null}
+          {canSee('companies') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onCompanyMaster}>
+              <span>Company</span>
+              {badge(pendingCounts?.companies || 0, 'gray')}
+            </button>
+          ) : null}
           <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
             <span>State</span>
             {badge(pendingCounts?.state_master || 0, 'gray')}

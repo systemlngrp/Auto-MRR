@@ -651,3 +651,24 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   KEY idx_sales_order_status (firm_id, status_text),
   KEY idx_sales_order_company (firm_id, company_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS companies (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  company_name VARCHAR(255) NOT NULL,
+  address_text TEXT DEFAULT NULL,
+  district_name VARCHAR(120) DEFAULT NULL,
+  state_name VARCHAR(120) DEFAULT NULL,
+  gst_no VARCHAR(60) DEFAULT NULL,
+  email VARCHAR(190) DEFAULT NULL,
+  contact_person VARCHAR(190) DEFAULT NULL,
+  contact_number VARCHAR(60) DEFAULT NULL,
+  pin_code VARCHAR(20) DEFAULT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_company_name (firm_id, company_name),
+  KEY idx_companies_gst (firm_id, gst_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

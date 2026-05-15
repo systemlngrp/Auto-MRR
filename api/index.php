@@ -2915,6 +2915,55 @@ try {
         jsonOut(['ok' => true, 'suppliers' => $rows]);
     }
 
+    if ($action === 'get_company_master') {
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $pdo = db();
+        $stmt = $pdo->prepare("
+            SELECT id, company_name, address_text, district_name, state_name, gst_no, email, contact_person, contact_number, pin_code, active
+            FROM companies
+            WHERE firm_id = :firm_id
+            ORDER BY company_name ASC, id ASC
+        ");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = array_map(static function (array $row) use ($pdo, $firmId): array {
+            $companyName = trim((string)($row['company_name'] ?? ''));
+            $canDelete = true;
+            if ($companyName !== '') {
+                // Check if company name is used in orders
+                $checks = [
+                    "SELECT 1 FROM sales_orders WHERE firm_id = :firm_id AND company_name = :company LIMIT 1",
+                ];
+                foreach ($checks as $sql) {
+                    try {
+                        $c = $pdo->prepare($sql);
+                        $c->execute(['firm_id' => $firmId, 'company' => $companyName]);
+                        if ($c->fetchColumn()) {
+                            $canDelete = false;
+                            break;
+                        }
+                    } catch (Throwable $e) {
+                        // ignore
+                    }
+                }
+            }
+            return [
+                'id' => (string)($row['id'] ?? ''),
+                'company_name' => $companyName,
+                'address_text' => trim((string)($row['address_text'] ?? '')),
+                'district_name' => trim((string)($row['district_name'] ?? '')),
+                'state_name' => trim((string)($row['state_name'] ?? '')),
+                'pin_code' => trim((string)($row['pin_code'] ?? '')),
+                'gst_no' => trim((string)($row['gst_no'] ?? '')),
+                'email' => trim((string)($row['email'] ?? '')),
+                'contact_person' => trim((string)($row['contact_person'] ?? '')),
+                'contact_number' => trim((string)($row['contact_number'] ?? '')),
+                'active' => (string)($row['active'] ?? '1'),
+                'can_delete' => $canDelete ? '1' : '0',
+            ];
+        }, $stmt->fetchAll());
+        jsonOut(['ok' => true, 'companies' => $rows]);
+    }
+
     if ($action === 'get_state_master') {
         $pdo = db();
         try {
@@ -3356,7 +3405,8 @@ try {
 
         $itemCount = $countTable($pdo, "SELECT COUNT(*) FROM item_master WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $supplierCount = $countTable($pdo, "SELECT COUNT(*) FROM suppliers WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
-        $userCount = $countTable($pdo, "SELECT COUNT(*) FROM users WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $companyCount = $countTable($pdo, "SELECT COUNT(*) FROM companies WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $userCount = $countTable($pdo, "SELECT COUNT(*) FROM app_users WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $stateCount = $countTable($pdo, "SELECT COUNT(*) FROM state_master");
 
         $stmt = $pdo->prepare("
@@ -3391,6 +3441,7 @@ try {
         $counts = [
             'item_master' => $itemCount,
             'suppliers' => $supplierCount,
+            'companies' => $companyCount,
             'users' => $userCount,
             'state_master' => (int)($stateCount ?: 0),
             'purchase_requests_pending' => (int)($prAgg['pr_pending'] ?? 0),
@@ -4111,6 +4162,122 @@ try {
             'firm_id' => $firmId,
             'supplier_id' => (int)$supplierId,
         ]);
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
+    if ($action === 'save_company_master') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $co = is_array($payload['company'] ?? null) ? $payload['company'] : [];
+        $companyName = trim((string)($co['company_name'] ?? ''));
+        if ($companyName === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing company_name.'], 400);
+        }
+
+        $pdo = db();
+        $id = (int)($co['id'] ?? 0);
+        $address = trim((string)($co['address_text'] ?? ''));
+        $district = trim((string)($co['district_name'] ?? ''));
+        $state = trim((string)($co['state_name'] ?? ''));
+        $gst = trim((string)($co['gst_no'] ?? ''));
+        $email = trim((string)($co['email'] ?? ''));
+        $person = trim((string)($co['contact_person'] ?? ''));
+        $phone = trim((string)($co['contact_number'] ?? ''));
+        $pin = trim((string)($co['pin_code'] ?? ''));
+        $active = (int)($co['active'] ?? 1);
+
+        if ($id > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE companies 
+                SET company_name = :company_name, address_text = :address_text, district_name = :district_name,
+                    state_name = :state_name, gst_no = :gst_no, email = :email, contact_person = :contact_person,
+                    contact_number = :contact_number, pin_code = :pin_code, active = :active, updated_at = CURRENT_TIMESTAMP
+                WHERE firm_id = :firm_id AND id = :id
+            ");
+            $stmt->execute([
+                'firm_id' => $firmId,
+                'id' => $id,
+                'company_name' => $companyName,
+                'address_text' => $address,
+                'district_name' => $district,
+                'state_name' => $state,
+                'gst_no' => $gst,
+                'email' => $email,
+                'contact_person' => $person,
+                'contact_number' => $phone,
+                'pin_code' => $pin,
+                'active' => $active,
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO companies (firm_id, company_name, address_text, district_name, state_name, gst_no, email, contact_person, contact_number, pin_code, active)
+                VALUES (:firm_id, :company_name, :address_text, :district_name, :state_name, :gst_no, :email, :contact_person, :contact_number, :pin_code, :active)
+                ON DUPLICATE KEY UPDATE
+                    address_text = VALUES(address_text),
+                    district_name = VALUES(district_name),
+                    state_name = VALUES(state_name),
+                    gst_no = VALUES(gst_no),
+                    email = VALUES(email),
+                    contact_person = VALUES(contact_person),
+                    contact_number = VALUES(contact_number),
+                    pin_code = VALUES(pin_code),
+                    active = VALUES(active),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([
+                'firm_id' => $firmId,
+                'company_name' => $companyName,
+                'address_text' => $address,
+                'district_name' => $district,
+                'state_name' => $state,
+                'gst_no' => $gst,
+                'email' => $email,
+                'contact_person' => $person,
+                'contact_number' => $phone,
+                'pin_code' => $pin,
+                'active' => $active,
+            ]);
+        }
+
+        jsonOut(['ok' => true, 'trace_id' => $traceId]);
+    }
+
+    if ($action === 'delete_company_master') {
+        $traceId = createTraceId();
+        $firmId = trim((string)($payload['firm_id'] ?? $payload['spreadsheetId'] ?? 'lnki'));
+        $companyId = (int)($payload['company_id'] ?? 0);
+        if ($companyId <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing company_id.'], 400);
+        }
+
+        $pdo = db();
+        $stmt = $pdo->prepare("SELECT company_name FROM companies WHERE firm_id = :firm_id AND id = :id LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId, 'id' => $companyId]);
+        $co = $stmt->fetch();
+        if (!$co) {
+            jsonOut(['ok' => false, 'error' => 'Company not found.'], 404);
+        }
+        $companyName = trim((string)($co['company_name'] ?? ''));
+
+        if ($companyName !== '') {
+            $checks = [
+                "SELECT 1 FROM sales_orders WHERE firm_id = :firm_id AND company_name = :company LIMIT 1",
+            ];
+            foreach ($checks as $sql) {
+                try {
+                    $c = $pdo->prepare($sql);
+                    $c->execute(['firm_id' => $firmId, 'company' => $companyName]);
+                    if ($c->fetchColumn()) {
+                        jsonOut(['ok' => false, 'error' => 'Used/linked data cannot be deleted.'], 400);
+                    }
+                } catch (Throwable $e) {
+                }
+            }
+        }
+
+        $del = $pdo->prepare("DELETE FROM companies WHERE firm_id = :firm_id AND id = :id");
+        $del->execute(['firm_id' => $firmId, 'id' => $companyId]);
+
         jsonOut(['ok' => true, 'trace_id' => $traceId]);
     }
 

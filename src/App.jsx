@@ -3553,6 +3553,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               },
               onItemMaster: () => setStep(13),
               onSuppliers: () => setStep(18),
+              onCompanyMaster: () => setStep(29),
               onStateMaster: () => setStep(28),
               onOrderForm: () => setStep(30),
               onOrderPendingApproval: () => setStep(31),
@@ -5268,6 +5269,24 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchStateMaster,
             saveStateMaster
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 29) {
+    return (
+      <>
+        {userBadge}
+        <CompanyMasterPage
+          selectedFirm={tempFirm}
+          deps={{
+            fetchCompanyMaster,
+            saveCompanyMaster,
+            deleteCompanyMaster,
+            fetchStateMaster
           }}
           onBack={() => setStep(3)}
         />

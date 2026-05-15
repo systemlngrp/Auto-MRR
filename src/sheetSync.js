@@ -606,6 +606,44 @@ export async function fetchSupplierMaster(options = {}) {
   return Array.isArray(payload?.suppliers) ? payload.suppliers : [];
 }
 
+export async function fetchCompanyMaster(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const firmId = getFirmKey(options);
+  const query = toQuery({
+    action: 'get_company_master',
+    firm_id: firmId,
+    spreadsheetId: firmId
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.companies) ? payload.companies : [];
+}
+
+export async function saveCompanyMaster(company = {}, options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'save_company_master',
+    firm_id: getFirmKey(options),
+    company: company
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteCompanyMaster(options = {}) {
+  const backendUrl = ensureBackendUrl(options);
+  const payload = {
+    action: 'delete_company_master',
+    firm_id: getFirmKey(options),
+    company_id: options.company_id
+  };
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function saveSupplierMaster(supplier = {}, options = {}) {
   const backendUrl = ensureBackendUrl(options);
   const payload = {
