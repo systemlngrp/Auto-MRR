@@ -363,6 +363,42 @@ export async function fetchSheetRangeWithParams(params = {}, backendSource) {
   };
 }
 
+export async function fetchDpmJobs(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const params = new URLSearchParams({
+    action: 'get_dpm_jobs',
+    firm_id: getFirmKey(firm)
+  });
+  const res = await fetchJson(`${backendUrl}?${params}`);
+  return Array.isArray(res?.jobs) ? res.jobs : [];
+}
+
+export async function saveDpmJob(firm, job) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_dpm_job',
+      firm_id: getFirmKey(firm),
+      job
+    })
+  });
+}
+
+export async function deleteDpmJob(firm, id) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'delete_dpm_job',
+      firm_id: getFirmKey(firm),
+      id
+    })
+  });
+}
+
 export async function fetchReelStock(firmSource, backendSource) {
   const backendUrl = ensureBackendUrl(backendSource || firmSource);
   const firmId = getFirmKey(firmSource);

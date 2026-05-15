@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { addDpmJob, loadDpmJobs, saveDpmJobs, updateDpmJobStage } from '../utils/dpmJobs';
+import { addDpmJob, loadDpmJobs, saveDpmJobsLocal, updateDpmJobStage, deleteDpmJobRecord, loadDpmJobsLocal } from '../utils/dpmJobs';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
 
 const STAGE_LABELS = {
@@ -11,7 +11,8 @@ const STAGE_LABELS = {
 };
 
 export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
-  const [jobs, setJobs] = useState(() => loadDpmJobs(selectedFirm));
+  const [jobs, setJobs] = useState(() => loadDpmJobsLocal(selectedFirm));
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ 
     sno: '', 
     date: new Date().toISOString().split('T')[0], 
@@ -23,7 +24,21 @@ export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
   });
   const [error, setError] = useState('');
 
-  const refresh = () => setJobs(loadDpmJobs(selectedFirm));
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const res = await loadDpmJobs(selectedFirm);
+      setJobs(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, [selectedFirm]);
 
   const groupedJobs = useMemo(() => {
     const groups = new Map();
@@ -69,11 +84,11 @@ export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
               {error ? <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>{error}</div> : null}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" className="btn" onClick={() => { if(confirm('Clear all jobs?')) { saveDpmJobs(selectedFirm, []); refresh(); } }}>
-                Clear All
+              <button type="button" className="btn" onClick={() => { if(confirm('Clear all local cache?')) { saveDpmJobsLocal(selectedFirm, []); setJobs([]); } }}>
+                Clear Cache
               </button>
-              <button type="button" className="btn" onClick={refresh}>
-                Refresh
+              <button type="button" className="btn" onClick={refresh} disabled={loading}>
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -95,24 +110,32 @@ export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
             <button
               type="button"
               className="btn main"
-              onClick={() => {
+              disabled={loading}
+              onClick={async () => {
                 const jobNo = String(form.job_no || '').trim();
                 if (!jobNo) {
                   setError('JOB No. is required.');
                   return;
                 }
                 setError('');
-                addDpmJob(selectedFirm, {
-                  sno: String(form.sno || '').trim(),
-                  date: String(form.date || '').trim(),
-                  job_no: jobNo,
-                  erp: String(form.erp || '').trim(),
-                  item: String(form.item || '').trim(),
-                  plan_quantity: String(form.plan_quantity || '').trim(),
-                  required_reel: String(form.required_reel || '').trim()
-                });
-                setForm({ sno: '', date: new Date().toISOString().split('T')[0], job_no: '', erp: '', item: '', plan_quantity: '', required_reel: '' });
-                refresh();
+                setLoading(true);
+                try {
+                  await addDpmJob(selectedFirm, {
+                    sno: String(form.sno || '').trim(),
+                    date: String(form.date || '').trim(),
+                    job_no: jobNo,
+                    erp: String(form.erp || '').trim(),
+                    item: String(form.item || '').trim(),
+                    plan_quantity: String(form.plan_quantity || '').trim(),
+                    required_reel: String(form.required_reel || '').trim()
+                  });
+                  setForm({ sno: '', date: new Date().toISOString().split('T')[0], job_no: '', erp: '', item: '', plan_quantity: '', required_reel: '' });
+                  await refresh();
+                } catch (err) {
+                  setError('Failed to add job: ' + err.message);
+                } finally {
+                  setLoading(false);
+                }
               }}
             >
               Add DPM Job
@@ -138,8 +161,11 @@ export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
                 </tr>
               </thead>
               <tbody>
-                {!groupedJobs.length ? (
+                {!groupedJobs.length && !loading ? (
                   <tr><td colSpan={7} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>No jobs in pipeline.</td></tr>
+                ) : null}
+                {loading && !jobs.length ? (
+                   <tr><td colSpan={7} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>Loading pipeline...</td></tr>
                 ) : null}
                 {groupedJobs.map(([date, group]) => (
                   <React.Fragment key={date}>
@@ -159,7 +185,24 @@ export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
                           <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(j.required_reel || '')}</td>
                           <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7', fontWeight: 700 }}>{STAGE_LABELS[stage] || stage}</td>
                           <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>
-                            <button type="button" className="btn small" onClick={() => { if(confirm('Delete this job?')) { saveDpmJobs(selectedFirm, jobs.filter(x => x.id !== j.id)); refresh(); } }}>
+                            <button
+                              type="button"
+                              className="btn small"
+                              disabled={loading}
+                              onClick={async () => {
+                                if(confirm('Delete this job from server?')) {
+                                  setLoading(true);
+                                  try {
+                                    await deleteDpmJobRecord(selectedFirm, j.id);
+                                    await refresh();
+                                  } catch (err) {
+                                    alert('Delete failed: ' + err.message);
+                                  } finally {
+                                    setLoading(false);
+                                  }
+                                }
+                              }}
+                            >
                               Delete
                             </button>
                           </td>

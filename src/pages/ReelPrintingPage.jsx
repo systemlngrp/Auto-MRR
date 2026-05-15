@@ -1,42 +1,41 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
 import { fetchSheetRange } from '../sheetSync';
-import { loadDpmJobs, updateDpmJob } from '../utils/dpmJobs';
+import { loadDpmJobs, loadDpmJobsLocal, updateDpmJob } from '../utils/dpmJobs';
 
 export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) {
   const [issueRows, setIssueRows] = useState([]);
   const [returnRows, setReturnRows] = useState([]);
   const [pendingRows, setPendingRows] = useState([]);
-  const [dpmJobs, setDpmJobs] = useState([]);
+  const [dpmJobs, setDpmJobs] = useState(() => loadDpmJobsLocal(selectedFirm));
   const [activeJob, setActiveJob] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const loadRunRef = useRef(0);
 
-  const [form, setForm] = useState({
-    prod_at_printing: '',
-    fg: '',
-    slotting: '',
-    delamination: '',
-    misalignment: '',
-    dry_sheets: '',
-    warp: '',
-    misprinting: '',
-    job_setting: '',
-    helper: ''
-  });
+  // ... rest of state
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
     const runId = ++loadRunRef.current;
     setIsLoading(true);
     try {
-      const pending = await fetchSheetRange(REEL_SCHEMAS.printing_pending.sheetName, selectedFirm);
-      const issue = await fetchSheetRange(REEL_SCHEMAS.reel_issue.sheetName, selectedFirm);
-      const ret = await fetchSheetRange(REEL_SCHEMAS.reel_return.sheetName, selectedFirm);
+      const pendingPromise = fetchSheetRange(REEL_SCHEMAS.printing_pending.sheetName, selectedFirm);
+      const issuePromise = fetchSheetRange(REEL_SCHEMAS.reel_issue.sheetName, selectedFirm);
+      const retPromise = fetchSheetRange(REEL_SCHEMAS.reel_return.sheetName, selectedFirm);
+      const dpmPromise = loadDpmJobs(selectedFirm);
+
+      const [pending, issue, ret, dpm] = await Promise.all([
+        pendingPromise,
+        issuePromise,
+        retPromise,
+        dpmPromise
+      ]);
+
       if (loadRunRef.current !== runId) return;
       setPendingRows(Array.isArray(pending?.data) ? pending.data : []);
       setIssueRows(Array.isArray(issue?.data) ? issue.data : []);
       setReturnRows(Array.isArray(ret?.data) ? ret.data : []);
+      setDpmJobs(Array.isArray(dpm) ? dpm : []);
     } catch (err) {
       console.error('Printing load error:', err);
     } finally {
@@ -44,11 +43,17 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
     }
   };
 
-  const refreshDpm = () => setDpmJobs(loadDpmJobs(selectedFirm));
+  const refreshDpm = async () => {
+    try {
+      const res = await loadDpmJobs(selectedFirm);
+      setDpmJobs(res);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     loadFromSheets();
-    refreshDpm();
   }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
 
   const jobAggregates = useMemo(() => {
@@ -164,17 +169,17 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
     }
   }, [activeDetail]);
 
-  const onSaveAndMove = () => {
+  const onSaveAndMove = async () => {
     if (!activeDetail?._dpm_id) {
       alert('Only DPM Jobs can be moved through stages automatically.');
       return;
     }
-    updateDpmJob(selectedFirm, activeDetail._dpm_id, {
+    await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
       ...form,
       stage: 'closer_pending'
     });
     setActiveJob(null);
-    refreshDpm();
+    await refreshDpm();
   };
 
   return (

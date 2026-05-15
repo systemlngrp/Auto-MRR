@@ -535,6 +535,30 @@ function upsertSupplierName(string $firmId, string $supplierName): void
     ]);
 }
 
+function ensureDpmJobsSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS dpm_jobs (
+          id VARCHAR(120) NOT NULL,
+          firm_id VARCHAR(64) NOT NULL,
+          job_no VARCHAR(120) NOT NULL,
+          erp VARCHAR(120) DEFAULT NULL,
+          item VARCHAR(255) DEFAULT NULL,
+          plan_quantity VARCHAR(80) DEFAULT NULL,
+          required_reel VARCHAR(80) DEFAULT NULL,
+          stage VARCHAR(80) DEFAULT 'reel_issue_pending',
+          date VARCHAR(40) DEFAULT NULL,
+          sno VARCHAR(40) DEFAULT NULL,
+          extra_json LONGTEXT DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_dpm_firm_job (firm_id, job_no),
+          KEY idx_dpm_stage (firm_id, stage)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 function ensureReelStockSchema(PDO $pdo): void
 {
     $pdo->exec("
@@ -4764,6 +4788,85 @@ try {
         ]);
         jsonOut(['ok' => true, 'status' => $newStatus, 'po_no' => $poNo]);
     }
+    if ($action === 'get_dpm_jobs') {
+        $pdo = db();
+        ensureDpmJobsSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM dpm_jobs WHERE firm_id = :firm_id ORDER BY created_at DESC");
+        $stmt->execute(['firm_id' => $firmId]);
+        $rows = $stmt->fetchAll();
+        $jobs = array_map(static function (array $row): array {
+            $extra = decodeExtraJson($row);
+            return array_merge($extra, [
+                'id' => $row['id'],
+                'job_no' => $row['job_no'],
+                'erp' => $row['erp'],
+                'item' => $row['item'],
+                'plan_quantity' => $row['plan_quantity'],
+                'required_reel' => $row['required_reel'],
+                'stage' => $row['stage'],
+                'date' => $row['date'],
+                'sno' => $row['sno'],
+                'created_at' => $row['created_at'],
+                'updated_at' => $row['updated_at'],
+            ]);
+        }, $rows);
+        jsonOut(['ok' => true, 'jobs' => $jobs]);
+    }
+
+    if ($action === 'save_dpm_job') {
+        $pdo = db();
+        ensureDpmJobsSchema($pdo);
+        $job = is_array($payload['job'] ?? null) ? $payload['job'] : [];
+        $id = trim((string)($job['id'] ?? ''));
+        if ($id === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing job id.'], 400);
+        }
+
+        $params = [
+            'id' => $id,
+            'firm_id' => $firmId,
+            'job_no' => trim((string)($job['job_no'] ?? '')),
+            'erp' => trim((string)($job['erp'] ?? '')),
+            'item' => trim((string)($job['item'] ?? '')),
+            'plan_quantity' => trim((string)($job['plan_quantity'] ?? '')),
+            'required_reel' => trim((string)($job['required_reel'] ?? '')),
+            'stage' => trim((string)($job['stage'] ?? 'reel_issue_pending')),
+            'date' => trim((string)($job['date'] ?? '')),
+            'sno' => trim((string)($job['sno'] ?? '')),
+            'extra_json' => json_encode($job, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO dpm_jobs (id, firm_id, job_no, erp, item, plan_quantity, required_reel, stage, date, sno, extra_json)
+            VALUES (:id, :firm_id, :job_no, :erp, :item, :plan_quantity, :required_reel, :stage, :date, :sno, :extra_json)
+            ON DUPLICATE KEY UPDATE
+                job_no = VALUES(job_no),
+                erp = VALUES(erp),
+                item = VALUES(item),
+                plan_quantity = VALUES(plan_quantity),
+                required_reel = VALUES(required_reel),
+                stage = VALUES(stage),
+                date = VALUES(date),
+                sno = VALUES(sno),
+                extra_json = VALUES(extra_json),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute($params);
+        jsonOut(['ok' => true, 'id' => $id]);
+    }
+
+    if ($action === 'delete_dpm_job') {
+        $pdo = db();
+        ensureDpmJobsSchema($pdo);
+        $id = trim((string)($payload['id'] ?? ''));
+        if ($id === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing job id.'], 400);
+        }
+        $stmt = $pdo->prepare("DELETE FROM dpm_jobs WHERE firm_id = :firm_id AND id = :id");
+        $stmt->execute(['firm_id' => $firmId, 'id' => $id]);
+        jsonOut(['ok' => true]);
+    }
+
     if ($action === 'save_ge_entry') {
         jsonOut(saveGeEntryAction($payload));
     }
