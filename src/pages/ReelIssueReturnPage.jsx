@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { REEL_SCHEMAS } from '../utils/reelSchemas';
 import { fetchSheetRange, saveReelIssue, saveReelReturn } from '../sheetSync';
 import { loadDpmJobs, updateDpmJobStage } from '../utils/dpmJobs';
+import QrScanModal from '../components/QrScanModal';
+import { extractReelNumberFromQr } from '../utils/qrReel';
 
 export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack }) {
   const [issueRows, setIssueRows] = useState([]);
@@ -19,10 +21,43 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
   const [manualIssueRows, setManualIssueRows] = useState([{ our_reel: '', weight: '' }]);
   const [manualReturnRows, setManualReturnRows] = useState([{ our_reel: '', weight: '' }]);
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const [qrScanRowIdx, setQrScanRowIdx] = useState(null);
+  const [qrPasteText, setQrPasteText] = useState('');
+  const manualIssueWeightRefs = useRef([]);
   const manualIssueActive = manualIssueRows.some((r) => String(r?.our_reel || '').trim() || String(r?.weight || '').trim());
   const manualReturnActive = manualReturnRows.some((r) => String(r?.our_reel || '').trim() || String(r?.weight || '').trim());
   const disableManualIssue = manualReturnActive;
   const disableManualReturn = manualIssueActive;
+
+  const applyQrToManualIssue = (raw, preferredRowIdx = null) => {
+    const reel = extractReelNumberFromQr(raw);
+    if (!reel) {
+      alert('Could not find Reel Number in the scanned QR.');
+      return;
+    }
+
+    let focusRow = preferredRowIdx;
+    setManualIssueRows((prev) => {
+      const rows = Array.isArray(prev) ? [...prev] : [{ our_reel: '', weight: '' }];
+      const pickRow = () => {
+        if (Number.isInteger(preferredRowIdx) && preferredRowIdx >= 0 && preferredRowIdx < rows.length) return preferredRowIdx;
+        const emptyIdx = rows.findIndex((r) => !String(r?.our_reel || '').trim());
+        if (emptyIdx !== -1) return emptyIdx;
+        rows.push({ our_reel: '', weight: '' });
+        return rows.length - 1;
+      };
+      const idx = pickRow();
+      focusRow = idx;
+      rows[idx] = { ...(rows[idx] || { our_reel: '', weight: '' }), our_reel: reel };
+      return rows;
+    });
+
+    setQrPasteText('');
+    setTimeout(() => {
+      const el = manualIssueWeightRefs.current?.[focusRow];
+      if (el && typeof el.focus === 'function') el.focus();
+    }, 50);
+  };
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
@@ -467,8 +502,42 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                 
                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #eef2f7', marginBottom: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280', marginBottom: '8px' }}>+ MANUAL REEL ISSUE</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 92px', gap: '8px', marginBottom: '10px' }}>
+                    <input
+                      disabled={disableManualIssue || isSavingManual}
+                      placeholder="QR Scan (paste / scan output here)"
+                      value={qrPasteText}
+                      onChange={(e) => setQrPasteText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') applyQrToManualIssue(qrPasteText, null);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px dashed #94a3b8',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        background: (disableManualIssue || isSavingManual) ? '#f3f4f6' : '#fff',
+                        color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn small"
+                      disabled={disableManualIssue || isSavingManual}
+                      onClick={() => {
+                        const t = String(qrPasteText || '').trim();
+                        if (t) applyQrToManualIssue(t, null);
+                        else setQrScanRowIdx(-1);
+                      }}
+                      style={{ padding: '8px 10px', fontWeight: 1000 }}
+                      title="Open camera scanner"
+                    >
+                      Scan / Apply
+                    </button>
+                  </div>
                   {manualIssueRows.map((r, rowIdx) => (
-                    <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: '8px', marginBottom: rowIdx === manualIssueRows.length - 1 ? 0 : 8, alignItems: 'center' }}>
+                    <div key={rowIdx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 72px 40px', gap: '8px', marginBottom: rowIdx === manualIssueRows.length - 1 ? 0 : 8, alignItems: 'center' }}>
                       <div>
                         <input
                           list="available-reels"
@@ -507,6 +576,7 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                         disabled={disableManualIssue || isSavingManual}
                         placeholder="Issue Weight"
                         value={r.weight}
+                        ref={(el) => { manualIssueWeightRefs.current[rowIdx] = el; }}
                         onChange={(e) => {
                           const next = e.target.value;
                           setManualIssueRows((prev) => {
@@ -525,6 +595,16 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
                           color: (disableManualIssue || isSavingManual) ? '#6b7280' : '#111'
                         }}
                       />
+                      <button
+                        type="button"
+                        className="btn small"
+                        title="Scan QR for this row"
+                        disabled={disableManualIssue || isSavingManual}
+                        onClick={() => setQrScanRowIdx(rowIdx)}
+                        style={{ padding: '8px 0', fontWeight: 1000 }}
+                      >
+                        QR
+                      </button>
                       <button
                         type="button"
                         className="btn small"
@@ -733,6 +813,13 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
           </div>
         ) : null}
       </div>
+
+      <QrScanModal
+        open={!!activeDetail && qrScanRowIdx !== null}
+        title="Scan Reel QR"
+        onClose={() => setQrScanRowIdx(null)}
+        onScan={(raw) => applyQrToManualIssue(raw, qrScanRowIdx >= 0 ? qrScanRowIdx : null)}
+      />
     </div>
   );
 }
