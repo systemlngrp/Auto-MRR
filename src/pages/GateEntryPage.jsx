@@ -169,7 +169,12 @@ export default function GateEntryPage({
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', overflowY: 'auto', padding: '40px 24px', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '700px', padding: '40px' }}>
+      {isSaving && (
+        <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
+          <div className="spinner" />
+          <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div>
+        </div>
+      )}      <div style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', borderRadius: '8px', width: '100%', maxWidth: '700px', padding: '40px' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{ display: 'inline-block', padding: '12px 20px', background: '#f9fafb', borderRadius: '50px', marginBottom: '16px', border: '1px solid #f3f4f6' }}>

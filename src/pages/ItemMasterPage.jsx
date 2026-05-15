@@ -552,6 +552,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         {(isSaving || isLoadingGroups) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
         <div style={{ width: 'min(720px, 100%)', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '22px' }}>
@@ -714,6 +715,7 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
         {(isLoading || isSaving || isLoadingGroups) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>

@@ -299,6 +299,8 @@ export default function PurchaseOrdersPage({
   const [items, setItems] = useState([blankItemRow()]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedPoNos, setSelectedPoNos] = useState({});
+  const [toast, setToast] = useState({ open: false, message: '', variant: 'success' });
   const initialPrHandledRef = useRef('');
   const initialPoHandledRef = useRef('');
 
@@ -680,17 +682,56 @@ export default function PurchaseOrdersPage({
     }
   };
 
+  const showToast = (message, variant = 'success') => {
+    setToast({ open: true, message: String(message || ''), variant });
+    setTimeout(() => setToast((t) => ({ ...t, open: false })), 2400);
+  };
+
   const approve = async (poNo, decision) => {
     if (!selectedFirm) return;
     const remark = decision === 'reject' ? window.prompt('Reject remark (optional):', '') : '';
     setIsSaving(true);
+    setStatus(decision === 'approve' ? 'Approving PO...' : 'Rejecting PO...');
     try {
       await approvePurchaseOrder(poNo, decision, String(remark || ''), { spreadsheetId: selectedFirm.spreadsheetId, userEmail });
       await load();
+      showToast(`PO ${decision === 'approve' ? 'approved' : 'rejected'} successfully.`);
     } catch (err) {
-      alert(err?.message || 'Could not update PO.');
+      showToast(err?.message || 'Could not update PO.', 'error');
     } finally {
       setIsSaving(false);
+      setStatus('');
+    }
+  };
+
+  const runBulkAction = async (decision) => {
+    const selected = Object.keys(selectedPoNos).filter((k) => selectedPoNos[k]);
+    if (!selected.length) return;
+    const actionLabel = decision === 'approve' ? 'Approve' : 'Reject';
+    if (!window.confirm(`Are you sure you want to ${actionLabel.toLowerCase()} ${selected.length} selected PO(s)?`)) return;
+    
+    if (!selectedFirm) return;
+    const remark = decision === 'reject' ? window.prompt('Reject remark (optional):', '') : '';
+    setIsSaving(true);
+    setStatus(`${actionLabel}ing selected POs...`);
+    try {
+      const results = await Promise.allSettled(
+        selected.map((poNo) => approvePurchaseOrder(poNo, decision, String(remark || ''), { spreadsheetId: selectedFirm.spreadsheetId, userEmail }))
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      await load();
+      setSelectedPoNos({});
+      showToast(
+        failed
+          ? `${actionLabel} completed with ${failed} failure(s).`
+          : `${actionLabel} successful for ${selected.length} PO(s).`,
+        failed ? 'error' : 'success'
+      );
+    } catch (err) {
+      showToast(err?.message || `Could not ${actionLabel.toLowerCase()} selected PO(s).`, 'error');
+    } finally {
+      setIsSaving(false);
+      setStatus('');
     }
   };
 
@@ -725,9 +766,10 @@ export default function PurchaseOrdersPage({
     const supplierListId = 'po-suppliers';
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: 0, overflowY: 'auto' }}>
-        {isLoading ? (
+        {(isLoading || isSaving) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
         <div style={{ width: '100%', margin: 0, background: '#fff', border: 0, borderRadius: 0, padding: '18px', minHeight: '100vh', boxSizing: 'border-box' }}>
@@ -945,11 +987,30 @@ export default function PurchaseOrdersPage({
   return (
     <div className="loading-overlay" style={{ display: 'flex', justifyContent: 'stretch', alignItems: 'stretch', background: '#f5f7fb' }}>
       <div style={{ margin: 0, background: 'transparent', padding: '18px', border: '0', boxShadow: 'none', width: '100vw', height: '100vh', overflowY: 'auto' }}>
-        {isLoading ? (
+        {(isLoading || isSaving) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
+
+        {toast.open && (
+          <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            background: toast.variant === 'error' ? '#ef4444' : '#10b981',
+            color: '#fff',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            fontWeight: 800,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            {toast.message}
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: '#1d4ed8' }}>{isApproveMode ? 'Approve PO' : 'PO'}</div>
@@ -984,14 +1045,52 @@ export default function PurchaseOrdersPage({
         </div>
 
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>{isLoading ? 'Loading...' : `Showing ${filteredPos.length} entries`}</div>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>{isLoading ? 'Loading...' : `Showing ${filteredPos.length} entries`}</div>
+              {isApproveMode && tab === 'pending' ? (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn small"
+                    disabled={!Object.values(selectedPoNos).some(Boolean) || isSaving}
+                    onClick={() => runBulkAction('approve')}
+                    style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff', fontWeight: 900 }}
+                  >
+                    Approve Selected
+                  </button>
+                  <button
+                    type="button"
+                    className="btn small"
+                    disabled={!Object.values(selectedPoNos).some(Boolean) || isSaving}
+                    onClick={() => runBulkAction('reject')}
+                    style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff', fontWeight: 900 }}
+                  >
+                    Reject Selected
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {status ? <div style={{ fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
+                  {isApproveMode && tab === 'pending' ? (
+                    <th style={{ width: '40px', padding: '10px 12px' }}>
+                      <input
+                        type="checkbox"
+                        checked={filteredPos.length > 0 && filteredPos.every(r => selectedPoNos[r.po_no])}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          const next = { ...selectedPoNos };
+                          filteredPos.forEach(r => { next[r.po_no] = checked; });
+                          setSelectedPoNos(next);
+                        }}
+                      />
+                    </th>
+                  ) : null}
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>PO</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>Supplier</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px' }}>PO Date</th>
@@ -1000,45 +1099,49 @@ export default function PurchaseOrdersPage({
                 </tr>
               </thead>
               <tbody>
-                {filteredPos
-                  .filter((row) => {
-                    if (tab === 'all') return true;
-                    return String(row?.status || '').toLowerCase() === tab;
-                  })
-                  .map((row) => {
-                    const poNo = String(row?.po_no || '').trim();
-                    const statusText = String(row?.status || 'draft').toLowerCase();
-                    const statusPill = {
-                      display: 'inline-block',
-                      padding: '4px 10px',
-                      borderRadius: '999px',
-                      fontSize: '11px',
-                      fontWeight: 900,
-                      border: '1px solid #e5e7eb',
-                      background: statusText === 'approved' ? '#e0f2fe' : statusText === 'rejected' ? '#fee2e2' : '#f3f4f6',
-                      color: '#1d4ed8'
-                    };
-                    return (
-                      <tr key={poNo}>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#000' }}>{poNo}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.supplier || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>{' '}
-                          {statusText === 'pending' ? (
-                            <>
-                              <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
-                              <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                            </>
-                          ) : null}
+                {filteredPos.map((row) => {
+                  const poNo = String(row?.po_no || '').trim();
+                  const statusText = String(row?.status || 'draft').toLowerCase();
+                  const statusPill = {
+                    display: 'inline-block',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    border: '1px solid #e5e7eb',
+                    background: statusText === 'approved' ? '#e0f2fe' : statusText === 'rejected' ? '#fee2e2' : '#f3f4f6',
+                    color: '#1d4ed8'
+                  };
+                  return (
+                    <tr key={poNo}>
+                      {isApproveMode && tab === 'pending' ? (
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!selectedPoNos[poNo]}
+                            onChange={(e) => setSelectedPoNos(p => ({ ...p, [poNo]: e.target.checked }))}
+                          />
                         </td>
-                      </tr>
-                    );
-                  })}
+                      ) : null}
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 1000, color: '#000' }}>{poNo}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.supplier || '-'}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.po_date || '-'}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button type="button" className="btn small" onClick={() => openEdit(poNo)} disabled={isSaving}>Open</button>{' '}
+                        {statusText === 'pending' ? (
+                          <>
+                            <button type="button" className="btn small" onClick={() => approve(poNo, 'approve')} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
+                            <button type="button" className="btn small" onClick={() => approve(poNo, 'reject')} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                          </>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!filteredPos.length ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
+                    <td colSpan={isApproveMode && tab === 'pending' ? 6 : 5} style={{ padding: '16px 12px', color: '#6b7280' }}>No entries found.</td>
                   </tr>
                 ) : null}
               </tbody>

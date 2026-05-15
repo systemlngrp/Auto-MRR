@@ -905,19 +905,25 @@ function ensurePurchaseRelations(PDO $pdo): void
 function resolveItemId(PDO $pdo, string $firmId, string $itemType, string $erpCode, string $itemName): int
 {
     $type = $itemType !== '' ? $itemType : 'mrr';
+    // Treat legacy 'mrr' item master entries as 'reel' for lookups (and vice-versa).
+    $type = strtolower(trim($type)) ?: 'mrr';
+    $types = [$type];
+    if ($type === 'reel') $types = ['reel', 'mrr'];
+    if ($type === 'mrr') $types = ['mrr', 'reel'];
     $code = trim($erpCode);
     $name = trim($itemName);
     if ($code === '' && $name === '') return 0;
 
     if ($code !== '') {
+        $params = array_merge([$firmId], $types, [$code]);
         $stmt = $pdo->prepare("
             SELECT id FROM item_master
-            WHERE firm_id = :firm_id
-              AND item_type = :item_type
-              AND erp_code = :erp_code
+            WHERE firm_id = ?
+              AND item_type IN (" . implode(',', array_fill(0, count($types), '?')) . ")
+              AND erp_code = ?
             LIMIT 1
         ");
-        $stmt->execute(['firm_id' => $firmId, 'item_type' => $type, 'erp_code' => $code]);
+        $stmt->execute($params);
         $id = (int)($stmt->fetchColumn() ?: 0);
         if ($id > 0) return $id;
     }
@@ -925,12 +931,12 @@ function resolveItemId(PDO $pdo, string $firmId, string $itemType, string $erpCo
     if ($name !== '') {
         $stmt = $pdo->prepare("
             SELECT id FROM item_master
-            WHERE firm_id = :firm_id
-              AND item_type = :item_type
-              AND item_name = :item_name
+            WHERE firm_id = ?
+              AND item_type IN (" . implode(',', array_fill(0, count($types), '?')) . ")
+              AND item_name = ?
             LIMIT 1
         ");
-        $stmt->execute(['firm_id' => $firmId, 'item_type' => $type, 'item_name' => $name]);
+        $stmt->execute(array_merge([$firmId], $types, [$name]));
         return (int)($stmt->fetchColumn() ?: 0);
     }
 
@@ -4098,9 +4104,6 @@ try {
                 if ($resolvedItemId <= 0) {
                     $resolvedItemId = resolveItemId($pdo, $firmId, $itemType, $code, $name);
                 }
-                if ($resolvedItemId <= 0) {
-                    jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
-                }
             }
 
             $params = [
@@ -4417,9 +4420,6 @@ try {
                     $resolvedItemId = (int)($item['item_id'] ?? 0);
                     if ($resolvedItemId <= 0) {
                         $resolvedItemId = resolveItemId($pdo, $firmId, $poType, $code, $name);
-                    }
-                    if ($resolvedItemId <= 0) {
-                        jsonOut(['ok' => false, 'error' => 'Item Master link missing. Please select item from Item Master (item_id required).'], 400);
                     }
                 }
 

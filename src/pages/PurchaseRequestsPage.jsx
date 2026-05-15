@@ -724,6 +724,7 @@ export default function PurchaseRequestsPage({
         {busy ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
         <div style={{ width: '100%', maxWidth: 'none', margin: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '18px' }}>
@@ -937,6 +938,7 @@ export default function PurchaseRequestsPage({
         {listBusy ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
+            {status ? <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>{status}</div> : null}
           </div>
         ) : null}
         <div style={{ width: '100%', margin: 0 }}>
