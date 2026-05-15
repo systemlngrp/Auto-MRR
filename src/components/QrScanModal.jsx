@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function QrScanModal({ open, title = 'Scan QR', onClose, onScan }) {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const [errorText, setErrorText] = useState('');
   const [isStarting, setIsStarting] = useState(false);
@@ -25,7 +24,11 @@ export default function QrScanModal({ open, title = 'Scan QR', onClose, onScan }
 
     const stop = () => {
       if (timer) {
-        clearInterval(timer);
+        if (typeof timer === 'number') {
+          cancelAnimationFrame(timer);
+        } else {
+          clearInterval(timer);
+        }
         timer = null;
       }
       const s = streamRef.current;
@@ -41,7 +44,11 @@ export default function QrScanModal({ open, title = 'Scan QR', onClose, onScan }
       setIsStarting(true);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           audio: false
         });
         if (cancelled) {
@@ -55,31 +62,34 @@ export default function QrScanModal({ open, title = 'Scan QR', onClose, onScan }
           await v.play();
         }
 
-        timer = setInterval(async () => {
-          try {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            if (!video || !canvas) return;
-            const w = video.videoWidth;
-            const h = video.videoHeight;
-            if (!w || !h) return;
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            if (!ctx) return;
-            ctx.drawImage(video, 0, 0, w, h);
-            const results = await detector.detect(canvas);
-            const first = Array.isArray(results) ? results[0] : null;
-            const rawValue = first?.rawValue ? String(first.rawValue) : '';
-            if (rawValue) {
-              stop();
-              onScan?.(rawValue);
-              onClose?.();
+        let lastScan = 0;
+        const loop = async (now) => {
+          if (cancelled) return;
+          
+          // Scan every 200ms
+          if (now - lastScan >= 200) {
+            lastScan = now;
+            try {
+              const video = videoRef.current;
+              if (video && video.readyState >= 2) {
+                // BarcodeDetector can take the video element directly
+                const results = await detector.detect(video);
+                const first = Array.isArray(results) ? results[0] : null;
+                const rawValue = first?.rawValue ? String(first.rawValue) : '';
+                if (rawValue) {
+                  stop();
+                  onScan?.(rawValue);
+                  onClose?.();
+                  return;
+                }
+              }
+            } catch (err) {
+              // keep scanning
             }
-          } catch {
-            // keep scanning
           }
-        }, 250);
+          timer = requestAnimationFrame(loop);
+        };
+        timer = requestAnimationFrame(loop);
       } catch (err) {
         setErrorText(err?.message || 'Could not access camera.');
       } finally {
@@ -148,7 +158,6 @@ export default function QrScanModal({ open, title = 'Scan QR', onClose, onScan }
             >
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} playsInline muted />
             </div>
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
             <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', fontWeight: 900 }}>
               {isStarting ? 'Starting camera...' : 'Point the camera at the QR code.'}
             </div>
