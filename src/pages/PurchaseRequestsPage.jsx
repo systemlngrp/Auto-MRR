@@ -135,6 +135,7 @@ export default function PurchaseRequestsPage({
   const userEmail = String(currentUser?.user_email || currentUser?.user?.user_email || '').trim();
   const isApproveMode = mode === 'approve';
   const isPendingPoContext = String(listContext || '').trim().toLowerCase() === 'pending_po';
+  const showStatusColumn = !isPendingPoContext;
 
   const load = async () => {
     if (!selectedFirm) return;
@@ -965,8 +966,15 @@ export default function PurchaseRequestsPage({
         <div style={{ width: '100%', margin: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '26px', fontWeight: 1000, color: isPendingPoContext ? '#c2410c' : '#1d4ed8' }}>
-              {isPendingPoContext ? 'Pending PO (Approved Indents)' : (isApproveMode ? 'Indent Approval' : 'Indent')}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '26px', fontWeight: 1000, color: isPendingPoContext ? '#c2410c' : '#1d4ed8' }}>
+                {isPendingPoContext ? 'Pending PO' : (isApproveMode ? 'Indent Approval' : 'Indent')}
+              </div>
+              {isPendingPoContext ? (
+                <span style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fb923c', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }}>
+                  Approved indents without PO
+                </span>
+              ) : null}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1073,7 +1081,7 @@ export default function PurchaseRequestsPage({
             </div>
           ) : null}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+            <table className={isPendingPoContext ? 'pending-po-table' : ''} style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1d4ed8', color: '#fff' }}>
                   {String(tab || '').toLowerCase() === 'pending' ? (
@@ -1184,12 +1192,19 @@ export default function PurchaseRequestsPage({
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000', whiteSpace: 'nowrap' }}>{row.required_date || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', borderRight: '2px solid #000' }}><span style={statusPill}>{statusText.toUpperCase()}</span></td>
                         <td style={{ padding: '10px 12px', borderBottom: '2px solid #000', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {!isPendingPoContext ? (
+                          {isPendingPoContext ? (
                             <>
-                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
-                            </>
-                          ) : (
-                            <>
+                              {!poByPrNo[prNo] && typeof onMakePoFromPr === 'function' ? (
+                                <button
+                                  type="button"
+                                  className="btn small"
+                                  onClick={(e) => { e.stopPropagation(); onMakePoFromPr(prNo); }}
+                                  disabled={isSaving}
+                                  style={{ background: '#f97316', borderColor: '#f97316', color: '#fff', fontWeight: 900 }}
+                                >
+                                  Create PO
+                                </button>
+                              ) : null}{' '}
                               <button
                                 type="button"
                                 className="btn small"
@@ -1198,41 +1213,45 @@ export default function PurchaseRequestsPage({
                                 style={{ background: '#fff7ed', borderColor: '#fdba74', color: '#9a3412' }}
                               >
                                 View Indent
-                              </button>{' '}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); openEdit(prNo); }} disabled={isSaving}>Open</button>{' '}
+                              {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn small"
+                                    onClick={(e) => { e.stopPropagation(); onOpenPoFromPr(poByPrNo[prNo], prNo); }}
+                                    disabled={isSaving}
+                                    style={{ background: '#7c3aed', borderColor: '#7c3aed', color: '#fff' }}
+                                  >
+                                    Open PO
+                                  </button>{' '}
+                                </>
+                              ) : null}
+                              {!isApproveMode && statusText === 'approved' && !poByPrNo[prNo] && typeof onMakePoFromPr === 'function' ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn small"
+                                    onClick={(e) => { e.stopPropagation(); onMakePoFromPr(prNo); }}
+                                    disabled={isSaving}
+                                    style={{ background: '#f97316', borderColor: '#f97316', color: '#fff' }}
+                                  >
+                                    Make PO
+                                  </button>{' '}
+                                </>
+                              ) : null}
+                              {statusText === 'pending' ? (
+                                <>
+                                  <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'approve'); }} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
+                                  <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'reject'); }} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
+                                </>
+                              ) : null}
                             </>
                           )}
-                          {!isApproveMode && (statusText === 'approved' || statusText === 'complete') && poByPrNo[prNo] && typeof onOpenPoFromPr === 'function' ? (
-                            <>
-                              <button
-                                type="button"
-                                className="btn small"
-                                onClick={(e) => { e.stopPropagation(); onOpenPoFromPr(poByPrNo[prNo], prNo); }}
-                                disabled={isSaving}
-                                style={{ background: '#7c3aed', borderColor: '#7c3aed', color: '#fff' }}
-                              >
-                                Open PO
-                              </button>{' '}
-                            </>
-                          ) : null}
-                          {!isApproveMode && statusText === 'approved' && !poByPrNo[prNo] && typeof onMakePoFromPr === 'function' ? (
-                            <>
-                              <button
-                                type="button"
-                                className="btn small"
-                                onClick={(e) => { e.stopPropagation(); onMakePoFromPr(prNo); }}
-                                disabled={isSaving}
-                                style={{ background: '#f97316', borderColor: '#f97316', color: '#fff' }}
-                              >
-                                Make PO
-                              </button>{' '}
-                            </>
-                          ) : null}
-                          {statusText === 'pending' ? (
-                            <>
-                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'approve'); }} disabled={isSaving} style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}>Approve</button>{' '}
-                              <button type="button" className="btn small" onClick={(e) => { e.stopPropagation(); approve(prNo, 'reject'); }} disabled={isSaving} style={{ background: '#b91c1c', borderColor: '#b91c1c', color: '#fff' }}>Reject</button>
-                            </>
-                          ) : null}
                         </td>
                     </tr>
                   );

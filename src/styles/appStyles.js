@@ -235,6 +235,12 @@ body {
   border: 1px solid #22c55e;
 }
 
+/* Pending PO list (uses same Indent table): hide Status column to avoid confusing it with Approved Indent view */
+.pending-po-table th:nth-child(6),
+.pending-po-table td:nth-child(6) {
+  display: none;
+}
+
 .inv-footer {
   margin-top: 12px;
   padding-top: 12px;
