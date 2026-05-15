@@ -513,7 +513,8 @@ export default function PurchaseOrdersPage({
   const validate = () => {
     const next = {};
     if (!String(formData.po_date || '').trim()) next.po_date = 'PO date required';
-    if (!String(formData.po_details || '').trim()) next.po_details = 'PO details required';
+    const isFromIndent = !!String(formData.pr_no || '').trim();
+    if (!isFromIndent && !String(formData.po_details || '').trim()) next.po_details = 'PO details required';
     const meaningfulItems = items.filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''));
     if (!meaningfulItems.length) next.items = 'At least 1 item required';
     if (meaningfulItems.length && meaningfulItems.some((it) => !String(it?.supplier || '').trim())) {
@@ -538,6 +539,7 @@ export default function PurchaseOrdersPage({
     try {
       const payload = await fetchPurchaseRequestDetails(prNo, { spreadsheetId: selectedFirm.spreadsheetId });
       const prItems = Array.isArray(payload?.items) ? payload.items : [];
+      const pr = payload?.purchase_request || {};
       const prStatus = String(payload?.purchase_request?.status || '').trim().toLowerCase();
       if (prStatus && prStatus !== 'approved') {
         throw new Error('Only approved Purchase Request can create PO.');
@@ -548,11 +550,14 @@ export default function PurchaseOrdersPage({
         return hasAnyErp ? 'reel' : 'other';
       };
       const nextPoType = inferPoType();
+      const prRemark = String(pr?.remark || '').trim();
+      const poDetailsAuto = prRemark ? `PR ${prNo} - ${prRemark}` : `PR ${prNo}`;
       setFormData({
         ...blankPo(),
         pr_no: prNo,
         po_type: nextPoType,
         po_date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
+        po_details: poDetailsAuto,
         status: 'pending'
       });
       setItems(prItems.length ? prItems.map((it) => ({
@@ -726,16 +731,6 @@ export default function PurchaseOrdersPage({
                   Download PO PDF
                 </button>
               ) : null}
-              {!locked ? (
-                <>
-                  {!isFromIndent ? (
-                    <button type="button" className="btn" disabled={isSaving} onClick={() => save('draft')} style={{ padding: '10px 14px', fontWeight: 900 }}>Save Draft</button>
-                  ) : null}
-                  <button type="button" className="btn main" disabled={isSaving} onClick={() => save('pending')} style={{ padding: '10px 14px', fontWeight: 900 }}>
-                    {isFromIndent ? 'Save Pending PO' : 'Submit for Approval'}
-                  </button>
-                </>
-              ) : null}
             </div>
           </div>
 
@@ -743,24 +738,26 @@ export default function PurchaseOrdersPage({
           {status ? <div style={{ marginTop: '10px', fontSize: '12px', color: '#6b7280' }}>{status}</div> : null}
 
           <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-            <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type</div>
-              <select
-                disabled={locked}
-                value={formData.po_type || 'reel'}
-                onChange={(e) => {
-                  const nextType = String(e.target.value || 'reel');
-                  setFormData((p) => ({ ...p, po_type: nextType }));
-                  if (nextType === 'other') {
-                    setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
-                  }
-                }}
-                style={inputStyle('po_type')}
-              >
-                <option value="reel">Reel</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+            {!isFromIndent ? (
+              <div style={{ gridColumn: 'span 2' }}>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Type</div>
+                <select
+                  disabled={locked}
+                  value={formData.po_type || 'reel'}
+                  onChange={(e) => {
+                    const nextType = String(e.target.value || 'reel');
+                    setFormData((p) => ({ ...p, po_type: nextType }));
+                    if (nextType === 'other') {
+                      setItems((prev) => prev.map((row) => ({ ...row, erp_code: '' })));
+                    }
+                  }}
+                  style={inputStyle('po_type')}
+                >
+                  <option value="reel">Reel</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            ) : null}
             <div style={{ gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Date{requiredMark}</div>
               <input
@@ -771,19 +768,18 @@ export default function PurchaseOrdersPage({
                 style={inputStyle('po_date')}
               />
             </div>
-            <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Details{requiredMark}</div>
-              <input
-                disabled={locked}
-                value={formData.po_details}
-                onChange={(e) => setFormData((p) => ({ ...p, po_details: e.target.value }))}
-                style={inputStyle('po_details')}
-              />
-            </div>
-            <div style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>Remark</div>
-              <input disabled={locked} value={formData.remark} onChange={(e) => setFormData((p) => ({ ...p, remark: e.target.value }))} style={inputStyle('remark')} />
-            </div>
+            {!isFromIndent ? (
+              <div style={{ gridColumn: 'span 4' }}>
+                <div style={{ fontSize: '12px', fontWeight: 900, color: '#1d4ed8', marginBottom: '6px' }}>PO Details{requiredMark}</div>
+                <input
+                  disabled={locked}
+                  value={formData.po_details}
+                  onChange={(e) => setFormData((p) => ({ ...p, po_details: e.target.value }))}
+                  style={inputStyle('po_details')}
+                />
+                {errors.po_details ? <div style={{ marginTop: 6, fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors.po_details}</div> : null}
+              </div>
+            ) : null}
           </div>
 
           <div style={{ marginTop: '14px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
@@ -868,6 +864,7 @@ export default function PurchaseOrdersPage({
                           }}
                           style={{ width: '220px' }}
                         />
+                        {errors[`item_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`item_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
                         <input disabled={itemLocked} value={row.unit} onChange={(e) => setItem(idx, 'unit', e.target.value)} style={{ width: '80px' }} />
@@ -877,7 +874,7 @@ export default function PurchaseOrdersPage({
                         {errors[`qty_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`qty_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                        <input type="number" step="0.01" disabled={locked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
+                        <input type="number" step="0.01" disabled={itemLocked} value={row.rate} onChange={(e) => setItem(idx, 'rate', e.target.value)} style={{ width: '80px', textAlign: 'right' }} />
                         {errors[`rate_${idx}`] ? <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>{errors[`rate_${idx}`]}</div> : null}
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
@@ -910,6 +907,17 @@ export default function PurchaseOrdersPage({
                 <option key={name} value={name} />
               ))}
             </datalist>
+
+            {!locked ? (
+              <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', background: '#fff' }}>
+                {!isFromIndent ? (
+                  <button type="button" className="btn" disabled={isSaving} onClick={() => save('draft')} style={{ padding: '10px 14px', fontWeight: 900 }}>Save Draft</button>
+                ) : null}
+                <button type="button" className="btn main" disabled={isSaving} onClick={() => save('pending')} style={{ padding: '10px 14px', fontWeight: 900 }}>
+                  {isFromIndent ? 'Save Pending PO' : 'Submit for Approval'}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
