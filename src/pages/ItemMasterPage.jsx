@@ -89,6 +89,20 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
   const openedAsQuickCreate = autoOpenNew;
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, confirmLabel: 'OK' });
   const [groupPrompt, setGroupPrompt] = useState({ open: false });
+  const [unitPrompt, setUnitPrompt] = useState({ open: false });
+  const [unitOptions, setUnitOptions] = useState(() => {
+    const defaults = ['KG', 'PCS', 'CM', 'MTR'];
+    try {
+      const raw = localStorage.getItem('item_units_v1');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.map((u) => String(u || '').trim().toUpperCase()).filter(Boolean);
+        return Array.from(new Set([...defaults, ...cleaned]));
+      }
+    } catch {
+    }
+    return defaults;
+  });
 
   const uiToInternalAll = (value) => {
     const t = String(value || '').trim();
@@ -549,6 +563,33 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
             }
           }}
         />
+        <TextPromptModal
+          isOpen={!!unitPrompt.open}
+          title="Add Unit"
+          label="Unit"
+          placeholder="e.g. BOX, LTR, GM"
+          confirmLabel="Add"
+          onCancel={() => setUnitPrompt({ open: false })}
+          onConfirm={(value) => {
+            const unit = String(value || '').trim().toUpperCase();
+            if (!unit) return;
+            setUnitPrompt({ open: false });
+            setUnitOptions((prev) => {
+              const next = Array.from(new Set([...(Array.isArray(prev) ? prev : []), unit]));
+              try {
+                localStorage.setItem('item_units_v1', JSON.stringify(next));
+              } catch {
+              }
+              return next;
+            });
+            setFormData((p) => ({ ...p, unit }));
+            setErrors((p) => {
+              const next = { ...(p || {}) };
+              delete next.unit;
+              return next;
+            });
+          }}
+        />
         {(isSaving || isLoadingGroups) ? (
           <div className="loading-overlay" style={{ background: 'rgba(245, 247, 251, 0.65)' }}>
             <div className="spinner" />
@@ -600,12 +641,14 @@ export default function ItemMasterPage({ selectedFirm, deps, onBack, initialItem
               {isReelType ? (
                 <input value="CM" readOnly disabled style={{ ...inputStyle('unit'), background: '#f3f4f6', color: '#6b7280' }} />
               ) : (
-                <select value={formData.unit} onChange={(e) => setFormData((p) => ({ ...p, unit: e.target.value }))} style={inputStyle('unit')}>
-                  <option value="KG">KG</option>
-                  <option value="PCS">PCS</option>
-                  <option value="CM">CM</option>
-                  <option value="MTR">MTR</option>
-                </select>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select value={formData.unit} onChange={(e) => setFormData((p) => ({ ...p, unit: e.target.value }))} style={inputStyle('unit')}>
+                    {unitOptions.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn" onClick={() => setUnitPrompt({ open: true })} title="Add Unit" style={{ padding: '10px 12px', fontWeight: 1000 }}>+</button>
+                </div>
               )}
             </div>
             <div style={{ gridColumn: 'span 1' }}>

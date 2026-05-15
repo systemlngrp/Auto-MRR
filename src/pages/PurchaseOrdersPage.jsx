@@ -907,7 +907,12 @@ export default function PurchaseOrdersPage({
     const showErp = itemType === 'reel';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `po-item-names-${itemType}`;
-    const supplierListId = 'po-suppliers';
+    const supplierNameOptions = Array.from(new Set(
+      (Array.isArray(supplierOptions) ? supplierOptions : [])
+        .map((s) => (typeof s === 'string' ? s : (s?.supplier_name || '')))
+        .map((t) => String(t || '').trim())
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
     return (
       <div style={{ minHeight: '100vh', background: '#f5f7fb', padding: 0, overflowY: 'auto' }}>
         {(isLoading || isSaving) ? (
@@ -1036,12 +1041,15 @@ export default function PurchaseOrdersPage({
                         </td>
                       ) : null}
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
-                        <input
+                        <SearchableSelect
                           disabled={locked}
-                          list={supplierListId}
                           value={row.supplier}
-                          onChange={(e) => setItem(idx, 'supplier', e.target.value)}
-                          style={{ width: '200px' }}
+                          onChange={(v) => setItem(idx, 'supplier', v)}
+                          options={supplierNameOptions}
+                          allowCustom={true}
+                          placeholder="Select supplier"
+                          inputStyle={{ width: 220, maxWidth: '32vw' }}
+                          maxVisible={500}
                         />
                       </td>
                       <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>
@@ -1105,11 +1113,6 @@ export default function PurchaseOrdersPage({
             </div>
             <datalist id={itemNameListId}>
               {itemNameOptions.map((name) => <option key={name} value={name} />)}
-            </datalist>
-            <datalist id={supplierListId}>
-              {Array.from(new Set(supplierOptions.map(s => typeof s === 'string' ? s : (s?.supplier_name || '')).filter(Boolean))).map((name) => (
-                <option key={name} value={name} />
-              ))}
             </datalist>
 
             {!locked ? (

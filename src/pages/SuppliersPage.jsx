@@ -328,7 +328,7 @@ export default function SuppliersPage({ selectedFirm, deps, onBack, initialView 
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row?.pin_code || '-'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{String(row?.active ?? '1') === '0' ? 'No' : 'Yes'}</td>
                     <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" className="btn small" onClick={() => openEdit(row)} disabled={isSaving}>Open</button>{' '}
+                      <button type="button" className="btn small" onClick={() => openEdit(row)} disabled={isSaving}>Edit</button>{' '}
                       <button
                         type="button"
                         className="btn small"

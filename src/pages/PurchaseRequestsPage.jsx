@@ -966,23 +966,13 @@ export default function PurchaseRequestsPage({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '26px', fontWeight: 1000, color: isPendingPoContext ? '#c2410c' : '#1d4ed8' }}>
-              {isPendingPoContext ? 'Pending PO (Approved Indents)' : (isApproveMode ? 'Approval of Purchase Requests' : 'Purchase Requests')}
-            </div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>{selectedFirm?.name || ''}</span>
-              <span style={isPendingPoContext
-                ? { background: '#ffedd5', color: '#9a3412', border: '1px solid #fb923c', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }
-                : { background: '#e0f2fe', color: '#075985', border: '1px solid #0ea5e9', padding: '3px 10px', borderRadius: 999, fontWeight: 1000, fontSize: 11 }
-              }>
-                {isPendingPoContext ? 'Action: Create PO' : `View: ${tabLabel}`}
-              </span>
+              {isPendingPoContext ? 'Pending PO (Approved Indents)' : (isApproveMode ? 'Indent Approval' : 'Indent')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PR / user" style={{ ...inputStyle('search'), width: '260px', borderRadius: '999px' }} />
             {!isPendingPoContext ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#1d4ed8', paddingLeft: 10 }}>Status</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <SearchableSelect
                   value={tabLabel}
                   onChange={(v) => {

@@ -1,6 +1,8 @@
 export const labelStyles = `
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
 .labels-grid { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-top: 10px; }
-.print-label { border: 1px solid #111; padding: 12px; background: #fff; color: #111; font-family: Arial, sans-serif; text-align: center; margin: 0 auto; display: flex; flex-direction: column; box-sizing: border-box; }
+.print-label { border: 1px solid #111; padding: 12px; background: #fff; color: #111; font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; text-align: center; margin: 0 auto; display: flex; flex-direction: column; box-sizing: border-box; }
 .mode-label .print-label { width: 228px; height: 233px; padding: 8px; text-align: left; }
 .mode-a4 .print-label { width: 100%; height: 100%; padding: 30px; font-size: 1.5em; max-width: 800px; }
 .print-label .brand-logo { margin: 0 auto; display: block; object-fit: contain; }
@@ -56,6 +58,12 @@ export const labelStyles = `
 `;
 
 export const styles = `
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root, body, button, input, textarea, select {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+
 :root {
   --ink: #1d4ed8;
   --paper: #fff;
