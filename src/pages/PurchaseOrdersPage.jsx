@@ -72,6 +72,13 @@ function inferPrNoFromPoNo(poNo) {
   return '';
 }
 
+function inferErpFromText(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const m = /^(\d{4,})\b/.exec(text);
+  return m ? m[1] : '';
+}
+
 let jsPdfLoaderPromise = null;
 
 function ensureJsPdfLoaded_() {
@@ -521,8 +528,10 @@ export default function PurchaseOrdersPage({
       next.items = 'Supplier required for each item';
     }
     meaningfulItems.forEach((it, idx) => {
-      if (!String(it.item_id || '').trim()) next[`item_${idx}`] = 'Select item from Item Master';
-      if (!String(it.item_name || it.erp_code || '').trim()) next[`item_${idx}`] = 'Item required';
+      const itemText = String(it.item_name || it.erp_code || it.description || '').trim();
+      const hasAnyItemKey = !!itemText;
+      // Don't hard-require item_id (older DB schemas may not have it).
+      if (!hasAnyItemKey) next[`item_${idx}`] = 'Item required';
       if (!String(it.qty || '').trim()) next[`qty_${idx}`] = 'Qty required';
       if (!String(it.rate || '').trim()) next[`rate_${idx}`] = 'Rate required';
       else if (!isFiniteNumberText(it.rate)) next[`rate_${idx}`] = 'Rate must be numeric';
@@ -566,7 +575,9 @@ export default function PurchaseOrdersPage({
         item_id: String(it?.item_id || '').trim(),
         pr_item_id: String(it?.pr_item_id || '').trim(),
         supplier: String(it?.supplier || '').trim(),
-        erp_code: nextPoType === 'other' ? '' : String(it?.erp_code || '').trim(),
+        erp_code: nextPoType === 'other'
+          ? ''
+          : (String(it?.erp_code || '').trim() || inferErpFromText(it?.item_name) || inferErpFromText(it?.description)),
         amount: it?.amount || formatAmount(toNumber(it?.qty) * toNumber(it?.rate))
       })) : [blankItemRow()]);
       setErrors({});
@@ -700,7 +711,14 @@ export default function PurchaseOrdersPage({
     const isFromIndent = !!String(formData.pr_no || '').trim();
     const itemLocked = locked || isFromIndent;
     const itemType = String(formData.po_type || 'reel') === 'other' ? 'other' : 'reel';
-    const itemOptions = itemMaster.filter((it) => String(it?.item_type || 'reel') === itemType && String(it?.active || '1') !== '0');
+    const itemOptions = itemMaster.filter((it) => {
+      const type = String(it?.item_type || 'reel').trim().toLowerCase();
+      const active = String(it?.active || '1') !== '0';
+      if (!active) return false;
+      if (itemType === 'other') return type === 'other';
+      // Treat 'mrr' as 'reel' item master type (legacy naming).
+      return type === 'reel' || type === 'mrr';
+    });
     const showErp = itemType === 'reel';
     const itemNameOptions = Array.from(new Set(itemOptions.map((it) => String(it?.item_name || '').trim()).filter(Boolean)));
     const itemNameListId = `po-item-names-${itemType}`;
