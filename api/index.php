@@ -2585,6 +2585,66 @@ try {
         jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
 
+    // Backward-compatible endpoint used by older frontends that post a "record" object
+    // (originally intended for Google Sheets writes). Map it to DB-backed reel issue entries.
+    if ($action === 'save_reel_issue') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $record = is_array($payload['record'] ?? null) ? $payload['record'] : [];
+
+        $jobNo = trim((string)($record['JOB NO.'] ?? $record['JOB No.'] ?? $record['JOB'] ?? $record['job_no'] ?? $payload['job_no'] ?? ''));
+        $ourReelNo = trim((string)($record['Our Reel Number'] ?? $record['QR Scan'] ?? $record['our_reel_no'] ?? $record['reel_no'] ?? $payload['our_reel_no'] ?? ''));
+        $issueWeight = (float)($record['Weight'] ?? $record['issue_weight'] ?? $payload['issue_weight'] ?? 0);
+        $issueDate = trim((string)($record['Date'] ?? $record['issue_date'] ?? $payload['issue_date'] ?? ''));
+        $corrugation = trim((string)($record['Corrugation'] ?? $record['corrugation'] ?? $payload['corrugation'] ?? ''));
+        $createdBy = trim((string)($record['created_by'] ?? $payload['created_by'] ?? $payload['user_email'] ?? ''));
+
+        if ($jobNo === '' || $ourReelNo === '' || $issueWeight <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing job_no / our_reel_no / issue_weight.'], 400);
+        }
+
+        $available = getAvailableWeightForReel($firmId, $ourReelNo);
+        if ($issueWeight > $available + 0.0001) {
+            jsonOut(['ok' => false, 'error' => 'Issue weight exceeds available reel weight.'], 400);
+        }
+
+        $metaStmt = $pdo->prepare("
+            SELECT c.erp_code, COALESCE(p.supplier_name, '') AS supplier_name, c.size_value, c.gsm_value, c.bf_value, c.rate_value
+            FROM reel_mrr_children c
+            LEFT JOIN reel_mrr_parents p ON p.id = c.parent_id AND p.firm_id = c.firm_id
+            WHERE c.firm_id = :firm_id AND c.our_reel_no = :our_reel_no
+            ORDER BY c.id DESC
+            LIMIT 1
+        ");
+        $metaStmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+        $meta = $metaStmt->fetch() ?: [];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO reel_issue_entries
+              (firm_id, job_no, our_reel_no, issue_weight, issue_date, corrugation, erp_code, supplier_name, size_value, gsm_value, bf_value, rate_value, created_by, extra_json)
+            VALUES
+              (:firm_id, :job_no, :our_reel_no, :issue_weight, :issue_date, :corrugation, :erp_code, :supplier_name, :size_value, :gsm_value, :bf_value, :rate_value, :created_by, :extra_json)
+        ");
+        $stmt->execute([
+            'firm_id' => $firmId,
+            'job_no' => $jobNo,
+            'our_reel_no' => $ourReelNo,
+            'issue_weight' => $issueWeight,
+            'issue_date' => $issueDate !== '' ? $issueDate : date('d/m/Y'),
+            'corrugation' => $corrugation !== '' ? $corrugation : null,
+            'erp_code' => (string)($meta['erp_code'] ?? ''),
+            'supplier_name' => (string)($meta['supplier_name'] ?? ''),
+            'size_value' => (string)($meta['size_value'] ?? ''),
+            'gsm_value' => (string)($meta['gsm_value'] ?? ''),
+            'bf_value' => (string)($meta['bf_value'] ?? ''),
+            'rate_value' => $meta['rate_value'] ?? null,
+            'created_by' => $createdBy !== '' ? $createdBy : null,
+            'extra_json' => null,
+        ]);
+
+        jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+    }
+
     if ($action === 'save_reel_return_entry') {
         $pdo = db();
         ensureReelStockSchema($pdo);
@@ -2595,6 +2655,60 @@ try {
         $returnDate = trim((string)($payload['return_date'] ?? ''));
         $corrugation = trim((string)($payload['corrugation'] ?? ''));
         $createdBy = trim((string)($payload['created_by'] ?? $payload['user_email'] ?? ''));
+
+        if ($jobNo === '' || $ourReelNo === '' || $returnWeight <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing job_no / our_reel_no / return_weight.'], 400);
+        }
+
+        $metaStmt = $pdo->prepare("
+            SELECT c.erp_code, COALESCE(p.supplier_name, '') AS supplier_name, c.size_value, c.gsm_value, c.bf_value, c.rate_value
+            FROM reel_mrr_children c
+            LEFT JOIN reel_mrr_parents p ON p.id = c.parent_id AND p.firm_id = c.firm_id
+            WHERE c.firm_id = :firm_id AND c.our_reel_no = :our_reel_no
+            ORDER BY c.id DESC
+            LIMIT 1
+        ");
+        $metaStmt->execute(['firm_id' => $firmId, 'our_reel_no' => $ourReelNo]);
+        $meta = $metaStmt->fetch() ?: [];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO reel_return_entries
+              (firm_id, job_no, our_reel_no, return_weight, return_date, corrugation, erp_code, supplier_name, size_value, gsm_value, bf_value, rate_value, created_by, extra_json)
+            VALUES
+              (:firm_id, :job_no, :our_reel_no, :return_weight, :return_date, :corrugation, :erp_code, :supplier_name, :size_value, :gsm_value, :bf_value, :rate_value, :created_by, :extra_json)
+        ");
+        $stmt->execute([
+            'firm_id' => $firmId,
+            'job_no' => $jobNo,
+            'our_reel_no' => $ourReelNo,
+            'return_weight' => $returnWeight,
+            'return_date' => $returnDate !== '' ? $returnDate : date('d/m/Y'),
+            'corrugation' => $corrugation !== '' ? $corrugation : null,
+            'erp_code' => (string)($meta['erp_code'] ?? ''),
+            'supplier_name' => (string)($meta['supplier_name'] ?? ''),
+            'size_value' => (string)($meta['size_value'] ?? ''),
+            'gsm_value' => (string)($meta['gsm_value'] ?? ''),
+            'bf_value' => (string)($meta['bf_value'] ?? ''),
+            'rate_value' => $meta['rate_value'] ?? null,
+            'created_by' => $createdBy !== '' ? $createdBy : null,
+            'extra_json' => null,
+        ]);
+
+        jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+    }
+
+    // Backward-compatible endpoint used by older frontends that post a "record" object.
+    if ($action === 'save_reel_return') {
+        $pdo = db();
+        ensureReelStockSchema($pdo);
+        $record = is_array($payload['record'] ?? null) ? $payload['record'] : [];
+
+        $jobNo = trim((string)($record['JOB'] ?? $record['JOB NO.'] ?? $record['JOB No.'] ?? $record['job_no'] ?? $payload['job_no'] ?? ''));
+        $ourReelNo = trim((string)($record['Our Reel Number'] ?? $record['QR Scan'] ?? $record['our_reel_no'] ?? $record['reel_no'] ?? $payload['our_reel_no'] ?? ''));
+        $returnWeight = (float)($record['Weight'] ?? $record['return_weight'] ?? $payload['return_weight'] ?? 0);
+        $returnDate = trim((string)($record['Date'] ?? $record['return_date'] ?? $payload['return_date'] ?? ''));
+        $corrugation = trim((string)($record['Corrugation'] ?? $record['corrugation'] ?? $payload['corrugation'] ?? ''));
+        $createdBy = trim((string)($record['created_by'] ?? $payload['created_by'] ?? $payload['user_email'] ?? ''));
 
         if ($jobNo === '' || $ourReelNo === '' || $returnWeight <= 0) {
             jsonOut(['ok' => false, 'error' => 'Missing job_no / our_reel_no / return_weight.'], 400);
