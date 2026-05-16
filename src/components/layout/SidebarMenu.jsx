@@ -54,6 +54,14 @@ export default function SidebarMenu({
               {badge(pendingCounts?.item_master || 0, 'gray')}
             </button>
           ) : null}
+
+          {canSee('item_master') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDpmItemsMaster}>
+              <span>DPM Items Master</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+
           {canSee('suppliers') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onSuppliers}>
               <span>Suppliers</span>

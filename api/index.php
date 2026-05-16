@@ -559,6 +559,25 @@ function ensureDpmJobsSchema(PDO $pdo): void
     ");
 }
 
+function ensureDpmItemsMasterSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS dpm_items_master (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          erp VARCHAR(120) NOT NULL,
+          item_name VARCHAR(255) DEFAULT NULL,
+          customer_name VARCHAR(255) DEFAULT NULL,
+          data_json LONGTEXT DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uniq_dpm_item_erp (firm_id, erp),
+          KEY idx_dpm_item_name (firm_id, item_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 function ensureReelStockSchema(PDO $pdo): void
 {
     $pdo->exec("
@@ -5145,6 +5164,75 @@ try {
         }
         $stmt = $pdo->prepare("DELETE FROM dpm_jobs WHERE firm_id = :firm_id AND id = :id");
         $stmt->execute(['firm_id' => $firmId, 'id' => $id]);
+        jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'get_dpm_items') {
+        $pdo = db();
+        ensureDpmItemsMasterSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM dpm_items_master WHERE firm_id = ? ORDER BY item_name ASC");
+        $stmt->execute([$firmId]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($items as &$item) {
+            $data = json_decode($item['data_json'] ?? '{}', true);
+            unset($item['data_json']);
+            $item = array_merge($data, $item);
+        }
+        
+        jsonOut([
+            'ok' => true,
+            'items' => $items,
+        ]);
+    }
+
+    if ($action === 'save_dpm_items') {
+        $pdo = db();
+        ensureDpmItemsMasterSchema($pdo);
+        $items = $payload['items'] ?? [];
+        if (!is_array($items)) $items = [$items];
+        
+        $pdo->beginTransaction();
+        try {
+            foreach ($items as $item) {
+                $erp = trim((string)($item['erp'] ?? $item['ERP'] ?? ''));
+                if ($erp === '') continue;
+                
+                $itemName = trim((string)($item['item_name'] ?? $item['Item Name'] ?? ''));
+                $customerName = trim((string)($item['customer_name'] ?? $item['Customer Name'] ?? ''));
+                
+                $data = $item;
+                unset($data['id'], $data['firm_id'], $data['created_at'], $data['updated_at']);
+                $dataJson = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO dpm_items_master (firm_id, erp, item_name, customer_name, data_json)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                        item_name = VALUES(item_name),
+                        customer_name = VALUES(customer_name),
+                        data_json = VALUES(data_json),
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+                $stmt->execute([$firmId, $erp, $itemName, $customerName, $dataJson]);
+            }
+            $pdo->commit();
+            jsonOut(['ok' => true]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_dpm_item') {
+        $pdo = db();
+        ensureDpmItemsMasterSchema($pdo);
+        $erp = trim((string)($payload['erp'] ?? ''));
+        if ($erp === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing ERP code.'], 400);
+        }
+        $stmt = $pdo->prepare("DELETE FROM dpm_items_master WHERE firm_id = ? AND erp = ?");
+        $stmt->execute([$firmId, $erp]);
         jsonOut(['ok' => true]);
     }
 

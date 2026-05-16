@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchItemGroups, saveItemGroup, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchCompanyMaster, saveCompanyMaster, deleteCompanyMaster, fetchStateMaster, saveStateMaster, fetchMasterCounts, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
+import { savePackingToSheets, saveInvoiceToSheets, saveGeEntryToSheets, fetchSheetRangeWithParams, fetchLatestMrrGe, fetchSheetRange, fetchPendingGeEntries, fetchUniqueSuppliers, authenticateUser, approvePendingStage, savePoRowsToSheets, fetchUsers, saveUsers, deleteUser, fetchItems, saveItems, deleteItem, fetchDpmItems, saveDpmItems, deleteDpmItem, fetchItemGroups, saveItemGroup, fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest, fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder, fetchLastPurchaseInfo, fetchSuppliers, fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster, fetchCompanyMaster, saveCompanyMaster, deleteCompanyMaster, fetchStateMaster, saveStateMaster, fetchMasterCounts, HELPER_SHEET_NAME, PO_SHEET_NAME } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
 import { Header, MetaTable, PartyCard, SimplePartyCard } from './components/document/DocumentPrimitives';
 import PendingGeModal from './components/modals/PendingGeModal';
@@ -17,8 +17,9 @@ import ItemMasterPage from './pages/ItemMasterPage';
 import PurchaseRequestsPage from './pages/PurchaseRequestsPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import SuppliersPage from './pages/SuppliersPage';
-import StateMasterPage from './pages/StateMasterPage';
+import DpmItemsMasterPage from './pages/DpmItemsMasterPage';
 import CompanyMasterPage from './pages/CompanyMasterPage';
+
 import ReelIssueReturnPage from './pages/ReelIssueReturnPage';
 import SheetPlantPage from './pages/SheetPlantPage';
 import ReelPrintingPage from './pages/ReelPrintingPage';
@@ -3518,6 +3519,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onDownloadLabel: () => { setLabelInitialMrr(''); setStep(5); },
               onPendingReelIssueReturn: () => setStep(19),
               onDpmJobs: () => setStep(25),
+              onDpmItemsMaster: () => setStep(36),
+
               onPendingSheetPlant: () => setStep(20),
               onPendingPrinting: () => setStep(21),
               onPendingCloser: () => setStep(22),
@@ -5381,6 +5384,22 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           onSaved={(data) => {
             console.log('Order Form Saved:', data);
             setStep(3);
+          }}
+        />
+      </>
+    );
+  }
+
+  if (step === 36) {
+    return (
+      <>
+        {userBadge}
+        <DpmItemsMasterPage
+          deps={{
+            fetchDpmItems,
+            saveDpmItems,
+            deleteDpmItem,
+            firm: tempFirm
           }}
         />
       </>

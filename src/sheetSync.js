@@ -399,6 +399,42 @@ export async function deleteDpmJob(firm, id) {
   });
 }
 
+export async function fetchDpmItems(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const params = new URLSearchParams({
+    action: 'get_dpm_items',
+    firm_id: getFirmKey(firm)
+  });
+  const res = await fetchJson(`${backendUrl}?${params}`);
+  return Array.isArray(res?.items) ? res.items : [];
+}
+
+export async function saveDpmItems(firm, items) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_dpm_items',
+      firm_id: getFirmKey(firm),
+      items: Array.isArray(items) ? items : [items]
+    })
+  });
+}
+
+export async function deleteDpmItem(firm, erp) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'delete_dpm_item',
+      firm_id: getFirmKey(firm),
+      erp
+    })
+  });
+}
+
 export async function fetchReelStock(firmSource, backendSource) {
   const backendUrl = ensureBackendUrl(backendSource || firmSource);
   const firmId = getFirmKey(firmSource);

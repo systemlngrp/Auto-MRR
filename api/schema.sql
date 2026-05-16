@@ -672,3 +672,17 @@ CREATE TABLE IF NOT EXISTS companies (
   KEY idx_companies_gst (firm_id, gst_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS dpm_items_master (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  erp VARCHAR(120) NOT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  customer_name VARCHAR(255) DEFAULT NULL,
+  data_json LONGTEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_dpm_item_erp (firm_id, erp),
+  KEY idx_dpm_item_name (firm_id, item_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
