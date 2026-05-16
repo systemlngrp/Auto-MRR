@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
 
 export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
-  const { fetchSuppliers, fetchItems } = deps;
+  const { fetchCompanyMaster, fetchDpmItems } = deps;
 
-  const [suppliers, setSuppliers] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -29,11 +29,11 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
       if (!selectedFirm) return;
       setIsLoading(true);
       try {
-        const [supplierData, itemData] = await Promise.all([
-          fetchSuppliers({ spreadsheetId: selectedFirm.spreadsheetId }),
-          fetchItems({ spreadsheetId: selectedFirm.spreadsheetId })
+        const [companyData, itemData] = await Promise.all([
+          fetchCompanyMaster({ spreadsheetId: selectedFirm.spreadsheetId }),
+          fetchDpmItems(selectedFirm)
         ]);
-        setSuppliers(Array.isArray(supplierData) ? supplierData : []);
+        setCompanies(Array.isArray(companyData) ? companyData : []);
         setItems(Array.isArray(itemData) ? itemData : []);
       } catch (err) {
         setStatus('Error loading data: ' + err.message);
@@ -42,18 +42,18 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
       }
     }
     loadData();
-  }, [selectedFirm, fetchSuppliers, fetchItems]);
+  }, [selectedFirm, fetchCompanyMaster, fetchDpmItems]);
 
-  const supplierOptions = useMemo(() => {
-    return suppliers
-      .map(s => String(s.name || '').trim())
+  const companyOptions = useMemo(() => {
+    return companies
+      .map(c => String(c.company_name || c.name || '').trim())
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
-  }, [suppliers]);
+  }, [companies]);
 
   const itemOptions = useMemo(() => {
     return items
-      .map(it => String(it.item_name || it.erp_code || '').trim())
+      .map(it => String(it.item_name || it['Item Name'] || it.erp || it.ERP || '').trim())
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
   }, [items]);
@@ -139,7 +139,7 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
           <SearchableSelect
             value={formData.company_name}
             onChange={v => setFormData({ ...formData, company_name: v })}
-            options={supplierOptions}
+            options={companyOptions}
             placeholder="Select Company"
             inputStyle={inputBaseStyle(errors.company_name)}
           />

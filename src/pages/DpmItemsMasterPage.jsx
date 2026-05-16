@@ -89,7 +89,7 @@ const ALL_FIELDS = [
 
 const SUMMARY_FIELDS = ['ERP', 'Item Name', 'Customer Name', 'BOX TYPE', 'Ply', 'Rate'];
 
-export default function DpmItemsMasterPage({ deps = {} }) {
+export default function DpmItemsMasterPage({ deps = {}, onBack }) {
   const { fetchDpmItems, saveDpmItems, deleteDpmItem, firm = {} } = deps;
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -189,6 +189,7 @@ export default function DpmItemsMasterPage({ deps = {} }) {
           />
           <button onClick={handleAddNew} style={appStyles.primaryButton}>+ Add Item</button>
           <button onClick={loadItems} style={appStyles.secondaryButton}>Refresh</button>
+          <button onClick={onBack} style={appStyles.secondaryButton}>Back</button>
         </div>
       </div>
 
@@ -223,6 +224,10 @@ export default function DpmItemsMasterPage({ deps = {} }) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+        <button onClick={onBack} style={{ ...appStyles.secondaryButton, minWidth: '120px' }}>Back</button>
       </div>
 
       {isModalOpen && (

@@ -341,6 +341,19 @@ export default function CompanyMasterPage({ selectedFirm, deps, onBack, initialV
             </table>
           </div>
         </div>
+
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+          <button onClick={onBack} style={{ 
+            background: '#fff',
+            color: '#111827',
+            border: '1px solid #cbd5e1',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            fontWeight: 900,
+            cursor: 'pointer',
+            minWidth: '120px'
+          }}>Back</button>
+        </div>
       </div>
     </div>
   );
