@@ -1,75 +1,6 @@
 import React, { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import ConfirmModal from '../components/modals/ConfirmModal';
-
-const appStyles = {
-  pageContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    background: '#f5f7fb',
-    minHeight: '100vh',
-    padding: '24px'
-  },
-  pageTitle: {
-    fontSize: '26px',
-    fontWeight: 1000,
-    color: '#111827',
-    margin: 0
-  },
-  card: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    marginTop: '20px'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '14px'
-  },
-  tableHeaderRow: {
-    background: '#1d4ed8',
-    color: '#fff'
-  },
-  tableHeaderCell: {
-    textAlign: 'left',
-    padding: '12px',
-    borderBottom: '1px solid #1d4ed8',
-    fontWeight: 'bold',
-    color: '#fff'
-  },
-  tableCell: {
-    padding: '10px 12px',
-    borderBottom: '1px solid #f1f5f9'
-  },
-  input: {
-    width: '100%',
-    boxSizing: 'border-box',
-    fontSize: '14px',
-    padding: '10px 12px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    outline: 'none'
-  },
-  primaryButton: {
-    background: '#1d4ed8',
-    color: '#fff',
-    border: '1px solid #1d4ed8',
-    padding: '10px 16px',
-    borderRadius: '10px',
-    fontWeight: 900,
-    cursor: 'pointer'
-  },
-  secondaryButton: {
-    background: '#fff',
-    color: '#111827',
-    border: '1px solid #cbd5e1',
-    padding: '10px 16px',
-    borderRadius: '10px',
-    fontWeight: 900,
-    cursor: 'pointer'
-  }
-};
+import { pageStyles } from '../styles/pageStyles';
 
 const ALL_FIELDS = [
   'ERP', 'Item Name', 'BOX TYPE', 'Company Id', 'Customer Name', 'Rate', 'Flute Type', 'Ply', 
@@ -176,43 +107,43 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
   };
 
   return (
-    <div style={{ ...appStyles.pageContainer, padding: '20px' }}>
+    <div style={{ ...pageStyles.pageContainer, padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={appStyles.pageTitle}>DPM Items Master (Production)</h1>
+        <h1 style={pageStyles.pageTitle}>DPM Items Master (Production)</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input 
             type="text" 
             placeholder="Search ERP, Name, Customer..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ ...appStyles.input, width: '300px' }}
+            style={{ ...pageStyles.input, width: '300px' }}
           />
-          <button onClick={handleAddNew} style={appStyles.primaryButton}>+ Add Item</button>
-          <button onClick={loadItems} style={appStyles.secondaryButton}>Refresh</button>
-          <button onClick={onBack} style={appStyles.secondaryButton}>Back</button>
+          <button onClick={handleAddNew} style={pageStyles.primaryButton}>+ Add Item</button>
+          <button onClick={loadItems} style={pageStyles.secondaryButton}>Refresh</button>
+          <button onClick={onBack} style={pageStyles.secondaryButton}>Back</button>
         </div>
       </div>
 
-      <div style={appStyles.card}>
+      <div style={pageStyles.card}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={appStyles.table}>
+          <table style={pageStyles.table}>
             <thead>
-              <tr style={appStyles.tableHeaderRow}>
+              <tr style={pageStyles.tableHeaderRow}>
                 {SUMMARY_FIELDS.map(f => (
-                  <th key={f} style={appStyles.tableHeaderCell}>{f}</th>
+                  <th key={f} style={pageStyles.tableHeaderCell}>{f}</th>
                 ))}
-                <th style={appStyles.tableHeaderCell}>Actions</th>
+                <th style={pageStyles.tableHeaderCell}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item, idx) => (
                 <tr key={item.erp || idx} style={idx % 2 === 0 ? {} : { backgroundColor: '#f9fafb' }}>
                   {SUMMARY_FIELDS.map(f => (
-                    <td key={f} style={appStyles.tableCell}>{item[f] || item[f.toLowerCase()] || '-'}</td>
+                    <td key={f} style={pageStyles.tableCell}>{item[f] || item[f.toLowerCase()] || '-'}</td>
                   ))}
-                  <td style={{ ...appStyles.tableCell, whiteSpace: 'nowrap' }}>
-                    <button onClick={() => handleEdit(item)} style={{ ...appStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', marginRight: '5px' }}>Edit</button>
-                    <button onClick={() => setConfirmDelete(item)} style={{ ...appStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', color: '#dc2626' }}>Delete</button>
+                  <td style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap' }}>
+                    <button onClick={() => handleEdit(item)} style={{ ...pageStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', marginRight: '5px' }}>Edit</button>
+                    <button onClick={() => setConfirmDelete(item)} style={{ ...pageStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', color: '#dc2626' }}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -227,7 +158,7 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
       </div>
 
       <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-        <button onClick={onBack} style={{ ...appStyles.secondaryButton, minWidth: '120px' }}>Back</button>
+        <button onClick={onBack} style={{ ...pageStyles.secondaryButton, minWidth: '120px' }}>Back</button>
       </div>
 
       {isModalOpen && (
@@ -252,15 +183,15 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
                       type="text"
                       value={editingItem[f] || ''}
                       onChange={(e) => handleInputChange(f, e.target.value)}
-                      style={appStyles.input}
+                      style={pageStyles.input}
                       required={f === 'ERP'}
                     />
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={appStyles.secondaryButton} disabled={isSaving}>Cancel</button>
-                <button type="submit" style={appStyles.primaryButton} disabled={isSaving}>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={pageStyles.secondaryButton} disabled={isSaving}>Cancel</button>
+                <button type="submit" style={pageStyles.primaryButton} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Item'}
                 </button>
               </div>

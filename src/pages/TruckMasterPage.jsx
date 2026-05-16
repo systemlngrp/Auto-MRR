@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as sheetSync from '../sheetSync';
-import { appStyles } from '../styles/appStyles';
+import { pageStyles } from '../styles/pageStyles';
 import ConfirmModal from '../components/modals/ConfirmModal';
 
 export default function TruckMasterPage({ firm, currentUser, onBack }) {
@@ -119,16 +119,16 @@ export default function TruckMasterPage({ firm, currentUser, onBack }) {
   }
 
   return (
-    <div style={appStyles.pageContainer}>
-      <div style={appStyles.pageHeader}>
+    <div style={pageStyles.pageContainer}>
+      <div style={pageStyles.pageHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <button onClick={onBack} className="inv-back-btn">←</button>
-          <h2 style={appStyles.pageTitle}>Truck Master</h2>
+          <h2 style={pageStyles.pageTitle}>Truck Master</h2>
         </div>
         <button onClick={handleAdd} className="inv-btn-primary">Add Truck</button>
       </div>
 
-      {error && <div style={appStyles.errorBanner}>{error}</div>}
+      {error && <div style={pageStyles.errorBanner}>{error}</div>}
 
       <div style={{ marginBottom: '20px' }}>
         <input
@@ -136,7 +136,7 @@ export default function TruckMasterPage({ firm, currentUser, onBack }) {
           placeholder="Search by Truck Number, Driver or Transporter..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ ...appStyles.input, width: '100%', maxWidth: '400px' }}
+          style={{ ...pageStyles.input, width: '100%', maxWidth: '400px' }}
         />
       </div>
 
@@ -198,67 +198,67 @@ export default function TruckMasterPage({ firm, currentUser, onBack }) {
             <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={appStyles.label}>Truck Number *</label>
+                  <label style={pageStyles.label}>Truck Number *</label>
                   <input
                     type="text"
                     required
                     value={formData.truck_number}
                     onChange={(e) => setFormData({ ...formData, truck_number: e.target.value.toUpperCase() })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Driver Name</label>
+                  <label style={pageStyles.label}>Driver Name</label>
                   <input
                     type="text"
                     value={formData.driver_name}
                     onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Driver Mobile</label>
+                  <label style={pageStyles.label}>Driver Mobile</label>
                   <input
                     type="text"
                     value={formData.driver_mobile}
                     onChange={(e) => setFormData({ ...formData, driver_mobile: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={appStyles.label}>Transporter Name</label>
+                  <label style={pageStyles.label}>Transporter Name</label>
                   <input
                     type="text"
                     value={formData.transporter_name}
                     onChange={(e) => setFormData({ ...formData, transporter_name: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Vehicle Type</label>
+                  <label style={pageStyles.label}>Vehicle Type</label>
                   <input
                     type="text"
                     value={formData.vehicle_type}
                     onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Capacity</label>
+                  <label style={pageStyles.label}>Capacity</label>
                   <input
                     type="number"
                     step="0.001"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Status</label>
+                  <label style={pageStyles.label}>Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>

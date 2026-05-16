@@ -74,18 +74,18 @@ export default function SidebarMenu({
               {badge(pendingCounts?.companies || 0, 'gray')}
             </button>
           ) : null}
-          <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onStateMaster}>
+          <button type="button" className="inv-submenu-item" onClick={actions?.onStateMaster}>
             <span>State</span>
             {badge(pendingCounts?.state_master || 0, 'gray')}
           </button>
           {canSee('truck_master') ? (
-            <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onTruckMaster}>
+            <button type="button" className="inv-submenu-item" onClick={actions?.onTruckMaster}>
               <span>Truck Master</span>
               {badge(0, 'gray')}
             </button>
           ) : null}
           {canSee('users') ? (
-            <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onUsers}>
+            <button type="button" className="inv-submenu-item" onClick={actions?.onUsers}>
 
               <span>Users</span>
               {badge(pendingCounts?.users || 0, 'gray')}
@@ -210,19 +210,19 @@ export default function SidebarMenu({
             </button>
           ) : null}
           {canSee('order_pending_jobs') ? (
-            <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onOrderPendingJobs}>
+            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingJobs}>
               <span>Pending Planning</span>
               {badge(pendingCounts?.order_pending_planning || 0, 'green')}
             </button>
           ) : null}
           {canSee('dpm_jobs') ? (
-            <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onDpmJobs}>
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDpmJobs}>
               <span>DPM Jobs</span>
               {badge(0, 'gray')}
             </button>
           ) : null}
           {canSee('dispatch_planning') ? (
-            <button type=\"button\" className=\"inv-submenu-item\" onClick={actions?.onDispatchPlanning}>
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDispatchPlanning}>
               <span>Dispatch Planning</span>
               {badge(0, 'gray')}
             </button>

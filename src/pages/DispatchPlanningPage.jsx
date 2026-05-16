@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as sheetSync from '../sheetSync';
-import { appStyles } from '../styles/appStyles';
+import { pageStyles } from '../styles/pageStyles';
 import SearchableSelect from '../components/layout/SearchableSelect';
 
 export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
@@ -92,11 +92,11 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
   }
 
   return (
-    <div style={appStyles.pageContainer}>
-      <div style={appStyles.pageHeader}>
+    <div style={pageStyles.pageContainer}>
+      <div style={pageStyles.pageHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <button onClick={onBack} className="inv-back-btn">←</button>
-          <h2 style={appStyles.pageTitle}>Dispatch Planning</h2>
+          <h2 style={pageStyles.pageTitle}>Dispatch Planning</h2>
         </div>
         <div className="inv-tab-group">
           <button 
@@ -114,7 +114,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
         </div>
       </div>
 
-      {error && <div style={appStyles.errorBanner}>{error}</div>}
+      {error && <div style={pageStyles.errorBanner}>{error}</div>}
 
       {activeTab === 'pending' ? (
         <div className="inv-card" style={{ padding: 0, overflowX: 'auto' }}>
@@ -212,27 +212,27 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
             <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
                 <div className="info-item">
-                  <label style={appStyles.label}>Company</label>
+                  <label style={pageStyles.label}>Company</label>
                   <div style={{ fontWeight: 'bold' }}>{planningJob.company_name}</div>
                 </div>
                 <div className="info-item">
-                  <label style={appStyles.label}>Item</label>
+                  <label style={pageStyles.label}>Item</label>
                   <div style={{ fontWeight: 'bold' }}>{planningJob.item} ({planningJob.erp})</div>
                 </div>
                 <div className="info-item">
-                  <label style={appStyles.label}>Order ID</label>
+                  <label style={pageStyles.label}>Order ID</label>
                   <div>{planningJob.order_id}</div>
                 </div>
                 <div className="info-item">
-                  <label style={appStyles.label}>Plan Quantity</label>
+                  <label style={pageStyles.label}>Plan Quantity</label>
                   <div>{planningJob.plan_quantity}</div>
                 </div>
                 <div className="info-item">
-                  <label style={appStyles.label}>Required Reels</label>
+                  <label style={pageStyles.label}>Required Reels</label>
                   <div>{planningJob.required_reel}</div>
                 </div>
                 <div className="info-item">
-                  <label style={appStyles.label}>Pending For Dispatch</label>
+                  <label style={pageStyles.label}>Pending For Dispatch</label>
                   <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{planningJob.pending_dispatch_qty}</div>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
-                  <label style={appStyles.label}>Dispatch Plan Quantity *</label>
+                  <label style={pageStyles.label}>Dispatch Plan Quantity *</label>
                   <input
                     type="number"
                     step="0.001"
@@ -249,11 +249,11 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
                     max={planningJob.pending_dispatch_qty}
                     value={formData.dispatch_plan_qty}
                     onChange={(e) => setFormData({ ...formData, dispatch_plan_qty: e.target.value })}
-                    style={appStyles.input}
+                    style={pageStyles.input}
                   />
                 </div>
                 <div>
-                  <label style={appStyles.label}>Truck Number *</label>
+                  <label style={pageStyles.label}>Truck Number *</label>
                   <SearchableSelect
                     options={truckOptions}
                     value={formData.truck_number}
