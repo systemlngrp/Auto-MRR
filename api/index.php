@@ -5237,7 +5237,7 @@ try {
     if ($action === 'get_dpm_jobs') {
         $pdo = db();
         ensureDpmJobsSchema($pdo);
-        $stmt = $pdo->prepare("SELECT * FROM dpm_jobs WHERE firm_id = :firm_id ORDER BY created_at DESC");
+        $stmt = $pdo->prepare("SELECT * FROM dpm_jobs WHERE firm_id = :firm_id ORDER BY job_no DESC");
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
         $jobs = array_map(static function (array $row): array {
@@ -5256,8 +5256,6 @@ try {
                 'required_reel' => $row['required_reel'],
                 'stage' => $row['stage'],
                 'status' => $row['status'] ?? 'PENDING',
-                'created_at' => $row['created_at'],
-                'updated_at' => $row['updated_at'],
             ]);
         }, $rows);
         jsonOut(['ok' => true, 'jobs' => $jobs]);
@@ -5719,7 +5717,7 @@ try {
             (SELECT COALESCE(SUM(dispatch_plan_qty), 0) FROM dispatch_planning WHERE firm_id = j.firm_id AND job_no = j.job_no) as total_planned_qty
             FROM dpm_jobs j 
             WHERE j.firm_id = ? AND j.status <> 'DISPATCH PLANNED'
-            ORDER BY j.created_at DESC
+            ORDER BY j.job_no DESC
         ");
         $stmt->execute([$firmId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -5782,7 +5780,7 @@ try {
                 $status = 'DISPATCH PLANNED';
             }
 
-            $stmt = $pdo->prepare("UPDATE dpm_jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE firm_id = ? AND job_no = ?");
+            $stmt = $pdo->prepare("UPDATE dpm_jobs SET status = ? WHERE firm_id = ? AND job_no = ?");
             $stmt->execute([$status, $firmId, $jobNo]);
 
             $pdo->commit();

@@ -214,7 +214,7 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
               ))}
               {jobs.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>No jobs in pipeline.</td>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>No jobs in pipeline.</td>
                 </tr>
               )}
             </tbody>
