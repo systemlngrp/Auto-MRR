@@ -542,19 +542,27 @@ function ensureDpmJobsSchema(PDO $pdo): void
           id VARCHAR(120) NOT NULL,
           firm_id VARCHAR(64) NOT NULL,
           job_no VARCHAR(120) NOT NULL,
+          date VARCHAR(40) DEFAULT NULL,
+          order_id VARCHAR(120) DEFAULT NULL,
+          company_name VARCHAR(255) DEFAULT NULL,
           erp VARCHAR(120) DEFAULT NULL,
           item VARCHAR(255) DEFAULT NULL,
-          plan_quantity VARCHAR(80) DEFAULT NULL,
-          required_reel VARCHAR(80) DEFAULT NULL,
-          stage VARCHAR(80) DEFAULT 'reel_issue_pending',
-          date VARCHAR(40) DEFAULT NULL,
-          sno VARCHAR(40) DEFAULT NULL,
+          scheduled_date VARCHAR(40) DEFAULT NULL,
+          scheduled_qty DECIMAL(18,3) DEFAULT NULL,
+          plan_quantity DECIMAL(18,3) DEFAULT NULL,
+          required_reel DECIMAL(18,3) DEFAULT NULL,
+          schedule_no INT DEFAULT NULL,
+          rate DECIMAL(18,2) DEFAULT NULL,
+          sales_person VARCHAR(190) DEFAULT NULL,
+          stage VARCHAR(80) DEFAULT 'Issue',
+          created_by VARCHAR(190) DEFAULT NULL,
           extra_json LONGTEXT DEFAULT NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
           KEY idx_dpm_firm_job (firm_id, job_no),
-          KEY idx_dpm_stage (firm_id, stage)
+          KEY idx_dpm_stage (firm_id, stage),
+          KEY idx_dpm_order (firm_id, order_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 }
@@ -5462,10 +5470,72 @@ try {
     if ($action === 'get_pending_planning') {
         $pdo = db();
         ensureOrderWorkflowSchema($pdo);
-        $stmt = $pdo->prepare("SELECT * FROM pending_planning WHERE firm_id = ? ORDER BY created_at DESC");
+        $stmt = $pdo->prepare("SELECT * FROM pending_planning WHERE firm_id = ? AND status_text = 'pending' ORDER BY created_at DESC");
         $stmt->execute([$firmId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         jsonOut(['ok' => true, 'planning' => $rows]);
+    }
+
+    if ($action === 'save_dpm_job_from_planning') {
+        $pdo = db();
+        ensureDpmJobsSchema($pdo);
+        ensureOrderWorkflowSchema($pdo);
+        
+        $planningId = (int)($payload['planning_id'] ?? 0);
+        $planQty = (float)($payload['plan_quantity'] ?? 0);
+        $reqReel = (float)($payload['required_reel'] ?? 0);
+        $userEmail = trim((string)($payload['user_email'] ?? ''));
+
+        if ($planningId <= 0 || $planQty <= 0 || $reqReel <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Invalid planning_id, plan_quantity or required_reel.'], 400);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            // 1. Get planning data
+            $stmt = $pdo->prepare("SELECT * FROM pending_planning WHERE id = ? AND firm_id = ? AND status_text = 'pending' FOR UPDATE");
+            $stmt->execute([$planningId, $firmId]);
+            $planning = $stmt->fetch();
+            if (!$planning) {
+                throw new Exception('Planning record not found or already processed.');
+            }
+
+            if ($planQty > (float)$planning['scheduled_qty'] + 0.0001) {
+                throw new Exception('Plan Quantity cannot exceed Scheduled Qty.');
+            }
+
+            // 2. Generate Job No
+            $prefix = 'JOB-' . date('Ym') . '-';
+            $seq = nextSequenceNumber($firmId, $prefix, 'dpm_jobs', 'job_no');
+            $jobNo = $prefix . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+            $jobId = uniqid('job_');
+
+            // 3. Insert into dpm_jobs
+            $stmt = $pdo->prepare("
+                INSERT INTO dpm_jobs (
+                    id, firm_id, job_no, date, order_id, company_name, erp, item, 
+                    scheduled_date, scheduled_qty, plan_quantity, required_reel, 
+                    schedule_no, rate, sales_person, stage, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Issue', ?)
+            ");
+            $stmt->execute([
+                $jobId, $firmId, $jobNo, date('Y-m-d'), $planning['order_id'], 
+                $planning['company_name'], $planning['erp_code'], $planning['item_name'],
+                $planning['scheduled_date'], $planning['scheduled_qty'], $planQty, 
+                $reqReel, $planning['schedule_no'], $planning['rate'], 
+                $planning['sales_person'], $userEmail
+            ]);
+
+            // 4. Update planning status
+            $stmt = $pdo->prepare("UPDATE pending_planning SET status_text = 'JOB CREATED', updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt->execute([$planningId]);
+
+            $pdo->commit();
+            jsonOut(['ok' => true, 'job_no' => $jobNo]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
     if ($action === 'save_ge_entry') {

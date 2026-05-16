@@ -1,219 +1,218 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { addDpmJob, loadDpmJobs, saveDpmJobsLocal, updateDpmJobStage, deleteDpmJobRecord, loadDpmJobsLocal } from '../utils/dpmJobs';
-import { REEL_SCHEMAS } from '../utils/reelSchemas';
+import ConfirmModal from '../components/modals/ConfirmModal';
 
-const STAGE_LABELS = {
-  reel_issue_pending: 'Pending Reel Issue',
-  sheet_plant_pending: 'Pending Sheet Plant',
-  printing_pending: 'Pending Printing',
-  closer_pending: 'Pending Closer',
-  closed: 'Closed'
-};
+export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningData, onBack }) {
+  const { fetchDpmJobs, saveDpmJobFromPlanning, currentUser } = deps;
+  
+  const [jobs, setJobs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-export default function DpmJobsPage({ selectedFirm, currentUser, onBack }) {
-  const [jobs, setJobs] = useState(() => loadDpmJobsLocal(selectedFirm));
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ 
-    sno: '', 
-    date: new Date().toISOString().split('T')[0], 
-    job_no: '', 
-    erp: '', 
-    item: '', 
-    plan_quantity: '', 
-    required_reel: '' 
+  // Form state
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    plan_quantity: '',
+    required_reel: ''
   });
-  const [error, setError] = useState('');
 
-  const refresh = async () => {
-    setLoading(true);
+  const loadJobs = async () => {
+    if (!selectedFirm) return;
+    setIsLoading(true);
     try {
-      const res = await loadDpmJobs(selectedFirm);
-      setJobs(res);
+      const data = await fetchDpmJobs(selectedFirm);
+      setJobs(data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load DPM jobs:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    refresh();
+    loadJobs();
   }, [selectedFirm]);
 
-  const groupedJobs = useMemo(() => {
-    const groups = new Map();
-    (jobs || []).forEach(j => {
-      const d = j.date || 'Unknown Date';
-      if (!groups.has(d)) groups.set(d, []);
-      groups.get(d).push(j);
-    });
-    return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [jobs]);
+  useEffect(() => {
+    if (initialPlanningData) {
+      setFormData(prev => ({
+        ...prev,
+        plan_quantity: String(initialPlanningData.scheduled_qty || ''),
+        required_reel: ''
+      }));
+    }
+  }, [initialPlanningData]);
 
-  const stageCounts = useMemo(() => {
-    const counts = { reel_issue_pending: 0, sheet_plant_pending: 0, printing_pending: 0, closer_pending: 0, closed: 0 };
-    (jobs || []).forEach((j) => {
-      const stage = String(j?.stage || '');
-      if (counts[stage] !== undefined) counts[stage] += 1;
-    });
-    return counts;
-  }, [jobs]);
+  const handleSaveJob = async (e) => {
+    e.preventDefault();
+    if (!initialPlanningData) {
+      alert('Please select a planning record first from Pending Planning page.');
+      return;
+    }
+
+    const planQty = Number(formData.plan_quantity);
+    const reqReel = Number(formData.required_reel);
+
+    if (isNaN(planQty) || planQty <= 0 || isNaN(reqReel) || reqReel <= 0) {
+      alert('Plan Quantity and Required Reel are required and must be positive.');
+      return;
+    }
+
+    if (planQty > Number(initialPlanningData.scheduled_qty) + 0.0001) {
+      alert('Plan Quantity cannot be greater than Scheduled Qty.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await saveDpmJobFromPlanning(
+        selectedFirm, 
+        initialPlanningData.id, 
+        planQty, 
+        reqReel, 
+        currentUser?.email || ''
+      );
+      if (res.ok) {
+        alert('DPM Job created successfully with Job No: ' + res.job_no);
+        setFormData({
+          date: new Date().toISOString().split('T')[0],
+          plan_quantity: '',
+          required_reel: ''
+        });
+        loadJobs();
+        if (onBack) onBack(); // Go back to Planning list as requested "Refresh Pending Planning list so that the completed row is removed."
+      }
+    } catch (err) {
+      alert('Failed to save DPM job: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const styles = {
+    container: { padding: '24px', background: '#f5f7fb', minHeight: '100vh' },
+    card: { background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', marginBottom: '24px' },
+    title: { fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111827' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' },
+    label: { display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#374151' },
+    input: { width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', outline: 'none', background: '#f9fafb' },
+    editableInput: { width: '100%', padding: '10px', border: '1px solid #2563eb', borderRadius: '8px', outline: 'none', background: '#fff' },
+    table: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
+    th: { background: '#1d4ed8', color: '#fff', textAlign: 'left', padding: '12px', fontWeight: '600' },
+    td: { padding: '12px', borderBottom: '1px solid #f1f5f9' },
+    btnPrimary: { background: '#1d4ed8', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
+  };
 
   return (
-    <div style={{ padding: '24px', width: '100%', minHeight: '100vh', background: '#f5f7fb' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '28px', letterSpacing: '0.02em' }}>DPM Jobs</h2>
-          <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-            Firm: {selectedFirm?.name || '-'} | User: {currentUser?.name || currentUser?.login_id || '-'}
-          </div>
-        </div>
-        <button type="button" className="btn" onClick={onBack} style={{ padding: '10px 16px', fontWeight: 800 }}>
-          Back
-        </button>
+    <div style={styles.container}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 'bold' }}>DPM Jobs Management</h1>
+        <button onClick={onBack} style={{ background: '#fff', border: '1px solid #d1d5db', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>Back</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div style={styles.card}>
+        <h2 style={styles.title}>Create New Job</h2>
+        <form onSubmit={handleSaveJob}>
+          <div style={styles.grid}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>New DPM Job</div>
-              <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-                Enter job details to start the pipeline.
-              </div>
-              {error ? <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>{error}</div> : null}
+              <label style={styles.label}>Date</label>
+              <input type="date" value={formData.date} readOnly style={styles.input} />
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" className="btn" onClick={() => { if(confirm('Clear all local cache?')) { saveDpmJobsLocal(selectedFirm, []); setJobs([]); } }}>
-                Clear Cache
-              </button>
-              <button type="button" className="btn" onClick={refresh} disabled={loading}>
-                {loading ? 'Refreshing...' : 'Refresh'}
-              </button>
+            <div>
+              <label style={styles.label}>Job No</label>
+              <input type="text" value="AUTO-GENERATED" readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>Order ID</label>
+              <input type="text" value={initialPlanningData?.order_id || ''} readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>Company</label>
+              <input type="text" value={initialPlanningData?.company_name || ''} readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>ERP</label>
+              <input type="text" value={initialPlanningData?.erp_code || ''} readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>Item</label>
+              <input type="text" value={initialPlanningData?.item_name || ''} readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>Scheduled Qty</label>
+              <input type="text" value={initialPlanningData?.scheduled_qty || ''} readOnly style={styles.input} />
+            </div>
+            <div>
+              <label style={styles.label}>Plan Quantity</label>
+              <input 
+                type="number" 
+                step="0.001"
+                value={formData.plan_quantity} 
+                onChange={e => setFormData({ ...formData, plan_quantity: e.target.value })}
+                style={styles.editableInput}
+                required
+              />
+            </div>
+            <div>
+              <label style={styles.label}>Required Reel</label>
+              <input 
+                type="number" 
+                step="1"
+                value={formData.required_reel} 
+                onChange={e => setFormData({ ...formData, required_reel: e.target.value })}
+                style={styles.editableInput}
+                required
+              />
             </div>
           </div>
-
-          <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
-            {['sno', 'date', 'job_no', 'erp', 'item', 'plan_quantity', 'required_reel'].map((k) => (
-              <div key={k}>
-                <div style={{ fontSize: '10px', fontWeight: 1000, color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase' }}>{k.replace(/_/g, ' ')}</div>
-                <input
-                  type={k === 'date' ? 'date' : 'text'}
-                  value={form[k]}
-                  onChange={(e) => setForm((p) => ({ ...p, [k]: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '10px', fontSize: '13px' }}
-                />
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="btn main"
-              disabled={loading}
-              onClick={async () => {
-                const jobNo = String(form.job_no || '').trim();
-                if (!jobNo) {
-                  setError('JOB No. is required.');
-                  return;
-                }
-                setError('');
-                setLoading(true);
-                try {
-                  await addDpmJob(selectedFirm, {
-                    sno: String(form.sno || '').trim(),
-                    date: String(form.date || '').trim(),
-                    job_no: jobNo,
-                    erp: String(form.erp || '').trim(),
-                    item: String(form.item || '').trim(),
-                    plan_quantity: String(form.plan_quantity || '').trim(),
-                    required_reel: String(form.required_reel || '').trim()
-                  });
-                  setForm({ sno: '', date: new Date().toISOString().split('T')[0], job_no: '', erp: '', item: '', plan_quantity: '', required_reel: '' });
-                  await refresh();
-                } catch (err) {
-                  setError('Failed to add job: ' + err.message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              Add DPM Job
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="submit" style={styles.btnPrimary} disabled={isSaving || !initialPlanningData}>
+              {isSaving ? 'Saving...' : 'Create DPM Job'}
             </button>
           </div>
-        </div>
+        </form>
+      </div>
 
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>Pipeline Status</div>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#6b7280' }}>
-              Issue: {stageCounts.reel_issue_pending} | Sheet Plant: {stageCounts.sheet_plant_pending} | Printing: {stageCounts.printing_pending} | Closer: {stageCounts.closer_pending} | Closed: {stageCounts.closed}
-            </div>
-          </div>
-
-          <div style={{ marginTop: '12px', width: '100%', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
-            <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-              <thead>
-                <tr>
-                  {['JOB No.', 'ERP', 'ITEM', 'PLAN QTY', 'REQ REEL', 'Stage', 'Action'].map((h) => (
-                    <th key={h} style={{ position: 'sticky', top: 0, background: '#1d4ed8', color: '#fff', fontSize: '12px', fontWeight: 1000, padding: '10px', textAlign: 'left' }}>{h}</th>
-                  ))}
+      <div style={styles.card}>
+        <h2 style={styles.title}>Pipeline Status</h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Job No</th>
+                <th style={styles.th}>ERP</th>
+                <th style={styles.th}>Item</th>
+                <th style={styles.th}>Plan Qty</th>
+                <th style={styles.th}>Req Reel</th>
+                <th style={styles.th}>Stage</th>
+                <th style={styles.th}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map(job => (
+                <tr key={job.id}>
+                  <td style={styles.td}>{job.job_no}</td>
+                  <td style={styles.td}>{job.erp}</td>
+                  <td style={styles.td}>{job.item}</td>
+                  <td style={styles.td}>{Number(job.plan_quantity).toLocaleString()}</td>
+                  <td style={styles.td}>{job.required_reel}</td>
+                  <td style={styles.td}>
+                    <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {job.stage}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    {/* Actions if any */}
+                    -
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {!groupedJobs.length && !loading ? (
-                  <tr><td colSpan={7} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>No jobs in pipeline.</td></tr>
-                ) : null}
-                {loading && !jobs.length ? (
-                   <tr><td colSpan={7} style={{ padding: '14px 10px', color: '#6b7280', fontWeight: 800 }}>Loading pipeline...</td></tr>
-                ) : null}
-                {groupedJobs.map(([date, group]) => (
-                  <React.Fragment key={date}>
-                    <tr>
-                      <td colSpan={7} style={{ background: '#f8fafc', padding: '8px 10px', fontSize: '11px', fontWeight: 1000, color: '#475569', borderTop: '1px solid #e5e7eb' }}>
-                        📅 {date}
-                      </td>
-                    </tr>
-                    {group.map((j) => {
-                      const stage = String(j?.stage || 'reel_issue_pending');
-                      return (
-                        <tr key={j.id}>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7', fontWeight: 900, color: '#dc2626' }}>{String(j.job_no || '')}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(j.erp || '')}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(j.item || '')}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(j.plan_quantity || '')}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>{String(j.required_reel || '')}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7', fontWeight: 700 }}>{STAGE_LABELS[stage] || stage}</td>
-                          <td style={{ padding: '8px 10px', fontSize: '12px', borderTop: '1px solid #eef2f7' }}>
-                            <button
-                              type="button"
-                              className="btn small"
-                              disabled={loading}
-                              onClick={async () => {
-                                if(confirm('Delete this job from server?')) {
-                                  setLoading(true);
-                                  try {
-                                    await deleteDpmJobRecord(selectedFirm, j.id);
-                                    await refresh();
-                                  } catch (err) {
-                                    alert('Delete failed: ' + err.message);
-                                  } finally {
-                                    setLoading(false);
-                                  }
-                                }
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {jobs.length === 0 && !isLoading && (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>No jobs in pipeline.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

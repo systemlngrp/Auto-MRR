@@ -52,13 +52,15 @@ export default function PendingPlanningPage({ deps = {}, onBack }) {
               <th style={styles.th}>Sales Person</th>
               <th style={styles.th}>Created At</th>
               <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {planning.map((p, idx) => (
+              <th style={styles.th}>Action</th>
+              </tr>
+              </thead>
+              <tbody>
+              {planning.map((p, idx) => (
               <tr key={idx}>
                 <td style={styles.td}>{p.order_id}</td>
                 <td style={styles.td}>{p.company_name}</td>
+                <td style={styles.td}>{p.erp_code}</td>
                 <td style={styles.td}>{p.item_name}</td>
                 <td style={styles.td}>{p.scheduled_date}</td>
                 <td style={styles.td}>{Number(p.scheduled_qty).toLocaleString()}</td>
@@ -71,10 +73,21 @@ export default function PendingPlanningPage({ deps = {}, onBack }) {
                     {p.status_text.toUpperCase()}
                   </span>
                 </td>
+                <td style={styles.td}>
+                  {p.status_text === 'pending' && (
+                    <button 
+                      onClick={() => deps.onMakeJob && deps.onMakeJob(p)}
+                      style={{ background: '#1d4ed8', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}
+                    >
+                      Make Job
+                    </button>
+                  )}
+                </td>
               </tr>
-            ))}
+              ))}
+
             {planning.length === 0 && !isLoading && (
-              <tr><td colSpan="10" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: '#6b7280' }}>No pending planning entries.</td></tr>
+              <tr><td colSpan="12" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: '#6b7280' }}>No pending planning entries.</td></tr>
             )}
           </tbody>
         </table>

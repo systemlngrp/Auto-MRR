@@ -2215,6 +2215,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
   const [itemMasterCreateContext, setItemMasterCreateContext] = useState(null);
   const [lastCreatedItem, setLastCreatedItem] = useState(null);
   const [tempFirm, setTempFirm] = useState(initialFirm);
+  const [selectedPlanningForJob, setSelectedPlanningForJob] = useState(null);
   const [tempType, setTempType] = useState(initialType || 'reel');
   const [pendingGEs, setPendingGEs] = useState([]);  const [editMrrRows, setEditMrrRows] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
@@ -5359,7 +5360,19 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return (
       <>
         {userBadge}
-        <DpmJobsPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+        <DpmJobsPage
+          selectedFirm={tempFirm}
+          initialPlanningData={selectedPlanningForJob}
+          deps={{
+            fetchDpmJobs,
+            saveDpmJobFromPlanning,
+            currentUser
+          }}
+          onBack={() => {
+            setSelectedPlanningForJob(null);
+            setStep(33);
+          }}
+        />
       </>
     );
   }
@@ -5434,7 +5447,11 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
         <PendingPlanningPage
           deps={{
             fetchPendingPlanning,
-            firm: tempFirm
+            firm: tempFirm,
+            onMakeJob: (p) => {
+              setSelectedPlanningForJob(p);
+              setStep(25);
+            }
           }}
           onBack={() => setStep(3)}
         />

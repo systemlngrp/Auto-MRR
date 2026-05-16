@@ -498,6 +498,22 @@ export async function fetchPendingPlanning(firm) {
   return Array.isArray(res?.planning) ? res.planning : [];
 }
 
+export async function saveDpmJobFromPlanning(firm, planningId, planQty, reqReel, userEmail) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_dpm_job_from_planning',
+      firm_id: getFirmKey(firm),
+      planning_id: planningId,
+      plan_quantity: planQty,
+      required_reel: reqReel,
+      user_email: userEmail
+    })
+  });
+}
+
 export async function fetchReelStock(firmSource, backendSource) {
   const backendUrl = ensureBackendUrl(backendSource || firmSource);
   const firmId = getFirmKey(firmSource);
