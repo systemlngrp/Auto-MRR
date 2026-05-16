@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
 
 export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
-  const { fetchCompanyMaster, fetchDpmItems } = deps;
+  const { fetchCompanyMaster, fetchDpmItems, saveOrder } = deps;
 
   const [companies, setCompanies] = useState([]);
   const [items, setItems] = useState([]);
