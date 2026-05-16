@@ -55,6 +55,7 @@ import OrderFormPage from './pages/OrderFormPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PendingSchedulingPage from './pages/PendingSchedulingPage';
 import PendingPlanningPage from './pages/PendingPlanningPage';
+import PendingLoadingSlipPage from './pages/PendingLoadingSlipPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3592,8 +3593,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onOrderPendingScheduling: () => setStep(32),
               onOrderPendingJobs: () => setStep(33),
               onDispatchPlanning: () => setStep(38),
-              onOrderApproved: () => setStep(34),
-              onOrderCancelled: () => setStep(35),
+              onPendingLoadingSlip: () => setStep(39),
+              onOrderApproved: () => setStep(34),              onOrderCancelled: () => setStep(35),
               onUsers: () => setStep(9),
               onBackToFirms: () => setStep(2)
             }}

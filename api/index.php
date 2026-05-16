@@ -5626,7 +5626,7 @@ try {
             ]);
 
             // 4. Update planning status
-            $stmt = $pdo->prepare("UPDATE pending_planning SET status_text = 'JOB CREATED', updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE pending_planning SET status_text = 'JOB CREATED' WHERE id = ?");
             $stmt->execute([$planningId]);
 
             $pdo->commit();
