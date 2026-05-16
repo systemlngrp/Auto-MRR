@@ -29,6 +29,9 @@ import ReelIssueDataPage from './pages/ReelIssueDataPage';
 import DpmJobsPage from './pages/DpmJobsPage';
 import ReelStockPage from './pages/ReelStockPage';
 import OrderFormPage from './pages/OrderFormPage';
+import PendingApprovalPage from './pages/PendingApprovalPage';
+import PendingSchedulingPage from './pages/PendingSchedulingPage';
+import PendingPlanningPage from './pages/PendingPlanningPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -5378,13 +5381,62 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           selectedFirm={tempFirm}
           deps={{
             fetchCompanyMaster,
-            fetchDpmItems
+            fetchDpmItems,
+            saveOrder
           }}
           onBack={() => setStep(3)}
           onSaved={(data) => {
             console.log('Order Form Saved:', data);
             setStep(3);
           }}
+        />
+      </>
+    );
+  }
+
+  if (step === 31) {
+    return (
+      <>
+        {userBadge}
+        <PendingApprovalPage
+          deps={{
+            fetchOrders,
+            approveOrder,
+            firm: tempFirm,
+            currentUser
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 32) {
+    return (
+      <>
+        {userBadge}
+        <PendingSchedulingPage
+          deps={{
+            fetchOrders,
+            saveOrderSchedule,
+            firm: tempFirm
+          }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 33) {
+    return (
+      <>
+        {userBadge}
+        <PendingPlanningPage
+          deps={{
+            fetchPendingPlanning,
+            firm: tempFirm
+          }}
+          onBack={() => setStep(3)}
         />
       </>
     );

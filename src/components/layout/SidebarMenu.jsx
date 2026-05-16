@@ -193,31 +193,19 @@ export default function SidebarMenu({
           {canSee('order_pending_approval') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingApproval}>
               <span>Pending Approval</span>
-              {badge(0, 'gray')}
+              {badge(pendingCounts?.order_pending_approval || 0, 'orange')}
             </button>
           ) : null}
           {canSee('order_pending_scheduling') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingScheduling}>
               <span>Pending Scheduling</span>
-              {badge(0, 'gray')}
+              {badge(pendingCounts?.order_pending_scheduling || 0, 'blue')}
             </button>
           ) : null}
           {canSee('order_pending_jobs') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onOrderPendingJobs}>
-              <span>Pending Jobs</span>
-              {badge(0, 'gray')}
-            </button>
-          ) : null}
-          {canSee('order_approved') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderApproved}>
-              <span>Approved Orders</span>
-              {badge(0, 'gray')}
-            </button>
-          ) : null}
-          {canSee('order_cancelled') ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onOrderCancelled}>
-              <span>Cancelled Orders</span>
-              {badge(0, 'gray')}
+              <span>Pending Planning</span>
+              {badge(pendingCounts?.order_pending_planning || 0, 'green')}
             </button>
           ) : null}
         </div>

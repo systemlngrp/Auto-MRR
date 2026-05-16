@@ -75,9 +75,28 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (validate()) {
-      if (onSaved) onSaved(formData);
+      setIsLoading(true);
+      setStatus('Saving order...');
+      try {
+        const orderData = {
+          ...formData,
+          erp_code: items.find(it => (it.item_name || it['Item Name'] || it.erp || it.ERP) === formData.item)?.erp || '',
+          item_name: formData.item
+        };
+        const res = await saveOrder(selectedFirm, orderData);
+        if (res?.ok) {
+          setStatus('Order saved successfully!');
+          if (onSaved) onSaved(res);
+        } else {
+          throw new Error(res?.error || 'Failed to save order.');
+        }
+      } catch (err) {
+        setStatus('Error: ' + err.message);
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setStatus('Please fill all required fields correctly.');
     }

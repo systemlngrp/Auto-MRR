@@ -435,6 +435,69 @@ export async function deleteDpmItem(firm, erp) {
   });
 }
 
+export async function saveOrder(firm, order) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_order',
+      firm_id: getFirmKey(firm),
+      order
+    })
+  });
+}
+
+export async function fetchOrders(firm, status = '') {
+  const backendUrl = ensureBackendUrl(firm);
+  const params = new URLSearchParams({
+    action: 'get_orders',
+    firm_id: getFirmKey(firm),
+    status
+  });
+  const res = await fetchJson(`${backendUrl}?${params}`);
+  return Array.isArray(res?.orders) ? res.orders : [];
+}
+
+export async function approveOrder(firm, orderId, userEmail) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'approve_order',
+      firm_id: getFirmKey(firm),
+      order_id: orderId,
+      user_email: userEmail
+    })
+  });
+}
+
+export async function saveOrderSchedule(firm, orderId, scheduledDate, scheduledQty) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_order_schedule',
+      firm_id: getFirmKey(firm),
+      order_id: orderId,
+      scheduled_date: scheduledDate,
+      scheduled_qty: scheduledQty
+    })
+  });
+}
+
+export async function fetchPendingPlanning(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const params = new URLSearchParams({
+    action: 'get_pending_planning',
+    firm_id: getFirmKey(firm)
+  });
+  const res = await fetchJson(`${backendUrl}?${params}`);
+  return Array.isArray(res?.planning) ? res.planning : [];
+}
+
 export async function fetchReelStock(firmSource, backendSource) {
   const backendUrl = ensureBackendUrl(backendSource || firmSource);
   const firmId = getFirmKey(firmSource);

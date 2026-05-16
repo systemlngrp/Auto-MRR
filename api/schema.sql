@@ -686,3 +686,58 @@ CREATE TABLE IF NOT EXISTS dpm_items_master (
   KEY idx_dpm_item_name (firm_id, item_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS orders (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  order_id VARCHAR(120) NOT NULL,
+  order_date VARCHAR(40) DEFAULT NULL,
+  company_name VARCHAR(255) DEFAULT NULL,
+  po_type VARCHAR(40) DEFAULT NULL,
+  po_number VARCHAR(120) DEFAULT NULL,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  qty DECIMAL(18,3) DEFAULT NULL,
+  rate DECIMAL(18,2) DEFAULT NULL,
+  remarks TEXT DEFAULT NULL,
+  sales_person VARCHAR(190) DEFAULT NULL,
+  status_text VARCHAR(40) NOT NULL DEFAULT 'pending_approval',
+  approved_at TIMESTAMP NULL DEFAULT NULL,
+  approved_by VARCHAR(190) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_order_id (firm_id, order_id),
+  KEY idx_order_status (firm_id, status_text)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS order_schedules (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  order_id VARCHAR(120) NOT NULL,
+  schedule_no INT NOT NULL,
+  scheduled_date VARCHAR(40) NOT NULL,
+  scheduled_qty DECIMAL(18,3) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_order_schedule (firm_id, order_id, schedule_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pending_planning (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  firm_id VARCHAR(64) NOT NULL,
+  order_id VARCHAR(120) NOT NULL,
+  company_name VARCHAR(255) DEFAULT NULL,
+  erp_code VARCHAR(120) DEFAULT NULL,
+  item_name VARCHAR(255) DEFAULT NULL,
+  scheduled_date VARCHAR(40) DEFAULT NULL,
+  scheduled_qty DECIMAL(18,3) DEFAULT NULL,
+  schedule_no INT DEFAULT NULL,
+  rate DECIMAL(18,2) DEFAULT NULL,
+  sales_person VARCHAR(190) DEFAULT NULL,
+  status_text VARCHAR(40) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_planning_order (firm_id, order_id),
+  KEY idx_planning_status (firm_id, status_text)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

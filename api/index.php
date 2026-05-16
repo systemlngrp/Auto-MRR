@@ -578,6 +578,67 @@ function ensureDpmItemsMasterSchema(PDO $pdo): void
     ");
 }
 
+function ensureOrderWorkflowSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS sales_orders (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          order_id VARCHAR(120) NOT NULL,
+          order_date VARCHAR(40) DEFAULT NULL,
+          company_name VARCHAR(255) DEFAULT NULL,
+          po_number VARCHAR(120) DEFAULT NULL,
+          erp_code VARCHAR(120) DEFAULT NULL,
+          item_name VARCHAR(255) DEFAULT NULL,
+          qty DECIMAL(18,3) DEFAULT NULL,
+          rate DECIMAL(18,2) DEFAULT NULL,
+          status_text VARCHAR(40) NOT NULL DEFAULT 'pending_approval',
+          sales_person VARCHAR(190) DEFAULT NULL,
+          remarks TEXT DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uniq_sales_order_id (firm_id, order_id),
+          KEY idx_sales_order_status (firm_id, status_text)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS order_schedules (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          order_id VARCHAR(120) NOT NULL,
+          schedule_no INT NOT NULL,
+          scheduled_date VARCHAR(40) NOT NULL,
+          scheduled_qty DECIMAL(18,3) NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_order_schedule (firm_id, order_id, schedule_no)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS pending_planning (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          order_id VARCHAR(120) NOT NULL,
+          company_name VARCHAR(255) DEFAULT NULL,
+          erp_code VARCHAR(120) DEFAULT NULL,
+          item_name VARCHAR(255) DEFAULT NULL,
+          scheduled_date VARCHAR(40) DEFAULT NULL,
+          scheduled_qty DECIMAL(18,3) DEFAULT NULL,
+          schedule_no INT DEFAULT NULL,
+          rate DECIMAL(18,2) DEFAULT NULL,
+          sales_person VARCHAR(190) DEFAULT NULL,
+          status_text VARCHAR(40) NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_planning_order (firm_id, order_id),
+          KEY idx_planning_status (firm_id, status_text)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 function ensureReelStockSchema(PDO $pdo): void
 {
     $pdo->exec("
@@ -5234,6 +5295,177 @@ try {
         $stmt = $pdo->prepare("DELETE FROM dpm_items_master WHERE firm_id = ? AND erp = ?");
         $stmt->execute([$firmId, $erp]);
         jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'save_order') {
+        $pdo = db();
+        ensureOrderWorkflowSchema($pdo);
+        $order = is_array($payload['order'] ?? null) ? $payload['order'] : [];
+        
+        $orderId = trim((string)($order['order_id'] ?? ''));
+        if ($orderId === '') {
+            $prefix = 'ORD-' . date('Ym') . '-';
+            $seq = nextSequenceNumber($firmId, $prefix, 'sales_orders', 'order_id');
+            $orderId = $prefix . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+        }
+
+        $params = [
+            'firm_id' => $firmId,
+            'order_id' => $orderId,
+            'order_date' => trim((string)($order['order_date'] ?? date('Y-m-d'))),
+            'company_name' => trim((string)($order['company_name'] ?? '')),
+            'po_number' => trim((string)($order['po_number'] ?? '')),
+            'erp_code' => trim((string)($order['erp_code'] ?? '')),
+            'item_name' => trim((string)($order['item_name'] ?? '')),
+            'qty' => (float)($order['qty'] ?? 0),
+            'rate' => (float)($order['rate'] ?? 0),
+            'sales_person' => trim((string)($order['sales_person'] ?? '')),
+            'remarks' => trim((string)($order['remarks'] ?? '')),
+        ];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO sales_orders (firm_id, order_id, order_date, company_name, po_number, erp_code, item_name, qty, rate, sales_person, remarks, status_text)
+            VALUES (:firm_id, :order_id, :order_date, :company_name, :po_number, :erp_code, :item_name, :qty, :rate, :sales_person, :remarks, 'pending_approval')
+            ON DUPLICATE KEY UPDATE
+                order_date = VALUES(order_date),
+                company_name = VALUES(company_name),
+                po_number = VALUES(po_number),
+                erp_code = VALUES(erp_code),
+                item_name = VALUES(item_name),
+                qty = VALUES(qty),
+                rate = VALUES(rate),
+                sales_person = VALUES(sales_person),
+                remarks = VALUES(remarks),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute($params);
+        jsonOut(['ok' => true, 'order_id' => $orderId]);
+    }
+
+    if ($action === 'get_orders') {
+        $pdo = db();
+        ensureOrderWorkflowSchema($pdo);
+        $status = trim((string)($_GET['status'] ?? ''));
+        $sql = "SELECT o.*, 
+                (SELECT COALESCE(SUM(scheduled_qty), 0) FROM order_schedules WHERE firm_id = o.firm_id AND order_id = o.order_id) as total_scheduled,
+                (SELECT COUNT(*) FROM order_schedules WHERE firm_id = o.firm_id AND order_id = o.order_id) as schedule_count
+                FROM sales_orders o WHERE o.firm_id = ?";
+        $params = [$firmId];
+        if ($status !== '') {
+            $sql .= " AND o.status_text = ?";
+            $params[] = $status;
+        }
+        $sql .= " ORDER BY o.created_at DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($rows as &$row) {
+            $row['pending_scheduling_qty'] = max(0, (float)$row['qty'] - (float)$row['total_scheduled']);
+        }
+        
+        jsonOut(['ok' => true, 'orders' => $rows]);
+    }
+
+    if ($action === 'approve_order') {
+        $pdo = db();
+        ensureOrderWorkflowSchema($pdo);
+        $orderId = trim((string)($payload['order_id'] ?? ''));
+        $userEmail = trim((string)($payload['user_email'] ?? ''));
+        
+        if ($orderId === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing order_id.'], 400);
+        }
+
+        $stmt = $pdo->prepare("UPDATE sales_orders SET status_text = 'pending_scheduling', updated_at = CURRENT_TIMESTAMP WHERE firm_id = ? AND order_id = ? AND status_text = 'pending_approval'");
+        $stmt->execute([$firmId, $orderId]);
+        
+        jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'save_order_schedule') {
+        $pdo = db();
+        ensureOrderWorkflowSchema($pdo);
+        $orderId = trim((string)($payload['order_id'] ?? ''));
+        $scheduledDate = trim((string)($payload['scheduled_date'] ?? ''));
+        $scheduledQty = (float)($payload['scheduled_qty'] ?? 0);
+        
+        if ($orderId === '' || $scheduledDate === '' || $scheduledQty <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing order_id, scheduled_date or invalid qty.'], 400);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("
+                SELECT o.*, 
+                (SELECT COALESCE(SUM(scheduled_qty), 0) FROM order_schedules WHERE firm_id = o.firm_id AND order_id = o.order_id) as total_scheduled,
+                (SELECT COUNT(*) FROM order_schedules WHERE firm_id = o.firm_id AND order_id = o.order_id) as schedule_count
+                FROM sales_orders o 
+                WHERE o.firm_id = ? AND o.order_id = ? 
+                FOR UPDATE
+            ");
+            $stmt->execute([$firmId, $orderId]);
+            $order = $stmt->fetch();
+            
+            if (!$order) {
+                throw new Exception('Order not found.');
+            }
+
+            if ($order['status_text'] !== 'pending_scheduling') {
+                throw new Exception('Order is not in pending scheduling stage.');
+            }
+
+            if ($order['schedule_count'] >= 10) {
+                throw new Exception('Maximum 10 schedules allowed.');
+            }
+
+            $pendingQty = (float)$order['qty'] - (float)$order['total_scheduled'];
+            if ($scheduledQty > $pendingQty + 0.0001) {
+                throw new Exception('Scheduled Qty cannot be greater than Pending Scheduling Qty (' . $pendingQty . ').');
+            }
+
+            $newScheduleNo = (int)$order['schedule_count'] + 1;
+
+            $stmt = $pdo->prepare("INSERT INTO order_schedules (firm_id, order_id, schedule_no, scheduled_date, scheduled_qty) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$firmId, $orderId, $newScheduleNo, $scheduledDate, $scheduledQty]);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO pending_planning (firm_id, order_id, company_name, erp_code, item_name, scheduled_date, scheduled_qty, schedule_no, rate, sales_person, status_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([
+                $firmId,
+                $orderId,
+                $order['company_name'],
+                $order['erp_code'],
+                $order['item_name'],
+                $scheduledDate,
+                $scheduledQty,
+                $newScheduleNo,
+                $order['rate'],
+                $order['sales_person']
+            ]);
+
+            if (abs($pendingQty - $scheduledQty) < 0.0001) {
+                $stmt = $pdo->prepare("UPDATE sales_orders SET status_text = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE firm_id = ? AND order_id = ?");
+                $stmt->execute([$firmId, $orderId]);
+            }
+
+            $pdo->commit();
+            jsonOut(['ok' => true, 'schedule_no' => $newScheduleNo]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'get_pending_planning') {
+        $pdo = db();
+        ensureOrderWorkflowSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM pending_planning WHERE firm_id = ? ORDER BY created_at DESC");
+        $stmt->execute([$firmId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonOut(['ok' => true, 'planning' => $rows]);
     }
 
     if ($action === 'save_ge_entry') {
