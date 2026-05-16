@@ -555,6 +555,7 @@ function ensureDpmJobsSchema(PDO $pdo): void
           rate DECIMAL(18,2) DEFAULT NULL,
           sales_person VARCHAR(190) DEFAULT NULL,
           stage VARCHAR(80) DEFAULT 'Issue',
+          status VARCHAR(80) DEFAULT 'PENDING',
           created_by VARCHAR(190) DEFAULT NULL,
           extra_json LONGTEXT DEFAULT NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -562,7 +563,62 @@ function ensureDpmJobsSchema(PDO $pdo): void
           PRIMARY KEY (id),
           KEY idx_dpm_firm_job (firm_id, job_no),
           KEY idx_dpm_stage (firm_id, stage),
-          KEY idx_dpm_order (firm_id, order_id)
+          KEY idx_dpm_order (firm_id, order_id),
+          KEY idx_dpm_status (firm_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    // Add status column if missing
+    $cols = tableColumns('dpm_jobs');
+    if (!in_array('status', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN status VARCHAR(80) DEFAULT 'PENDING' AFTER stage");
+        $pdo->exec("CREATE INDEX idx_dpm_status ON dpm_jobs (firm_id, status)");
+    }
+}
+
+function ensureTruckMasterSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS truck_master (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          truck_number VARCHAR(120) NOT NULL,
+          driver_name VARCHAR(255) DEFAULT NULL,
+          driver_mobile VARCHAR(30) DEFAULT NULL,
+          transporter_name VARCHAR(255) DEFAULT NULL,
+          vehicle_type VARCHAR(120) DEFAULT NULL,
+          capacity DECIMAL(18,3) DEFAULT NULL,
+          status VARCHAR(40) DEFAULT 'Active',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uniq_truck_no (firm_id, truck_number),
+          KEY idx_truck_status (firm_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
+function ensureDispatchPlanningSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS dispatch_planning (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          job_no VARCHAR(120) NOT NULL,
+          order_id VARCHAR(120) DEFAULT NULL,
+          company_name VARCHAR(255) DEFAULT NULL,
+          erp VARCHAR(120) DEFAULT NULL,
+          item VARCHAR(255) DEFAULT NULL,
+          plan_quantity DECIMAL(18,3) DEFAULT NULL,
+          required_reel DECIMAL(18,3) DEFAULT NULL,
+          dispatch_plan_qty DECIMAL(18,3) DEFAULT NULL,
+          truck_number VARCHAR(120) DEFAULT NULL,
+          dispatch_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          created_by VARCHAR(190) DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_dispatch_firm_job (firm_id, job_no),
+          KEY idx_dispatch_order (firm_id, order_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 }
@@ -3494,10 +3550,12 @@ try {
         $itemCount = $countTable($pdo, "SELECT COUNT(*) FROM item_master WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $supplierCount = $countTable($pdo, "SELECT COUNT(*) FROM suppliers WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $companyCount = $countTable($pdo, "SELECT COUNT(*) FROM companies WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
-        $userCount = $countTable($pdo, "SELECT COUNT(*) FROM app_users WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
-        $stateCount = $countTable($pdo, "SELECT COUNT(*) FROM state_master");
+        $userCount = $countTable($pdo, \"SELECT COUNT(*) FROM app_users WHERE firm_id = :firm_id\", ['firm_id' => $firmParam]);
+        $stateCount = $countTable($pdo, \"SELECT COUNT(*) FROM state_master\");
+        $truckCount = $countTable($pdo, \"SELECT COUNT(*) FROM truck_master WHERE firm_id = :firm_id\", ['firm_id' => $firmParam]);
 
-        $stmt = $pdo->prepare("
+        $stmt = $pdo->prepare(\"
+
             SELECT
               SUM(CASE WHEN LOWER(COALESCE(pr.status_text, 'pending')) LIKE '%pending%' THEN 1 ELSE 0 END) AS pr_pending,
               SUM(CASE WHEN LOWER(COALESCE(pr.status_text, '')) LIKE '%rejected%' THEN 1 ELSE 0 END) AS pr_rejected,
@@ -3532,6 +3590,7 @@ try {
             'companies' => $companyCount,
             'users' => $userCount,
             'state_master' => (int)($stateCount ?: 0),
+            'truck_master' => $truckCount,
             'purchase_requests_pending' => (int)($prAgg['pr_pending'] ?? 0),
             'purchase_requests_approved' => (int)($prAgg['pr_approved'] ?? 0),
             'purchase_requests_complete' => (int)($prAgg['pr_complete'] ?? 0),
@@ -5536,6 +5595,169 @@ try {
             if ($pdo->inTransaction()) $pdo->rollBack();
             jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    if ($action === 'get_truck_master') {
+        $pdo = db();
+        ensureTruckMasterSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM truck_master WHERE firm_id = ? ORDER BY truck_number ASC");
+        $stmt->execute([$firmId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonOut(['ok' => true, 'trucks' => $rows]);
+    }
+
+    if ($action === 'save_truck_master') {
+        $pdo = db();
+        ensureTruckMasterSchema($pdo);
+        $truck = is_array($payload['truck'] ?? null) ? $payload['truck'] : [];
+        $truckNumber = trim((string)($truck['truck_number'] ?? ''));
+        if ($truckNumber === '') {
+            jsonOut(['ok' => false, 'error' => 'Truck Number is required.'], 400);
+        }
+
+        $id = (int)($truck['id'] ?? 0);
+        $params = [
+            'firm_id' => $firmId,
+            'truck_number' => $truckNumber,
+            'driver_name' => trim((string)($truck['driver_name'] ?? '')),
+            'driver_mobile' => trim((string)($truck['driver_mobile'] ?? '')),
+            'transporter_name' => trim((string)($truck['transporter_name'] ?? '')),
+            'vehicle_type' => trim((string)($truck['vehicle_type'] ?? '')),
+            'capacity' => (float)($truck['capacity'] ?? 0),
+            'status' => trim((string)($truck['status'] ?? 'Active')),
+        ];
+
+        if ($id > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE truck_master 
+                SET truck_number = :truck_number, driver_name = :driver_name, driver_mobile = :driver_mobile,
+                    transporter_name = :transporter_name, vehicle_type = :vehicle_type, capacity = :capacity,
+                    status = :status, updated_at = CURRENT_TIMESTAMP
+                WHERE firm_id = :firm_id AND id = :id
+            ");
+            $params['id'] = $id;
+            $stmt->execute($params);
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO truck_master (firm_id, truck_number, driver_name, driver_mobile, transporter_name, vehicle_type, capacity, status)
+                VALUES (:firm_id, :truck_number, :driver_name, :driver_mobile, :transporter_name, :vehicle_type, :capacity, :status)
+                ON DUPLICATE KEY UPDATE
+                    driver_name = VALUES(driver_name),
+                    driver_mobile = VALUES(driver_mobile),
+                    transporter_name = VALUES(transporter_name),
+                    vehicle_type = VALUES(vehicle_type),
+                    capacity = VALUES(capacity),
+                    status = VALUES(status),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute($params);
+        }
+        jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'delete_truck_master') {
+        $pdo = db();
+        ensureTruckMasterSchema($pdo);
+        $id = (int)($payload['id'] ?? 0);
+        if ($id <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing truck id.'], 400);
+        }
+        $stmt = $pdo->prepare("DELETE FROM truck_master WHERE firm_id = ? AND id = ?");
+        $stmt->execute([$firmId, $id]);
+        jsonOut(['ok' => true]);
+    }
+
+    if ($action === 'get_pending_dispatch_jobs') {
+        $pdo = db();
+        ensureDpmJobsSchema($pdo);
+        ensureDispatchPlanningSchema($pdo);
+        
+        $stmt = $pdo->prepare("
+            SELECT j.*, 
+            (SELECT COALESCE(SUM(dispatch_plan_qty), 0) FROM dispatch_planning WHERE firm_id = j.firm_id AND job_no = j.job_no) as total_planned_qty
+            FROM dpm_jobs j 
+            WHERE j.firm_id = ? AND j.status <> 'DISPATCH PLANNED'
+            ORDER BY j.created_at DESC
+        ");
+        $stmt->execute([$firmId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($rows as &$row) {
+            $row['pending_dispatch_qty'] = max(0, (float)$row['plan_quantity'] - (float)$row['total_planned_qty']);
+        }
+        
+        jsonOut(['ok' => true, 'jobs' => $rows]);
+    }
+
+    if ($action === 'save_dispatch_planning') {
+        $pdo = db();
+        ensureDispatchPlanningSchema($pdo);
+        ensureDpmJobsSchema($pdo);
+        
+        $plan = is_array($payload['plan'] ?? null) ? $payload['plan'] : [];
+        $jobNo = trim((string)($plan['job_no'] ?? ''));
+        $dispatchPlanQty = (float)($plan['dispatch_plan_qty'] ?? 0);
+        $truckNumber = trim((string)($plan['truck_number'] ?? ''));
+        $userEmail = trim((string)($payload['user_email'] ?? ''));
+
+        if ($jobNo === '' || $dispatchPlanQty <= 0 || $truckNumber === '') {
+            jsonOut(['ok' => false, 'error' => 'Missing job_no, dispatch_plan_qty or truck_number.'], 400);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("
+                SELECT j.*, 
+                (SELECT COALESCE(SUM(dispatch_plan_qty), 0) FROM dispatch_planning WHERE firm_id = j.firm_id AND job_no = j.job_no) as total_planned_qty
+                FROM dpm_jobs j 
+                WHERE j.firm_id = ? AND j.job_no = ? 
+                FOR UPDATE
+            ");
+            $stmt->execute([$firmId, $jobNo]);
+            $job = $stmt->fetch();
+            
+            if (!$job) {
+                throw new Exception('DPM Job not found.');
+            }
+
+            $pendingQty = (float)$job['plan_quantity'] - (float)$job['total_planned_qty'];
+            if ($dispatchPlanQty > $pendingQty + 0.0001) {
+                throw new Exception('Dispatch Plan Quantity cannot be greater than Plan Quantity (' . $pendingQty . ').');
+            }
+
+            $stmt = $pdo->prepare("
+                INSERT INTO dispatch_planning (firm_id, job_no, order_id, company_name, erp, item, plan_quantity, required_reel, dispatch_plan_qty, truck_number, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $firmId, $jobNo, $job['order_id'], $job['company_name'], $job['erp'], $job['item'], 
+                $job['plan_quantity'], $job['required_reel'], $dispatchPlanQty, $truckNumber, $userEmail
+            ]);
+
+            $newTotalPlanned = (float)$job['total_planned_qty'] + $dispatchPlanQty;
+            $status = 'PARTIAL DISPATCH PLANNED';
+            if (abs((float)$job['plan_quantity'] - $newTotalPlanned) < 0.0001) {
+                $status = 'DISPATCH PLANNED';
+            }
+
+            $stmt = $pdo->prepare("UPDATE dpm_jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE firm_id = ? AND job_no = ?");
+            $stmt->execute([$status, $firmId, $jobNo]);
+
+            $pdo->commit();
+            jsonOut(['ok' => true]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'get_dispatch_planning') {
+        $pdo = db();
+        ensureDispatchPlanningSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM dispatch_planning WHERE firm_id = ? ORDER BY dispatch_date DESC");
+        $stmt->execute([$firmId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonOut(['ok' => true, 'plans' => $rows]);
     }
 
     if ($action === 'save_ge_entry') {

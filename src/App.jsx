@@ -16,6 +16,8 @@ import {
   fetchSupplierMaster, saveSupplierMaster, deleteSupplierMaster,
   fetchCompanyMaster, saveCompanyMaster, deleteCompanyMaster,
   fetchStateMaster, saveStateMaster,
+  fetchTruckMaster, saveTruckMaster, deleteTruckMaster,
+  fetchPendingDispatchJobs, saveDispatchPlanning, fetchDispatchPlanning,
   fetchMasterCounts, HELPER_SHEET_NAME, PO_SHEET_NAME
 } from './sheetSync';
 import ReelLabelPrintArea from './components/print/ReelLabelPrintArea';
@@ -37,6 +39,7 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import SuppliersPage from './pages/SuppliersPage';
 import DpmItemsMasterPage from './pages/DpmItemsMasterPage';
 import CompanyMasterPage from './pages/CompanyMasterPage';
+import StateMasterPage from './pages/StateMasterPage';
 
 import ReelIssueReturnPage from './pages/ReelIssueReturnPage';
 import SheetPlantPage from './pages/SheetPlantPage';
@@ -45,6 +48,8 @@ import ReelCloserPage from './pages/ReelCloserPage';
 import ReelReturnPage from './pages/ReelReturnPage';
 import ReelIssueDataPage from './pages/ReelIssueDataPage';
 import DpmJobsPage from './pages/DpmJobsPage';
+import TruckMasterPage from './pages/TruckMasterPage';
+import DispatchPlanningPage from './pages/DispatchPlanningPage';
 import ReelStockPage from './pages/ReelStockPage';
 import OrderFormPage from './pages/OrderFormPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
@@ -3581,10 +3586,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onSuppliers: () => setStep(18),
               onCompanyMaster: () => setStep(29),
               onStateMaster: () => setStep(28),
+              onTruckMaster: () => setStep(37),
               onOrderForm: () => setStep(30),
               onOrderPendingApproval: () => setStep(31),
               onOrderPendingScheduling: () => setStep(32),
               onOrderPendingJobs: () => setStep(33),
+              onDispatchPlanning: () => setStep(38),
               onOrderApproved: () => setStep(34),
               onOrderCancelled: () => setStep(35),
               onUsers: () => setStep(9),
@@ -5488,6 +5495,32 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             deleteDpmItem,
             firm: tempFirm
           }}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 37) {
+    return (
+      <>
+        {userBadge}
+        <TruckMasterPage
+          firm={tempFirm}
+          currentUser={currentUser}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 38) {
+    return (
+      <>
+        {userBadge}
+        <DispatchPlanningPage
+          firm={tempFirm}
+          currentUser={currentUser}
           onBack={() => setStep(3)}
         />
       </>

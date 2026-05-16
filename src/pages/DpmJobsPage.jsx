@@ -184,6 +184,7 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
                 <th style={styles.th}>Plan Qty</th>
                 <th style={styles.th}>Req Reel</th>
                 <th style={styles.th}>Stage</th>
+                <th style={styles.th}>Status</th>
                 <th style={styles.th}>Action</th>
               </tr>
             </thead>
@@ -198,6 +199,11 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
                   <td style={styles.td}>
                     <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
                       {job.stage}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ background: job.status === 'PENDING' ? '#f3f4f6' : '#fef3c7', color: job.status === 'PENDING' ? '#374151' : '#92400e', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {job.status || 'PENDING'}
                     </span>
                   </td>
                   <td style={styles.td}>

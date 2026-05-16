@@ -459,6 +459,76 @@ export async function fetchOrders(firm, status = '') {
   return Array.isArray(res?.orders) ? res.orders : [];
 }
 
+export async function fetchTruckMaster(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const query = new URLSearchParams({
+    action: 'get_truck_master',
+    firm_id: getFirmKey(firm),
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.trucks) ? payload.trucks : [];
+}
+
+export async function saveTruckMaster(firm, truck) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_truck_master',
+      firm_id: getFirmKey(firm),
+      truck,
+    })
+  });
+}
+
+export async function deleteTruckMaster(firm, id) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'delete_truck_master',
+      firm_id: getFirmKey(firm),
+      id,
+    })
+  });
+}
+
+export async function fetchPendingDispatchJobs(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const query = new URLSearchParams({
+    action: 'get_pending_dispatch_jobs',
+    firm_id: getFirmKey(firm),
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.jobs) ? payload.jobs : [];
+}
+
+export async function saveDispatchPlanning(firm, plan, userEmail) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_dispatch_planning',
+      firm_id: getFirmKey(firm),
+      user_email: userEmail || '',
+      plan,
+    })
+  });
+}
+
+export async function fetchDispatchPlanning(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const query = new URLSearchParams({
+    action: 'get_dispatch_planning',
+    firm_id: getFirmKey(firm),
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.plans) ? payload.plans : [];
+}
+
 export async function approveOrder(firm, orderId, userEmail) {
   const backendUrl = ensureBackendUrl(firm);
   return fetchJson(backendUrl, {
