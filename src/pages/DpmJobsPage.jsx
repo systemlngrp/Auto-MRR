@@ -72,7 +72,7 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
         currentUser?.email || ''
       );
       if (res.ok) {
-        alert('DPM Job created successfully with Job No: ' + res.job_no);
+        alert('DPM Job created successfully.');
         setFormData({
           date: new Date().toISOString().split('T')[0],
           plan_quantity: '',

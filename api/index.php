@@ -556,10 +556,7 @@ function ensureDpmJobsSchema(PDO $pdo): void
           sales_person VARCHAR(190) DEFAULT NULL,
           stage VARCHAR(80) DEFAULT 'Issue',
           status VARCHAR(80) DEFAULT 'PENDING',
-          created_by VARCHAR(190) DEFAULT NULL,
           extra_json LONGTEXT DEFAULT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
           KEY idx_dpm_firm_job (firm_id, job_no),
           KEY idx_dpm_stage (firm_id, stage),
@@ -3572,12 +3569,11 @@ try {
         $itemCount = $countTable($pdo, "SELECT COUNT(*) FROM item_master WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $supplierCount = $countTable($pdo, "SELECT COUNT(*) FROM suppliers WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
         $companyCount = $countTable($pdo, "SELECT COUNT(*) FROM companies WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
-        $userCount = $countTable($pdo, \"SELECT COUNT(*) FROM app_users WHERE firm_id = :firm_id\", ['firm_id' => $firmParam]);
-        $stateCount = $countTable($pdo, \"SELECT COUNT(*) FROM state_master\");
-        $truckCount = $countTable($pdo, \"SELECT COUNT(*) FROM truck_master WHERE firm_id = :firm_id\", ['firm_id' => $firmParam]);
+        $userCount = $countTable($pdo, "SELECT COUNT(*) FROM app_users WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
+        $stateCount = $countTable($pdo, "SELECT COUNT(*) FROM state_master");
+        $truckCount = $countTable($pdo, "SELECT COUNT(*) FROM truck_master WHERE firm_id = :firm_id", ['firm_id' => $firmParam]);
 
-        $stmt = $pdo->prepare(\"
-
+        $stmt = $pdo->prepare("
             SELECT
               SUM(CASE WHEN LOWER(COALESCE(pr.status_text, 'pending')) LIKE '%pending%' THEN 1 ELSE 0 END) AS pr_pending,
               SUM(CASE WHEN LOWER(COALESCE(pr.status_text, '')) LIKE '%rejected%' THEN 1 ELSE 0 END) AS pr_rejected,
@@ -5249,13 +5245,17 @@ try {
             return array_merge($extra, [
                 'id' => $row['id'],
                 'job_no' => $row['job_no'],
+                'date' => $row['date'],
+                'order_id' => $row['order_id'] ?? '',
+                'company_name' => $row['company_name'] ?? '',
                 'erp' => $row['erp'],
                 'item' => $row['item'],
+                'scheduled_date' => $row['scheduled_date'] ?? '',
+                'scheduled_qty' => $row['scheduled_qty'] ?? 0,
                 'plan_quantity' => $row['plan_quantity'],
                 'required_reel' => $row['required_reel'],
                 'stage' => $row['stage'],
-                'date' => $row['date'],
-                'sno' => $row['sno'],
+                'status' => $row['status'] ?? 'PENDING',
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
             ]);
@@ -5319,8 +5319,7 @@ try {
                 sales_person = VALUES(sales_person),
                 stage = VALUES(stage),
                 status = VALUES(status),
-                extra_json = VALUES(extra_json),
-                updated_at = CURRENT_TIMESTAMP
+                extra_json = VALUES(extra_json)
         ");
         $stmt->execute($params);
         jsonOut(['ok' => true, 'id' => $id]);
@@ -5617,15 +5616,15 @@ try {
                 INSERT INTO dpm_jobs (
                     id, firm_id, job_no, date, order_id, company_name, erp, item, 
                     scheduled_date, scheduled_qty, plan_quantity, required_reel, 
-                    schedule_no, rate, sales_person, stage, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Issue', ?)
+                    schedule_no, rate, sales_person, stage, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Issue', 'PENDING')
             ");
             $stmt->execute([
                 $jobId, $firmId, $jobNo, date('Y-m-d'), $planning['order_id'], 
                 $planning['company_name'], $planning['erp_code'], $planning['item_name'],
                 $planning['scheduled_date'], $planning['scheduled_qty'], $planQty, 
                 $reqReel, $planning['schedule_no'], $planning['rate'], 
-                $planning['sales_person'], $userEmail
+                $planning['sales_person']
             ]);
 
             // 4. Update planning status
