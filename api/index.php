@@ -568,8 +568,30 @@ function ensureDpmJobsSchema(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    // Add status column if missing
+    // Add missing columns if they don't exist
     $cols = tableColumns('dpm_jobs');
+    if (!in_array('order_id', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN order_id VARCHAR(120) DEFAULT NULL AFTER date");
+        $pdo->exec("CREATE INDEX idx_dpm_order ON dpm_jobs (firm_id, order_id)");
+    }
+    if (!in_array('company_name', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN company_name VARCHAR(255) DEFAULT NULL AFTER order_id");
+    }
+    if (!in_array('scheduled_date', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN scheduled_date VARCHAR(40) DEFAULT NULL AFTER item");
+    }
+    if (!in_array('scheduled_qty', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN scheduled_qty DECIMAL(18,3) DEFAULT NULL AFTER scheduled_date");
+    }
+    if (!in_array('schedule_no', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN schedule_no INT DEFAULT NULL AFTER required_reel");
+    }
+    if (!in_array('rate', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN rate DECIMAL(18,2) DEFAULT NULL AFTER schedule_no");
+    }
+    if (!in_array('sales_person', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN sales_person VARCHAR(190) DEFAULT NULL AFTER rate");
+    }
     if (!in_array('status', $cols, true)) {
         $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN status VARCHAR(80) DEFAULT 'PENDING' AFTER stage");
         $pdo->exec("CREATE INDEX idx_dpm_status ON dpm_jobs (firm_id, status)");
@@ -5254,28 +5276,49 @@ try {
             'id' => $id,
             'firm_id' => $firmId,
             'job_no' => trim((string)($job['job_no'] ?? '')),
+            'date' => trim((string)($job['date'] ?? '')),
+            'order_id' => trim((string)($job['order_id'] ?? '')),
+            'company_name' => trim((string)($job['company_name'] ?? '')),
             'erp' => trim((string)($job['erp'] ?? '')),
             'item' => trim((string)($job['item'] ?? '')),
-            'plan_quantity' => trim((string)($job['plan_quantity'] ?? '')),
-            'required_reel' => trim((string)($job['required_reel'] ?? '')),
-            'stage' => trim((string)($job['stage'] ?? 'reel_issue_pending')),
-            'date' => trim((string)($job['date'] ?? '')),
-            'sno' => trim((string)($job['sno'] ?? '')),
+            'scheduled_date' => trim((string)($job['scheduled_date'] ?? '')),
+            'scheduled_qty' => (float)($job['scheduled_qty'] ?? 0),
+            'plan_quantity' => (float)($job['plan_quantity'] ?? 0),
+            'required_reel' => (float)($job['required_reel'] ?? 0),
+            'schedule_no' => (int)($job['schedule_no'] ?? 0),
+            'rate' => (float)($job['rate'] ?? 0),
+            'sales_person' => trim((string)($job['sales_person'] ?? '')),
+            'stage' => trim((string)($job['stage'] ?? 'Issue')),
+            'status' => trim((string)($job['status'] ?? 'PENDING')),
             'extra_json' => json_encode($job, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
         $stmt = $pdo->prepare("
-            INSERT INTO dpm_jobs (id, firm_id, job_no, erp, item, plan_quantity, required_reel, stage, date, sno, extra_json)
-            VALUES (:id, :firm_id, :job_no, :erp, :item, :plan_quantity, :required_reel, :stage, :date, :sno, :extra_json)
+            INSERT INTO dpm_jobs (
+                id, firm_id, job_no, date, order_id, company_name, erp, item, 
+                scheduled_date, scheduled_qty, plan_quantity, required_reel, 
+                schedule_no, rate, sales_person, stage, status, extra_json
+            ) VALUES (
+                :id, :firm_id, :job_no, :date, :order_id, :company_name, :erp, :item, 
+                :scheduled_date, :scheduled_qty, :plan_quantity, :required_reel, 
+                :schedule_no, :rate, :sales_person, :stage, :status, :extra_json
+            )
             ON DUPLICATE KEY UPDATE
                 job_no = VALUES(job_no),
+                date = VALUES(date),
+                order_id = VALUES(order_id),
+                company_name = VALUES(company_name),
                 erp = VALUES(erp),
                 item = VALUES(item),
+                scheduled_date = VALUES(scheduled_date),
+                scheduled_qty = VALUES(scheduled_qty),
                 plan_quantity = VALUES(plan_quantity),
                 required_reel = VALUES(required_reel),
+                schedule_no = VALUES(schedule_no),
+                rate = VALUES(rate),
+                sales_person = VALUES(sales_person),
                 stage = VALUES(stage),
-                date = VALUES(date),
-                sno = VALUES(sno),
+                status = VALUES(status),
                 extra_json = VALUES(extra_json),
                 updated_at = CURRENT_TIMESTAMP
         ");
