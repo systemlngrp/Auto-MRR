@@ -85,6 +85,44 @@ function parseArgs(): array {
     return $out;
 }
 
+function diagnose(array $args, array $cfg, string $traceId): void {
+    $serviceAccountJsonPath =
+        envFirst('GOOGLE_SERVICE_ACCOUNT_JSON')
+        ?? (string)cfgGet($cfg, 'google.service_account_json', '');
+
+    $report = [
+        'ok' => true,
+        'trace_id' => $traceId,
+        'php' => [
+            'version' => PHP_VERSION,
+            'sapi' => PHP_SAPI,
+            'allow_url_fopen' => (bool)ini_get('allow_url_fopen'),
+        ],
+        'ext' => [
+            'curl' => function_exists('curl_init'),
+            'openssl' => function_exists('openssl_sign'),
+            'json' => function_exists('json_encode'),
+            'pdo' => class_exists('PDO'),
+            'pdo_mysql' => in_array('mysql', PDO::getAvailableDrivers(), true),
+        ],
+        'config' => [
+            'has_sync_secret' => (envFirst('SYNC_SECRET') ?? (string)cfgGet($cfg, 'sync.secret', '')) !== '',
+            'service_account_json' => $serviceAccountJsonPath,
+            'service_account_json_exists' => $serviceAccountJsonPath !== '' ? is_file($serviceAccountJsonPath) : false,
+            'service_account_json_readable' => $serviceAccountJsonPath !== '' ? is_readable($serviceAccountJsonPath) : false,
+        ],
+        'request' => [
+            'firm_id' => $args['firm_id'] ?? null,
+            'spreadsheet_id' => $args['spreadsheet_id'] ?? null,
+            'sheet_name' => $args['sheet_name'] ?? null,
+            'range' => $args['range'] ?? null,
+        ],
+    ];
+
+    logLine($traceId, 'diagnose', $report);
+    jsonOut($report);
+}
+
 function pdoFromConfig(array $cfg): PDO {
     $dbHost = envFirst('DB_HOST', 'MYSQL_HOST') ?? (string)cfgGet($cfg, 'db.host', 'localhost');
     $dbPort = envFirst('DB_PORT', 'MYSQL_PORT') ?? (string)cfgGet($cfg, 'db.port', 3306);
@@ -309,12 +347,17 @@ try {
     $cfg = readConfig();
     $args = parseArgs();
     $debug = ($args['debug'] ?? '') === '1';
+    $doDiagnose = ($args['diagnose'] ?? '') === '1';
 
     $secret = $args['secret'] ?? '';
     $expectedSecret = envFirst('SYNC_SECRET') ?? (string)cfgGet($cfg, 'sync.secret', '');
     if ($expectedSecret === '' || $secret === '' || !hash_equals($expectedSecret, $secret)) {
         logLine($traceId, 'unauthorized', ['remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null]);
         jsonOut(['ok' => false, 'error' => 'Unauthorized'], 401);
+    }
+
+    if ($doDiagnose) {
+        diagnose($args, $cfg, $traceId);
     }
 
     $firmId = $args['firm_id'] ?? '';
