@@ -229,7 +229,7 @@ export default function SidebarMenu({
           ) : null}
           {canSee('pending_loading_slip') ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onPendingLoadingSlip}>
-              <span>Pending Loading Slip</span>
+              <span>Loading Slips</span>
               {badge(0, 'gray')}
             </button>
           ) : null}

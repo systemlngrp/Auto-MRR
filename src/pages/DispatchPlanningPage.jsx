@@ -3,7 +3,7 @@ import * as sheetSync from '../sheetSync';
 import { pageStyles } from '../styles/pageStyles';
 import SearchableSelect from '../components/layout/SearchableSelect';
 
-export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
+export default function DispatchPlanningPage({ firm, currentUser, onBack, onMakeLoadingSlip }) {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'saved'
   const [pendingJobs, setPendingJobs] = useState([]);
   const [savedPlans, setSavedPlans] = useState([]);
@@ -12,6 +12,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
   const [error, setError] = useState('');
   
   const [planningJob, setPlanningJob] = useState(null);
+  const [successModal, setSuccessModal] = useState(null);
   const [formData, setFormData] = useState({
     dispatch_plan_qty: '',
     truck_number: ''
@@ -89,7 +90,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
       
       setPlanningJob(null);
       await loadData();
-      alert('Dispatch Plan saved successfully');
+      setSuccessModal(true);
     } catch (err) {
       alert(err.message || 'Failed to save dispatch plan');
     } finally {
@@ -122,7 +123,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
         </div>
       </div>
 
-      {error && <div style={appStyles.errorBanner}>{error}</div>}
+      {error && <div style={pageStyles.errorBanner}>{error}</div>}
 
       {activeTab === 'pending' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100%, 1fr))', gap: '20px' }}>
@@ -348,6 +349,35 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {successModal && (
+        <div className="inv-modal-overlay">
+          <div className="inv-modal-content" style={{ maxWidth: '450px', borderRadius: '24px', textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🎉</div>
+            <h3 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '10px' }}>Plan Saved!</h3>
+            <p style={{ color: '#64748b', marginBottom: '30px', lineHeight: '1.5' }}>Your dispatch plan has been recorded successfully. What would you like to do next?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                onClick={() => {
+                  setSuccessModal(false);
+                  if (typeof onMakeLoadingSlip === 'function') onMakeLoadingSlip();
+                }}
+                className="inv-btn-primary" 
+                style={{ width: '100%', padding: '16px', borderRadius: '14px', fontSize: '16px' }}
+              >
+                📄 Make Loading Slip Now
+              </button>
+              <button 
+                onClick={() => setSuccessModal(false)}
+                className="inv-btn-secondary" 
+                style={{ width: '100%', padding: '16px', borderRadius: '14px', fontSize: '16px' }}
+              >
+                ➕ Create Another Plan
+              </button>
+            </div>
           </div>
         </div>
       )}

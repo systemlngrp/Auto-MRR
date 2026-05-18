@@ -148,143 +148,93 @@ export default function TruckMasterPage({ firm, currentUser, onBack }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
-        {isLoading && trucks.length === 0 ? (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#64748b', background: '#fff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🚚</div>
-            <div style={{ fontSize: '16px', fontWeight: '600' }}>Loading trucks data...</div>
-          </div>
-        ) : filteredTrucks.length === 0 ? (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#64748b', background: '#fff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
-            <div style={{ fontSize: '16px', fontWeight: '600' }}>No trucks found matching "{searchTerm}"</div>
-            <button onClick={() => setSearchTerm('')} style={{ marginTop: '12px', color: 'var(--primary)', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer' }}>Clear Search</button>
-          </div>
-        ) : (
-          filteredTrucks.map(truck => (
-            <div key={truck.id} className="inv-card" style={{ 
-              margin: 0, 
-              padding: '0', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
-              overflow: 'hidden',
-              background: '#fff',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }} onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.borderColor = 'var(--primary)';
-            }} onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-              e.currentTarget.style.borderColor = '#e2e8f0';
-            }}>
-              <div style={{ 
-                padding: '16px 20px', 
-                background: truck.status === 'Active' ? '#f0fdf4' : '#f8fafc',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center' 
-              }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>#{truck.id}</div>
-                  <div style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', letterSpacing: '0.5px' }}>{truck.truck_number}</div>
-                </div>
-                <span className={`inv-badge ${truck.status === 'Active' ? 'green' : 'gray'}`} style={{ 
-                  padding: '6px 12px', 
-                  borderRadius: '20px', 
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                  {truck.status === 'Active' ? '● Active' : '○ Inactive'}
-                </span>
-              </div>
-
-              <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    <span>🏢</span> Transporter
-                  </label>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>{truck.transporter_name || 'Not Assigned'}</div>
-                </div>
-                
-                <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    <span>👨‍✈️</span> Driver
-                  </label>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>{truck.driver_name || '-'}</div>
-                </div>
-                
-                <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    <span>📱</span> Contact
-                  </label>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>{truck.driver_mobile || '-'}</div>
-                </div>
-
-                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Vehicle Type</label>
-                  <div style={{ fontSize: '13px', fontWeight: '500', color: '#64748b' }}>{truck.vehicle_type || 'Unknown'}</div>
-                </div>
-                
-                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Capacity</label>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--primary)' }}>{truck.capacity} <span style={{ fontSize: '12px', fontWeight: '600' }}>KG</span></div>
-                </div>
-              </div>
-
-              <div style={{ 
-                padding: '12px 20px', 
-                background: '#f8fafc', 
-                display: 'flex', 
-                gap: '12px', 
-                borderTop: '1px solid #e2e8f0' 
-              }}>
-                <button onClick={() => handleEdit(truck)} style={{ 
-                  flex: 1, 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  background: '#fff', 
-                  border: '1px solid #e2e8f0',
-                  color: '#2563eb',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s'
-                }} onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
-                   onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
-                  <span>✏️</span> Edit
-                </button>
-                <button onClick={() => confirmDelete(truck)} style={{ 
-                  padding: '10px 16px', 
-                  borderRadius: '10px', 
-                  background: '#fff', 
-                  border: '1px solid #fee2e2',
-                  color: '#dc2626',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s'
-                }} onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
-                   onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}>
-                  <span>🗑️</span>
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+      <div className="inv-card" style={{ padding: 0, overflow: 'hidden', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
+          <thead>
+            <tr style={{ background: '#f8fafc' }}>
+              <th style={{ padding: '20px', textAlign: 'left', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Truck Info</th>
+              <th style={{ padding: '20px', textAlign: 'left', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Transporter</th>
+              <th style={{ padding: '20px', textAlign: 'left', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Driver Details</th>
+              <th style={{ padding: '20px', textAlign: 'center', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Type & Cap.</th>
+              <th style={{ padding: '20px', textAlign: 'center', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Status</th>
+              <th style={{ padding: '20px', textAlign: 'center', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && trucks.length === 0 ? (
+              <tr>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '100px 20px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🚚</div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#64748b' }}>Loading trucks data...</div>
+                </td>
+              </tr>
+            ) : filteredTrucks.length === 0 ? (
+              <tr>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '100px 20px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#64748b' }}>No trucks found matching "{searchTerm}"</div>
+                  <button onClick={() => setSearchTerm('')} style={{ marginTop: '12px', color: 'var(--primary)', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer' }}>Clear Search</button>
+                </td>
+              </tr>
+            ) : (
+              filteredTrucks.map(truck => (
+                <tr key={truck.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} 
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '20px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>{truck.truck_number}</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>ID: #{truck.id}</div>
+                  </td>
+                  <td style={{ padding: '20px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#334155' }}>{truck.transporter_name || '-'}</div>
+                  </td>
+                  <td style={{ padding: '20px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>{truck.driver_name || '-'}</div>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>{truck.driver_mobile || '-'}</div>
+                  </td>
+                  <td style={{ padding: '20px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{truck.vehicle_type || '-'}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--primary)', marginTop: '4px' }}>{truck.capacity} <span style={{ fontSize: '10px' }}>KG</span></div>
+                  </td>
+                  <td style={{ padding: '20px', textAlign: 'center' }}>
+                    <span className={`inv-badge ${truck.status === 'Active' ? 'green' : 'gray'}`} style={{ 
+                      padding: '6px 12px', 
+                      borderRadius: '20px', 
+                      fontSize: '11px',
+                      fontWeight: 'bold'
+                    }}>
+                      {truck.status === 'Active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '20px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <button onClick={() => handleEdit(truck)} style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: '8px', 
+                        background: '#fff', 
+                        border: '1px solid #e2e8f0',
+                        color: '#2563eb',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}>Edit</button>
+                      <button onClick={() => confirmDelete(truck)} style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: '8px', 
+                        background: '#fff', 
+                        border: '1px solid #fee2e2',
+                        color: '#dc2626',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {isModalOpen && (

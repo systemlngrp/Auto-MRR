@@ -8,7 +8,7 @@ import {
   fetchItems, saveItems, deleteItem,
   fetchDpmItems, saveDpmItems, deleteDpmItem,
   saveOrder, fetchOrders, approveOrder, saveOrderSchedule, fetchPendingPlanning,
-  fetchDpmJobs, saveDpmJobFromPlanning,
+  fetchDpmJobs, saveDpmJobFromPlanning, saveDpmJob,
   fetchItemGroups, saveItemGroup,
   fetchPurchaseRequests, fetchPurchaseRequestDetails, savePurchaseRequest, approvePurchaseRequest,
   fetchPurchaseOrders, fetchPurchaseOrderDetails, savePurchaseOrder, approvePurchaseOrder,
@@ -5525,6 +5525,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           firm={tempFirm}
           currentUser={currentUser}
           onBack={() => setStep(3)}
+          onMakeLoadingSlip={() => setStep(39)}
         />
       </>
     );
