@@ -47,6 +47,8 @@ export default function PendingPlanningPage({ deps = {}, onBack }) {
               <th style={styles.th}>Item</th>
               <th style={styles.th}>Sched Date</th>
               <th style={styles.th}>Sched Qty</th>
+              <th style={styles.th}>Jobbed Qty</th>
+              <th style={styles.th}>Pending Qty</th>
               <th style={styles.th}>Sched No</th>
               <th style={styles.th}>Rate</th>
               <th style={styles.th}>Sales Person</th>
@@ -64,6 +66,10 @@ export default function PendingPlanningPage({ deps = {}, onBack }) {
                 <td style={styles.td}>{p.item_name}</td>
                 <td style={styles.td}>{p.scheduled_date}</td>
                 <td style={styles.td}>{Number(p.scheduled_qty).toLocaleString()}</td>
+                <td style={styles.td}>{Number(p.jobbed_qty || 0).toLocaleString()}</td>
+                <td style={{ ...styles.td, fontWeight: 'bold', color: '#1d4ed8' }}>
+                  {(Number(p.scheduled_qty) - Number(p.jobbed_qty || 0)).toLocaleString()}
+                </td>
                 <td style={styles.td}>{p.schedule_no} / 10</td>
                 <td style={styles.td}>{Number(p.rate).toFixed(2)}</td>
                 <td style={styles.td}>{p.sales_person}</td>
@@ -87,7 +93,7 @@ export default function PendingPlanningPage({ deps = {}, onBack }) {
               ))}
 
             {planning.length === 0 && !isLoading && (
-              <tr><td colSpan="12" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: '#6b7280' }}>No pending planning entries.</td></tr>
+              <tr><td colSpan="13" style={{ ...styles.td, textAlign: 'center', padding: '40px', color: '#6b7280' }}>No pending planning entries.</td></tr>
             )}
           </tbody>
         </table>

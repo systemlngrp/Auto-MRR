@@ -42,10 +42,16 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
 
   const truckOptions = useMemo(() => {
     return trucks.map(t => ({
-      value: t.truck_number,
+      value: String(t.id),
       label: `${t.truck_number} (${t.transporter_name || 'No Transporter'})`
     }));
   }, [trucks]);
+
+  function getTruckDisplay(truckVal) {
+    if (!truckVal) return '-';
+    const truck = trucks.find(t => String(t.id) === String(truckVal) || String(t.truck_number) === String(truckVal));
+    return truck ? truck.truck_number : truckVal;
+  }
 
   function handleStartPlanning(job) {
     setPlanningJob(job);
@@ -261,7 +267,7 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack }) {
                         gap: '6px',
                         border: '1px solid #dbeafe'
                       }}>
-                        <span>🚚</span> {plan.truck_number}
+                        <span>🚚</span> {getTruckDisplay(plan.truck_number)}
                       </div>
                     </td>
                     <td style={{ padding: '16px 20px' }}>

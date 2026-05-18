@@ -535,8 +535,23 @@ function upsertSupplierName(string $firmId, string $supplierName): void
     ]);
 }
 
+function ensureMrrTables(PDO $pdo): void
+{
+    $childTables = ['reel_mrr_children', 'other_mrr_children'];
+    foreach ($childTables as $table) {
+        try {
+            $cols = tableColumns($table);
+            if (!in_array('job_no', $cols, true)) {
+                $pdo->exec("ALTER TABLE {$table} ADD COLUMN job_no VARCHAR(120) DEFAULT NULL AFTER mrr_no");
+                tableColumns($table, true);
+            }
+        } catch (Throwable $e) {}
+    }
+}
+
 function ensureDpmJobsSchema(PDO $pdo): void
 {
+    ensureMrrTables($pdo);
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS dpm_jobs (
           id VARCHAR(120) NOT NULL,
@@ -556,6 +571,11 @@ function ensureDpmJobsSchema(PDO $pdo): void
           sales_person VARCHAR(190) DEFAULT NULL,
           stage VARCHAR(80) DEFAULT 'Issue',
           status VARCHAR(80) DEFAULT 'PENDING',
+          opening_balance DECIMAL(18,3) DEFAULT 0,
+          receipt DECIMAL(18,3) DEFAULT 0,
+          production DECIMAL(18,3) DEFAULT 0,
+          dispatch DECIMAL(18,3) DEFAULT 0,
+          balance DECIMAL(18,3) DEFAULT 0,
           extra_json LONGTEXT DEFAULT NULL,
           PRIMARY KEY (id),
           KEY idx_dpm_firm_job (firm_id, job_no),
@@ -567,6 +587,21 @@ function ensureDpmJobsSchema(PDO $pdo): void
 
     // Add missing columns if they don't exist
     $cols = tableColumns('dpm_jobs');
+    if (!in_array('opening_balance', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN opening_balance DECIMAL(18,3) DEFAULT 0 AFTER status");
+    }
+    if (!in_array('receipt', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN receipt DECIMAL(18,3) DEFAULT 0 AFTER opening_balance");
+    }
+    if (!in_array('production', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN production DECIMAL(18,3) DEFAULT 0 AFTER receipt");
+    }
+    if (!in_array('dispatch', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN dispatch DECIMAL(18,3) DEFAULT 0 AFTER production");
+    }
+    if (!in_array('balance', $cols, true)) {
+        $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN balance DECIMAL(18,3) DEFAULT 0 AFTER dispatch");
+    }
     if (!in_array('order_id', $cols, true)) {
         $pdo->exec("ALTER TABLE dpm_jobs ADD COLUMN order_id VARCHAR(120) DEFAULT NULL AFTER date");
         $pdo->exec("CREATE INDEX idx_dpm_order ON dpm_jobs (firm_id, order_id)");
@@ -745,6 +780,7 @@ function ensureOrderWorkflowSchema(PDO $pdo): void
           item_name VARCHAR(255) DEFAULT NULL,
           scheduled_date VARCHAR(40) DEFAULT NULL,
           scheduled_qty DECIMAL(18,3) DEFAULT NULL,
+          jobbed_qty DECIMAL(18,3) DEFAULT 0,
           schedule_no INT DEFAULT NULL,
           rate DECIMAL(18,2) DEFAULT NULL,
           sales_person VARCHAR(190) DEFAULT NULL,
@@ -755,6 +791,12 @@ function ensureOrderWorkflowSchema(PDO $pdo): void
           KEY idx_planning_status (firm_id, status_text)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
+
+    // Add jobbed_qty if it doesn't exist
+    $cols = tableColumns('pending_planning');
+    if (!in_array('jobbed_qty', $cols, true)) {
+        $pdo->exec("ALTER TABLE pending_planning ADD COLUMN jobbed_qty DECIMAL(18,3) DEFAULT 0 AFTER scheduled_qty");
+    }
 }
 
 function ensureReelStockSchema(PDO $pdo): void
@@ -2194,24 +2236,24 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
                 firm_id, record_group_id, ge_no, mrr_no, parent_id, source_type, row_sort, s_no, description_text,
                 hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
                 unit_value, reels_value, weight_value, rate_value, amount_value, quantity_value, po_quantity,
-                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, extra_json
+                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, job_no, extra_json
             ) VALUES (
                 :firm_id, :record_group_id, :ge_no, :mrr_no, :parent_id, 'helper_item', :row_sort, :s_no, :description_text,
                 :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
                 :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
-                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
+                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :job_no, :extra_json
             )"
             : "
             INSERT INTO {$childTable} (
                 firm_id, record_group_id, ge_no, mrr_no, parent_id, row_sort, s_no, description_text,
                 hsn_code, sort_no, party_order_no, po_no, po_date, po_details, po_rate, gsm_value, size_value,
                 unit_value, reels_value, weight_value, rate_value, amount_value, quantity_value, po_quantity,
-                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, extra_json
+                supplier_reel_no, our_reel_no, reel_details, erp_code, bf_value, job_no, extra_json
             ) VALUES (
                 :firm_id, :record_group_id, :ge_no, :mrr_no, :parent_id, :row_sort, :s_no, :description_text,
                 :hsn_code, :sort_no, :party_order_no, :po_no, :po_date, :po_details, :po_rate, :gsm_value, :size_value,
                 :unit_value, :reels_value, :weight_value, :rate_value, :amount_value, :quantity_value, :po_quantity,
-                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :extra_json
+                :supplier_reel_no, :our_reel_no, :reel_details, :erp_code, :bf_value, :job_no, :extra_json
             )";
         $insertHelper = $pdo->prepare($insertHelperSql);
         $insertHelper->execute([
@@ -2244,6 +2286,7 @@ function saveInvoiceOrPackingAction(array $payload, string $action): array
             'reel_details' => value($helperData, 'reel_details', 'item_name') ?: null,
             'erp_code' => value($helperData, 'erp_code') ?: null,
             'bf_value' => value($helperData, 'bf') ?: null,
+            'job_no' => value($helperData, 'job_no') ?: null,
             'extra_json' => json_encode($helperData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
     }
@@ -5275,8 +5318,49 @@ try {
         $stmt = $pdo->prepare("SELECT * FROM dpm_jobs WHERE firm_id = :firm_id ORDER BY job_no DESC");
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
-        $jobs = array_map(static function (array $row): array {
+        
+        $jobs = array_map(static function (array $row) use ($pdo, $firmId): array {
             $extra = decodeExtraJson($row);
+            
+            $jobNo = trim((string)$row['job_no']);
+            $erp = trim((string)$row['erp']);
+            $item = trim((string)$row['item']);
+            $orderId = trim((string)$row['order_id']);
+
+            // 1. Receipt (MRR) - Matching Job No / ERP / Item / Order Id
+            // Note: matching reel_details/description_text as Item Name
+            $stmtReceipt = $pdo->prepare("
+                SELECT SUM(weight_value) 
+                FROM (
+                    SELECT weight_value FROM reel_mrr_children 
+                    WHERE firm_id = :firm_id AND job_no = :job_no AND erp_code = :erp AND reel_details = :item AND party_order_no = :order_id
+                    UNION ALL
+                    SELECT weight_value FROM other_mrr_children 
+                    WHERE firm_id = :firm_id AND job_no = :job_no AND erp_code = :erp AND description_text = :item AND party_order_no = :order_id
+                ) t
+            ");
+            $stmtReceipt->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
+            $receipt = (float)$stmtReceipt->fetchColumn();
+
+            // 2. Production (Printing Rel) - Sum production column from all matching jobs
+            $stmtProd = $pdo->prepare("
+                SELECT SUM(production) FROM dpm_jobs 
+                WHERE firm_id = :firm_id AND job_no = :job_no AND erp = :erp AND item = :item AND order_id = :order_id
+            ");
+            $stmtProd->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
+            $production = (float)$stmtProd->fetchColumn();
+
+            // 3. Dispatch (Dispatch Master) - Matching Job No / ERP / Item / Order Id
+            $stmtDispatch = $pdo->prepare("
+                SELECT SUM(dispatch_qty) FROM dispatch_master 
+                WHERE firm_id = :firm_id AND job_no = :job_no AND erp = :erp AND item = :item AND order_id = :order_id
+            ");
+            $stmtDispatch->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
+            $dispatch = (float)$stmtDispatch->fetchColumn();
+
+            $openingBalance = (float)($row['opening_balance'] ?? 0);
+            $balance = $openingBalance + $receipt + $production - $dispatch;
+
             return array_merge($extra, [
                 'id' => $row['id'],
                 'job_no' => $row['job_no'],
@@ -5291,6 +5375,11 @@ try {
                 'required_reel' => $row['required_reel'],
                 'stage' => $row['stage'],
                 'status' => $row['status'] ?? 'PENDING',
+                'opening_balance' => $openingBalance,
+                'receipt' => $receipt,
+                'production' => $production,
+                'dispatch' => $dispatch,
+                'balance' => $balance,
             ]);
         }, $rows);
         jsonOut(['ok' => true, 'jobs' => $jobs]);
@@ -5304,6 +5393,11 @@ try {
         if ($id === '') {
             jsonOut(['ok' => false, 'error' => 'Missing job id.'], 400);
         }
+
+        // Fetch existing job to preserve opening_balance if not provided
+        $stmtExisting = $pdo->prepare("SELECT opening_balance FROM dpm_jobs WHERE id = ?");
+        $stmtExisting->execute([$id]);
+        $existingOpening = (float)($stmtExisting->fetchColumn() ?: 0);
 
         $params = [
             'id' => $id,
@@ -5323,6 +5417,11 @@ try {
             'sales_person' => trim((string)($job['sales_person'] ?? '')),
             'stage' => trim((string)($job['stage'] ?? 'Issue')),
             'status' => trim((string)($job['status'] ?? 'PENDING')),
+            'opening_balance' => isset($job['opening_balance']) ? (float)$job['opening_balance'] : $existingOpening,
+            'receipt' => (float)($job['receipt'] ?? 0),
+            'production' => (float)($job['production'] ?? $job['prod_at_printing'] ?? 0),
+            'dispatch' => (float)($job['dispatch'] ?? 0),
+            'balance' => (float)($job['balance'] ?? 0),
             'extra_json' => json_encode($job, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
@@ -5330,11 +5429,13 @@ try {
             INSERT INTO dpm_jobs (
                 id, firm_id, job_no, date, order_id, company_name, erp, item, 
                 scheduled_date, scheduled_qty, plan_quantity, required_reel, 
-                schedule_no, rate, sales_person, stage, status, extra_json
+                schedule_no, rate, sales_person, stage, status, 
+                opening_balance, receipt, production, dispatch, balance, extra_json
             ) VALUES (
                 :id, :firm_id, :job_no, :date, :order_id, :company_name, :erp, :item, 
                 :scheduled_date, :scheduled_qty, :plan_quantity, :required_reel, 
-                :schedule_no, :rate, :sales_person, :stage, :status, :extra_json
+                :schedule_no, :rate, :sales_person, :stage, :status, 
+                :opening_balance, :receipt, :production, :dispatch, :balance, :extra_json
             )
             ON DUPLICATE KEY UPDATE
                 job_no = VALUES(job_no),
@@ -5352,6 +5453,11 @@ try {
                 sales_person = VALUES(sales_person),
                 stage = VALUES(stage),
                 status = VALUES(status),
+                opening_balance = VALUES(opening_balance),
+                receipt = VALUES(receipt),
+                production = VALUES(production),
+                dispatch = VALUES(dispatch),
+                balance = VALUES(balance),
                 extra_json = VALUES(extra_json)
         ");
         $stmt->execute($params);
@@ -5634,8 +5740,9 @@ try {
                 throw new Exception('Planning record not found or already processed.');
             }
 
-            if ($planQty > (float)$planning['scheduled_qty'] + 0.0001) {
-                throw new Exception('Plan Quantity cannot exceed Scheduled Qty.');
+            $pendingToJob = (float)$planning['scheduled_qty'] - (float)$planning['jobbed_qty'];
+            if ($planQty > $pendingToJob + 0.0001) {
+                throw new Exception('Plan Quantity (' . $planQty . ') cannot exceed Remaining Qty (' . $pendingToJob . ').');
             }
 
             // 2. Generate Job No
@@ -5660,9 +5767,15 @@ try {
                 $planning['sales_person']
             ]);
 
-            // 4. Update planning status
-            $stmt = $pdo->prepare("UPDATE pending_planning SET status_text = 'JOB CREATED' WHERE id = ?");
-            $stmt->execute([$planningId]);
+            // 4. Update planning status and jobbed_qty
+            $newJobbedQty = (float)$planning['jobbed_qty'] + $planQty;
+            $newStatus = 'pending';
+            if (abs((float)$planning['scheduled_qty'] - $newJobbedQty) < 0.0001) {
+                $newStatus = 'JOB CREATED';
+            }
+
+            $stmt = $pdo->prepare("UPDATE pending_planning SET jobbed_qty = ?, status_text = ? WHERE id = ?");
+            $stmt->execute([$newJobbedQty, $newStatus, $planningId]);
 
             $pdo->commit();
             jsonOut(['ok' => true, 'job_no' => $jobNo]);

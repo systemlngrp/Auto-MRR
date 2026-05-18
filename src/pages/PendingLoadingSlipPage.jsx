@@ -4,6 +4,7 @@ import { pageStyles } from '../styles/pageStyles';
 
 export default function PendingLoadingSlipPage({ firm, currentUser, onBack, onSuccess }) {
   const [pendingPlans, setPendingPlans] = useState([]);
+  const [trucks, setTrucks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -16,14 +17,24 @@ export default function PendingLoadingSlipPage({ firm, currentUser, onBack, onSu
     setIsLoading(true);
     setError('');
     try {
-      const plans = await sheetSync.fetchDispatchPlanning(firm);
+      const [plans, trucksData] = await Promise.all([
+        sheetSync.fetchDispatchPlanning(firm),
+        sheetSync.fetchTruckMaster(firm)
+      ]);
       // Filter for Pending plans
       setPendingPlans((plans || []).filter(p => p.status === 'Pending'));
+      setTrucks(trucksData);
     } catch (err) {
       setError(err.message || 'Failed to load pending loading slips');
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function getTruckDisplay(truckVal) {
+    if (!truckVal) return '-';
+    const truck = trucks.find(t => String(t.id) === String(truckVal) || String(t.truck_number) === String(truckVal));
+    return truck ? truck.truck_number : truckVal;
   }
 
   const handleGenerateSlip = async (plan) => {
@@ -88,7 +99,7 @@ export default function PendingLoadingSlipPage({ firm, currentUser, onBack, onSu
                   </td>
                   <td style={{ padding: '16px 20px' }}>{plan.company_name}</td>
                   <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>{plan.dispatch_plan_qty}</td>
-                  <td style={{ padding: '16px 20px' }}>{plan.truck_number}</td>
+                  <td style={{ padding: '16px 20px' }}>{getTruckDisplay(plan.truck_number)}</td>
                   <td style={{ padding: '16px 20px' }}>
                     <button 
                       className="inv-btn-primary small" 

@@ -5393,6 +5393,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           deps={{
             fetchDpmJobs,
             saveDpmJobFromPlanning,
+            saveDpmJob,
             currentUser
           }}
           onBack={() => {

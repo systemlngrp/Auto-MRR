@@ -18,32 +18,41 @@ export default function SearchableSelect({
   const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-  const [draft, setDraft] = useState(String(value ?? ''));
+  const [draft, setDraft] = useState('');
   const [menuRect, setMenuRect] = useState(null);
 
   const normalizedOptions = useMemo(() => {
-    const uniq = new Map();
-    (Array.isArray(options) ? options : []).forEach((opt) => {
-      const text = String(opt ?? '').trim();
-      if (!text) return;
-      if (!uniq.has(text.toLowerCase())) uniq.set(text.toLowerCase(), text);
-    });
-    // Preserve caller ordering (they may already provide numeric-sorted lists with "All" first).
-    return Array.from(uniq.values());
+    return (Array.isArray(options) ? options : []).map(opt => {
+      if (typeof opt === 'object' && opt !== null) {
+        return {
+          value: opt.value ?? '',
+          label: String(opt.label ?? opt.value ?? '').trim()
+        };
+      }
+      return {
+        value: opt ?? '',
+        label: String(opt ?? '').trim()
+      };
+    }).filter(o => o.label !== '');
   }, [options]);
+
+  // When value changes from outside, update the draft text to match the label
+  useEffect(() => {
+    if (open) return;
+    const selectedOpt = normalizedOptions.find(o => String(o.value) === String(value ?? ''));
+    if (selectedOpt) {
+      setDraft(selectedOpt.label);
+    } else {
+      setDraft(allowCustom ? String(value ?? '') : '');
+    }
+  }, [value, open, normalizedOptions, allowCustom]);
 
   const filteredOptions = useMemo(() => {
     const q = String(draft || '').trim().toLowerCase();
     if (!q) return normalizedOptions.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
-    const matches = normalizedOptions.filter((o) => String(o).toLowerCase().includes(q));
+    const matches = normalizedOptions.filter((o) => o.label.toLowerCase().includes(q));
     return matches.slice(0, Math.max(0, Number(maxVisible) || 0) || 120);
   }, [normalizedOptions, draft, maxVisible]);
-
-  useEffect(() => {
-    if (open) return;
-    setDraft(String(value ?? ''));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -57,11 +66,13 @@ export default function SearchableSelect({
       setHighlightIndex(-1);
 
       if (!allowCustom) {
-        const current = String(value ?? '').trim();
-        if (!current) return;
-        const match = normalizedOptions.find((o) => o.toLowerCase() === current.toLowerCase());
-        if (!match) onChange('');
-        else if (match !== value) onChange(match);
+        const selectedOpt = normalizedOptions.find(o => String(o.value) === String(value ?? ''));
+        if (selectedOpt) {
+          setDraft(selectedOpt.label);
+        } else {
+          setDraft('');
+          if (value) onChange('');
+        }
       }
     };
     document.addEventListener('mousedown', onDocDown, true);
@@ -93,9 +104,9 @@ export default function SearchableSelect({
     };
   }, [open]);
 
-  const applyValue = (next) => {
-    onChange(next);
-    setDraft(String(next ?? ''));
+  const applyOption = (opt) => {
+    onChange(opt.value);
+    setDraft(opt.label);
     setOpen(false);
     setHighlightIndex(-1);
     requestAnimationFrame(() => inputRef.current?.focus?.());
@@ -103,7 +114,7 @@ export default function SearchableSelect({
 
   return (
     <>
-      <div ref={rootRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <div ref={rootRef} style={{ position: 'relative', width: '100%', display: 'inline-block' }}>
         <input
           ref={inputRef}
           id={id}
@@ -112,12 +123,14 @@ export default function SearchableSelect({
           onFocus={() => {
             if (disabled) return;
             setOpen(true);
-            setDraft('');
+            setDraft(''); // Clear on focus to allow fresh search
           }}
           onClick={() => {
             if (disabled) return;
-            setOpen(true);
-            setDraft('');
+            if (!open) {
+              setOpen(true);
+              setDraft('');
+            }
           }}
           onChange={(e) => {
             const next = e.target.value;
@@ -130,7 +143,8 @@ export default function SearchableSelect({
             if (e.key === 'Escape') {
               setOpen(false);
               setHighlightIndex(-1);
-              setDraft(String(value ?? ''));
+              const selectedOpt = normalizedOptions.find(o => String(o.value) === String(value ?? ''));
+              setDraft(selectedOpt ? selectedOpt.label : (allowCustom ? String(value ?? '') : ''));
               return;
             }
             if (e.key === 'ArrowDown') {
@@ -148,20 +162,25 @@ export default function SearchableSelect({
               if (!open) return;
               e.preventDefault();
               if (highlightIndex >= 0 && filteredOptions[highlightIndex]) {
-                applyValue(filteredOptions[highlightIndex]);
+                applyOption(filteredOptions[highlightIndex]);
                 return;
               }
               if (!allowCustom) {
-                const current = String(draft ?? '').trim();
-                const match = normalizedOptions.find((o) => o.toLowerCase() === current.toLowerCase());
-                applyValue(match || '');
+                const current = String(draft ?? '').trim().toLowerCase();
+                const match = normalizedOptions.find((o) => o.label.toLowerCase() === current);
+                if (match) applyOption(match);
+                else {
+                  const selectedOpt = normalizedOptions.find(o => String(o.value) === String(value ?? ''));
+                  setDraft(selectedOpt ? selectedOpt.label : '');
+                  setOpen(false);
+                }
               } else {
                 setOpen(false);
               }
             }
           }}
           placeholder={placeholder}
-          style={inputStyle}
+          style={{ ...inputStyle, width: '100%' }}
           autoComplete="off"
           role="combobox"
           aria-expanded={open ? 'true' : 'false'}
@@ -196,14 +215,13 @@ export default function SearchableSelect({
               const isActive = idx === highlightIndex;
               return (
                 <div
-                  key={`${opt}-${idx}`}
+                  key={`${opt.value}-${idx}`}
                   role="option"
                   aria-selected={isActive ? 'true' : 'false'}
                   onMouseEnter={() => setHighlightIndex(idx)}
                   onMouseDown={(e) => {
-                    // Prevent input blur before click selection.
                     e.preventDefault();
-                    applyValue(opt);
+                    applyOption(opt);
                   }}
                   style={{
                     padding: '8px 10px',
@@ -215,7 +233,7 @@ export default function SearchableSelect({
                     fontWeight: isActive ? 900 : 600
                   }}
                 >
-                  {opt}
+                  {opt.label}
                 </div>
               );
             })

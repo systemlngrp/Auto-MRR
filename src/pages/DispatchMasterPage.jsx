@@ -4,14 +4,19 @@ import { pageStyles } from '../styles/pageStyles';
 
 export default function DispatchMasterPage({ firm, currentUser, onBack }) {
   const [dispatches, setDispatches] = useState([]);
+  const [trucks, setTrucks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const data = await sheetSync.fetchDispatchMaster(firm);
-        setDispatches(data || []);
+        const [dispatchData, trucksData] = await Promise.all([
+          sheetSync.fetchDispatchMaster(firm),
+          sheetSync.fetchTruckMaster(firm)
+        ]);
+        setDispatches(dispatchData || []);
+        setTrucks(trucksData);
       } catch (err) {
         console.error('Failed to load dispatches:', err);
       } finally {
@@ -20,6 +25,12 @@ export default function DispatchMasterPage({ firm, currentUser, onBack }) {
     };
     loadData();
   }, [firm.firmKey]);
+
+  function getTruckDisplay(truckVal) {
+    if (!truckVal) return '-';
+    const truck = trucks.find(t => String(t.id) === String(truckVal) || String(t.truck_number) === String(truckVal));
+    return truck ? truck.truck_number : truckVal;
+  }
 
   return (
     <div style={pageStyles.container}>
@@ -56,7 +67,7 @@ export default function DispatchMasterPage({ firm, currentUser, onBack }) {
                   <td style={pageStyles.td}>{d.company_name}</td>
                   <td style={pageStyles.td}>{d.item}</td>
                   <td style={pageStyles.td}>{d.dispatch_qty}</td>
-                  <td style={pageStyles.td}>{d.truck_number}</td>
+                  <td style={pageStyles.td}>{getTruckDisplay(d.truck_number)}</td>
                   <td style={pageStyles.td}>{new Date(d.dispatch_date).toLocaleString()}</td>
                 </tr>
               ))

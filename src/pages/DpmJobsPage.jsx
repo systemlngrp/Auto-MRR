@@ -2,11 +2,14 @@ import React, { useMemo, useState, useEffect } from 'react';
 import ConfirmModal from '../components/modals/ConfirmModal';
 
 export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningData, onBack }) {
-  const { fetchDpmJobs, saveDpmJobFromPlanning, currentUser } = deps;
+  const { fetchDpmJobs, saveDpmJobFromPlanning, saveDpmJob, currentUser } = deps;
   
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [editingOpeningJobId, setEditingOpeningJobId] = useState(null);
+  const [openingBalanceDraft, setOpeningBalanceDraft] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -25,6 +28,33 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
       console.error('Failed to load DPM jobs:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdateOpeningBalance = async (job) => {
+    const newVal = Number(openingBalanceDraft);
+    if (isNaN(newVal)) {
+      setEditingOpeningJobId(null);
+      return;
+    }
+    if (newVal === Number(job.opening_balance)) {
+      setEditingOpeningJobId(null);
+      return;
+    }
+
+    try {
+      const res = await saveDpmJob(selectedFirm, {
+        ...job,
+        opening_balance: newVal
+      });
+      if (res.ok) {
+        setEditingOpeningJobId(null);
+        loadJobs();
+      } else {
+        alert(res.error || 'Failed to update opening balance');
+      }
+    } catch (err) {
+      alert('Failed to update opening balance: ' + err.message);
     }
   };
 
@@ -182,7 +212,11 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
                 <th style={styles.th}>ERP</th>
                 <th style={styles.th}>Item</th>
                 <th style={styles.th}>Plan Qty</th>
-                <th style={styles.th}>Req Reel</th>
+                <th style={styles.th}>Opening Bal</th>
+                <th style={styles.th}>Receipt</th>
+                <th style={styles.th}>Production</th>
+                <th style={styles.th}>Dispatch</th>
+                <th style={styles.th}>Balance</th>
                 <th style={styles.th}>Stage</th>
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Action</th>
@@ -195,7 +229,46 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
                   <td style={styles.td}>{job.erp}</td>
                   <td style={styles.td}>{job.item}</td>
                   <td style={styles.td}>{Number(job.plan_quantity).toLocaleString()}</td>
-                  <td style={styles.td}>{job.required_reel}</td>
+                  <td style={styles.td}>
+                    {editingOpeningJobId === job.id ? (
+                      <input
+                        type="number"
+                        step="0.001"
+                        autoFocus
+                        value={openingBalanceDraft}
+                        onChange={(e) => setOpeningBalanceDraft(e.target.value)}
+                        onBlur={() => handleUpdateOpeningBalance(job)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateOpeningBalance(job);
+                          if (e.key === 'Escape') setEditingOpeningJobId(null);
+                        }}
+                        style={{ width: '90px', padding: '6px', border: '2px solid #1d4ed8', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <div 
+                        onClick={() => {
+                          setEditingOpeningJobId(job.id);
+                          setOpeningBalanceDraft(String(job.opening_balance || 0));
+                        }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          padding: '6px 10px', 
+                          borderRadius: '6px', 
+                          background: '#f8fafc', 
+                          border: '1px dashed #cbd5e1',
+                          minWidth: '60px',
+                          textAlign: 'right'
+                        }}
+                        title="Click to edit Opening Balance"
+                      >
+                        {Number(job.opening_balance || 0).toLocaleString()}
+                      </div>
+                    )}
+                  </td>
+                  <td style={styles.td}>{Number(job.receipt || 0).toLocaleString()}</td>
+                  <td style={styles.td}>{Number(job.production || 0).toLocaleString()}</td>
+                  <td style={styles.td}>{Number(job.dispatch || 0).toLocaleString()}</td>
+                  <td style={styles.td}>{Number(job.balance || 0).toLocaleString()}</td>
                   <td style={styles.td}>
                     <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
                       {job.stage}
@@ -214,7 +287,7 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
               ))}
               {jobs.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>No jobs in pipeline.</td>
+                  <td colSpan="12" style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>No jobs in pipeline.</td>
                 </tr>
               )}
             </tbody>
