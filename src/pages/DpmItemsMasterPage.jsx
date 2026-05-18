@@ -67,11 +67,12 @@ function getFieldValue(item, field) {
 }
 
 export default function DpmItemsMasterPage({ deps = {}, onBack }) {
-  const { fetchDpmItems, saveDpmItems, deleteDpmItem, firm = {} } = deps;
+  const { fetchDpmItems, saveDpmItems, deleteDpmItem, syncDpmItemsFromSheets, firm = {} } = deps;
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [editingItem, setEditingItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,6 +96,25 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
   useEffect(() => {
     loadItems();
   }, [firm.firmKey]);
+
+  const handleRefresh = async () => {
+    if (typeof syncDpmItemsFromSheets !== 'function') {
+      await loadItems();
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      await syncDpmItemsFromSheets(firm);
+    } catch (err) {
+      console.error('Failed to sync DPM items from Sheets:', err);
+      alert('Sync failed: ' + (err?.message || String(err)));
+    } finally {
+      setIsSyncing(false);
+    }
+
+    await loadItems();
+  };
 
   const filteredItems = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
@@ -167,33 +187,35 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
             style={{ ...pageStyles.input, width: '300px' }}
           />
           <button onClick={handleAddNew} style={pageStyles.primaryButton}>+ Add Item</button>
-          <button onClick={loadItems} style={pageStyles.secondaryButton}>Refresh</button>
+          <button onClick={handleRefresh} style={pageStyles.secondaryButton} disabled={isLoading || isSyncing}>
+            {isSyncing ? 'Syncing...' : 'Refresh'}
+          </button>
           <button onClick={onBack} style={pageStyles.secondaryButton}>Back</button>
         </div>
       </div>
 
       <div style={pageStyles.card}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={pageStyles.table}>
+          <table style={{ ...pageStyles.table, fontSize: '11px' }}>
             <thead>
               <tr style={pageStyles.tableHeaderRow}>
                 {SUMMARY_FIELDS.map(f => (
-                  <th key={f} style={{ ...pageStyles.tableHeaderCell, whiteSpace: 'nowrap' }}>{f}</th>
+                  <th key={f} style={{ ...pageStyles.tableHeaderCell, whiteSpace: 'nowrap', padding: '6px 8px' }}>{f}</th>
                 ))}
-                <th style={pageStyles.tableHeaderCell}>Actions</th>
+                <th style={{ ...pageStyles.tableHeaderCell, padding: '6px 8px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item, idx) => (
                 <tr key={(item.erp || item['ERP CODE']) + '-' + idx} style={idx % 2 === 0 ? {} : { backgroundColor: '#f9fafb' }}>
                   {SUMMARY_FIELDS.map(f => (
-                    <td key={f} style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap' }}>
+                    <td key={f} style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap', padding: '4px 8px' }}>
                       {getFieldValue(item, f) || '-'}
                     </td>
                   ))}
-                  <td style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap' }}>
-                    <button onClick={() => handleEdit(item)} style={{ ...pageStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', marginRight: '5px' }}>Edit</button>
-                    <button onClick={() => setConfirmDelete(item)} style={{ ...pageStyles.secondaryButton, padding: '4px 8px', fontSize: '12px', color: '#dc2626' }}>Delete</button>
+                  <td style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap', padding: '4px 8px' }}>
+                    <button onClick={() => handleEdit(item)} style={{ ...pageStyles.secondaryButton, padding: '2px 6px', fontSize: '10px', marginRight: '4px' }}>Edit</button>
+                    <button onClick={() => setConfirmDelete(item)} style={{ ...pageStyles.secondaryButton, padding: '2px 6px', fontSize: '10px', color: '#dc2626' }}>Del</button>
                   </td>
                 </tr>
               ))}

@@ -317,12 +317,6 @@ export default function SidebarMenu({
               {badge(0, 'gray')}
             </button>
           ) : null}
-          {canSee('pending_closer') && typeof actions?.onPendingCloser === 'function' ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingCloser}>
-              <span>Pending Jobs For Closer</span>
-              {badge(0, 'gray')}
-            </button>
-          ) : null}
           {typeof actions?.onReelStock === 'function' ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onReelStock}>
               <span>Reel Stock</span>

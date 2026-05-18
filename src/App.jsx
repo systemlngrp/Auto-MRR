@@ -7,6 +7,7 @@ import {
   fetchUsers, saveUsers, deleteUser,
   fetchItems, saveItems, deleteItem,
   fetchDpmItems, saveDpmItems, deleteDpmItem,
+  syncDpmItemsFromSheets,
   saveOrder, fetchOrders, approveOrder, saveOrderSchedule, fetchPendingPlanning,
   fetchDpmJobs, saveDpmJobFromPlanning, saveDpmJob,
   fetchItemGroups, saveItemGroup,
@@ -5351,7 +5352,12 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
     return (
       <>
         {userBadge}
-        <ReelPrintingPage selectedFirm={tempFirm} currentUser={currentUser} onBack={() => setStep(3)} />
+        <ReelPrintingPage 
+          selectedFirm={tempFirm} 
+          currentUser={currentUser} 
+          deps={{ fetchDpmItems, saveDpmItems }}
+          onBack={() => setStep(3)} 
+        />
       </>
     );
   }
@@ -5496,6 +5502,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
             fetchDpmItems,
             saveDpmItems,
             deleteDpmItem,
+            syncDpmItemsFromSheets,
             firm: tempFirm
           }}
           onBack={() => setStep(3)}

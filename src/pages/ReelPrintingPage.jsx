@@ -3,7 +3,8 @@ import { REEL_SCHEMAS } from '../utils/reelSchemas';
 import { fetchSheetRange } from '../sheetSync';
 import { loadDpmJobs, loadDpmJobsLocal, updateDpmJob } from '../utils/dpmJobs';
 
-export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) {
+export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {}, onBack }) {
+  const { fetchDpmItems, saveDpmItems } = deps;
   const [issueRows, setIssueRows] = useState([]);
   const [returnRows, setReturnRows] = useState([]);
   const [pendingRows, setPendingRows] = useState([]);
@@ -12,7 +13,18 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
   const [isLoading, setIsLoading] = useState(false);
   const loadRunRef = useRef(0);
 
-  // ... rest of state
+  const [form, setForm] = useState({
+    prod_at_printing: '',
+    fg: '',
+    slotting: '',
+    delamination: '',
+    misalignment: '',
+    dry_sheets: '',
+    warp: '',
+    misprinting: '',
+    job_setting: '',
+    helper: ''
+  });
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
@@ -157,7 +169,7 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
         fg: String(r.fg || r['FG'] || ''),
         slotting: String(r.slotting || r['SLOTTING'] || ''),
         delamination: String(r.delamination || r['DELAMINATION'] || ''),
-        misalignment: String(r.misalignment || r['MISALIGNMENT'] || ''),
+        misalignment: String(r.misalignment || r['MISPRINTING'] || ''),
         dry_sheets: String(r.dry_sheets || r['DRY SHEETS'] || ''),
         warp: String(r.warp || r['WARP'] || ''),
         misprinting: String(r.misprinting || r['MISPRINTING'] || ''),
@@ -174,12 +186,42 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
       alert('Only DPM Jobs can be moved through stages automatically.');
       return;
     }
-    await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
-      ...form,
-      stage: 'closer_pending'
-    });
-    setActiveJob(null);
-    await refreshDpm();
+
+    const fgValue = parseFloat(form.fg) || 0;
+    const erpCode = activeDetail.erp;
+
+    try {
+      // 1. Update DPM Job (this also updates the production column for the job)
+      await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
+        ...form,
+        production: fgValue,
+        stage: 'completed' // Moving to completed instead of closer as requested
+      });
+
+      // 2. Update DPM Item Master Production
+      if (erpCode && typeof fetchDpmItems === 'function' && typeof saveDpmItems === 'function') {
+        const items = await fetchDpmItems(selectedFirm);
+        const item = items.find(it => (it.erp || it['ERP CODE']) === erpCode);
+        if (item) {
+          const currentProduction = parseFloat(item.production || item['Production'] || 0) || 0;
+          const oldJobFg = parseFloat(activeDetail._raw.production || activeDetail._raw.fg || 0) || 0;
+          const newProduction = currentProduction - oldJobFg + fgValue;
+          
+          await saveDpmItems(selectedFirm, {
+            ...item,
+            'Production': newProduction,
+            'production': newProduction
+          });
+        }
+      }
+
+      setActiveJob(null);
+      await refreshDpm();
+      await loadFromSheets();
+      alert('Job updated and Production synced to Item Master.');
+    } catch (err) {
+      alert('Failed to save: ' + err.message);
+    }
   };
 
   return (
@@ -280,7 +322,7 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, onBack }) 
               </div>
 
               <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndMove}>
-                Save & Move to Closer →
+                Save & Complete Job ✓
               </button>
             </div>
           </div>

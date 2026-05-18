@@ -435,6 +435,53 @@ export async function deleteDpmItem(firm, erp) {
   });
 }
 
+function getDpmItemsSyncBaseUrl() {
+  const raw = String(import.meta.env.VITE_DPM_ITEMS_SYNC_URL || '').trim();
+  if (raw) return normalizeBackendUrl(raw);
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return normalizeBackendUrl(`${window.location.origin}/api/dpm_items_sheets_sync.php`);
+  }
+  return '';
+}
+
+export async function syncDpmItemsFromSheets(firm, options = {}) {
+  const baseUrl = getDpmItemsSyncBaseUrl();
+  if (!baseUrl) {
+    throw new Error('Missing DPM items sync URL. Set VITE_DPM_ITEMS_SYNC_URL or deploy /api/dpm_items_sheets_sync.php on the same domain.');
+  }
+
+  const secret = String(
+    options.secret ??
+    import.meta.env.VITE_DPM_ITEMS_SYNC_SECRET ??
+    ''
+  ).trim();
+
+  const spreadsheetId = String(
+    options.spreadsheetId ??
+    import.meta.env.VITE_DPM_ITEMS_SYNC_SPREADSHEET_ID ??
+    ''
+  ).trim();
+
+  const sheetName = String(
+    options.sheetName ??
+    import.meta.env.VITE_DPM_ITEMS_SYNC_SHEET_NAME ??
+    'Items'
+  ).trim() || 'Items';
+
+  if (!secret) throw new Error('Missing DPM items sync secret. Set VITE_DPM_ITEMS_SYNC_SECRET.');
+  if (!spreadsheetId) throw new Error('Missing DPM items spreadsheet id. Set VITE_DPM_ITEMS_SYNC_SPREADSHEET_ID.');
+
+  const params = new URLSearchParams({
+    secret,
+    debug: String(options.debug ?? import.meta.env.VITE_DPM_ITEMS_SYNC_DEBUG ?? '0'),
+    firm_id: getFirmKey(firm),
+    spreadsheet_id: spreadsheetId,
+    sheet_name: sheetName
+  });
+
+  return fetchJson(`${baseUrl}?${params.toString()}`, { method: 'GET' });
+}
+
 export async function saveOrder(firm, order) {
   const backendUrl = ensureBackendUrl(firm);
   return fetchJson(backendUrl, {
