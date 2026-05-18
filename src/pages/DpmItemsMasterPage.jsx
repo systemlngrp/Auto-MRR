@@ -3,14 +3,68 @@ import ConfirmModal from '../components/modals/ConfirmModal';
 import { pageStyles } from '../styles/pageStyles';
 
 const ALL_FIELDS = [
-  'ERP CODE', 'Item Name', 'Company Name', 'No. of Parts', 'Length', 'Bredth', 'Height', 'PLY', 'FLUTE', 
-  'L1', 'F1', 'L2', 'F2', 'L3', 'PLATE/PHP WEIGHT', 'RATE', 'Opening Balance', 'Receipt', 
-  'Production', 'Dispatch', 'Balance', 'RAPC', 'UPS', 'New RAPC', 'CUTTING with TRIMMING', 
-  'ID to OD 2', 'Take Up Factor', 'Deviation', 'Flap', 'No. of Ups for RAPC', 'Cutting Size', 
-  'Category', 'Open Length', 'Open Width', 'No. of Die Cut Ups (Cutting)', 'No. of Die Cut Ups (Reel)'
+  'ERP CODE',
+  'Item Name',
+  'Company Name',
+  'No. of Parts',
+  'Length',
+  'Bredth',
+  'Height',
+  'PLY',
+  'FLUTE',
+  'L1',
+  'F1',
+  'L2',
+  'F2',
+  'L3',
+  'PLATE/PHP WEIGHT',
+  'RATE',
+  'Opening Balance',
+  'Receipt',
+  'Production',
+  'Dispatch',
+  'Balance',
+  'RAPC',
+  'UPS',
+  'New RAPC',
+  'CUTTING with TRIMMING',
+  'ID to OD 2',
+  'Take Up Factor',
+  'Deviation',
+  'Flap',
+  'No. of Ups for RAPC',
+  'Cutting Size',
+  'Category',
+  'Open Length',
+  'Open Width',
+  'No. of Die Cut Ups (Cutting)',
+  'No. of Die Cut Ups (Reel)',
 ];
 
 const SUMMARY_FIELDS = ALL_FIELDS;
+
+const FIELD_ALIASES = {
+  'ERP CODE': ['ERP CODE', 'erp', 'ERP'],
+  'Item Name': ['Item Name', 'item_name'],
+  'Company Name': ['Company Name', 'customer_name', 'Customer Name'],
+  'PLATE/PHP WEIGHT': ['PLATE/PHP WEIGHT', 'plate_php_weight', 'plate/php weight'],
+  'No. of Parts': ['No. of Parts', 'no_of_parts', 'no. of parts'],
+  'Bredth': ['Bredth', 'breadth'],
+  'CUTTING with TRIMMING': ['CUTTING with TRIMMING', 'cutting_with_trimming'],
+  'ID to OD 2': ['ID to OD 2', 'id_to_od_2'],
+  'Take Up Factor': ['Take Up Factor', 'take_up_factor'],
+  'No. of Ups for RAPC': ['No. of Ups for RAPC', 'ups_for_rapc', 'no. of ups for rapc'],
+  'No. of Die Cut Ups (Cutting)': ['No. of Die Cut Ups (Cutting)', 'die_cut_ups_cutting', 'no. of die cut ups (cutting)'],
+  'No. of Die Cut Ups (Reel)': ['No. of Die Cut Ups (Reel)', 'die_cut_ups_reel', 'no. of die cut ups (reel)'],
+};
+
+function getFieldValue(item, field) {
+  const candidates = FIELD_ALIASES[field] || [field, field.toLowerCase(), field.replace(/\s/g, '_').toLowerCase()];
+  for (const key of candidates) {
+    if (key in item && item[key] !== null && String(item[key]).trim() !== '') return item[key];
+  }
+  return '';
+}
 
 export default function DpmItemsMasterPage({ deps = {}, onBack }) {
   const { fetchDpmItems, saveDpmItems, deleteDpmItem, firm = {} } = deps;
@@ -134,7 +188,7 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
                 <tr key={(item.erp || item['ERP CODE']) + '-' + idx} style={idx % 2 === 0 ? {} : { backgroundColor: '#f9fafb' }}>
                   {SUMMARY_FIELDS.map(f => (
                     <td key={f} style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap' }}>
-                      {item[f] || item[f.toLowerCase()] || item[f.replace(/\s/g, '_').toLowerCase()] || '-'}
+                      {getFieldValue(item, f) || '-'}
                     </td>
                   ))}
                   <td style={{ ...pageStyles.tableCell, whiteSpace: 'nowrap' }}>
@@ -177,7 +231,7 @@ export default function DpmItemsMasterPage({ deps = {}, onBack }) {
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#374151' }}>{f}</label>
                     <input 
                       type="text"
-                      value={editingItem[f] || editingItem[f.toLowerCase()] || editingItem[f.replace(/\s/g, '_').toLowerCase()] || ''}
+                      value={getFieldValue(editingItem, f)}
                       onChange={(e) => handleInputChange(f, e.target.value)}
                       style={pageStyles.input}
                       required={f === 'ERP CODE'}
