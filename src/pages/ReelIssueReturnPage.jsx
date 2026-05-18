@@ -145,7 +145,10 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
     
     // 1. Process DPM Jobs in 'reel_issue_pending' stage
     const fromDpm = (dpmJobs || [])
-      .filter((j) => String(j?.stage || '') === 'reel_issue_pending')
+      .filter((j) => {
+        const s = String(j?.stage || '').toLowerCase();
+        return s === 'reel_issue_pending' || s === 'issue';
+      })
       .map((j) => {
         const job = String(j.job_no || '').trim();
         const issue = jobAggregates.issueAgg.get(job);

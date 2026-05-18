@@ -569,7 +569,7 @@ function ensureDpmJobsSchema(PDO $pdo): void
           schedule_no INT DEFAULT NULL,
           rate DECIMAL(18,2) DEFAULT NULL,
           sales_person VARCHAR(190) DEFAULT NULL,
-          stage VARCHAR(80) DEFAULT 'Issue',
+          stage VARCHAR(80) DEFAULT 'reel_issue_pending',
           status VARCHAR(80) DEFAULT 'PENDING',
           opening_balance DECIMAL(18,3) DEFAULT 0,
           receipt DECIMAL(18,3) DEFAULT 0,
@@ -2894,6 +2894,10 @@ try {
             'extra_json' => null,
         ]);
 
+        // Sync to dpm_jobs 'receipt' column
+        $updateDpm = $pdo->prepare("UPDATE dpm_jobs SET receipt = receipt + :w WHERE firm_id = :firm_id AND job_no = :job_no");
+        $updateDpm->execute(['w' => $issueWeight, 'firm_id' => $firmId, 'job_no' => $jobNo]);
+
         jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
 
@@ -2954,6 +2958,10 @@ try {
             'extra_json' => null,
         ]);
 
+        // Sync to dpm_jobs 'receipt' column
+        $updateDpm = $pdo->prepare("UPDATE dpm_jobs SET receipt = receipt + :w WHERE firm_id = :firm_id AND job_no = :job_no");
+        $updateDpm->execute(['w' => $issueWeight, 'firm_id' => $firmId, 'job_no' => $jobNo]);
+
         jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
 
@@ -3005,6 +3013,10 @@ try {
             'created_by' => $createdBy !== '' ? $createdBy : null,
             'extra_json' => null,
         ]);
+
+        // Sync to dpm_jobs 'receipt' column (subtract return)
+        $updateDpm = $pdo->prepare("UPDATE dpm_jobs SET receipt = receipt - :w WHERE firm_id = :firm_id AND job_no = :job_no");
+        $updateDpm->execute(['w' => $returnWeight, 'firm_id' => $firmId, 'job_no' => $jobNo]);
 
         jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
@@ -3059,6 +3071,10 @@ try {
             'created_by' => $createdBy !== '' ? $createdBy : null,
             'extra_json' => null,
         ]);
+
+        // Sync to dpm_jobs 'receipt' column (subtract return)
+        $updateDpm = $pdo->prepare("UPDATE dpm_jobs SET receipt = receipt - :w WHERE firm_id = :firm_id AND job_no = :job_no");
+        $updateDpm->execute(['w' => $returnWeight, 'firm_id' => $firmId, 'job_no' => $jobNo]);
 
         jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
     }
@@ -5390,46 +5406,13 @@ try {
         $stmt->execute(['firm_id' => $firmId]);
         $rows = $stmt->fetchAll();
         
-        $jobs = array_map(static function (array $row) use ($pdo, $firmId): array {
+        $jobs = array_map(static function (array $row): array {
             $extra = decodeExtraJson($row);
             
-            $jobNo = trim((string)$row['job_no']);
-            $erp = trim((string)$row['erp']);
-            $item = trim((string)$row['item']);
-            $orderId = trim((string)$row['order_id']);
-
-            // 1. Receipt (MRR) - Matching Job No / ERP / Item / Order Id
-            // Note: matching reel_details/description_text as Item Name
-            $stmtReceipt = $pdo->prepare("
-                SELECT SUM(weight_value) 
-                FROM (
-                    SELECT weight_value FROM reel_mrr_children 
-                    WHERE firm_id = :firm_id AND job_no = :job_no AND erp_code = :erp AND reel_details = :item AND party_order_no = :order_id
-                    UNION ALL
-                    SELECT weight_value FROM other_mrr_children 
-                    WHERE firm_id = :firm_id AND job_no = :job_no AND erp_code = :erp AND description_text = :item AND party_order_no = :order_id
-                ) t
-            ");
-            $stmtReceipt->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
-            $receipt = (float)$stmtReceipt->fetchColumn();
-
-            // 2. Production (Printing Rel) - Sum production column from all matching jobs
-            $stmtProd = $pdo->prepare("
-                SELECT SUM(production) FROM dpm_jobs 
-                WHERE firm_id = :firm_id AND job_no = :job_no AND erp = :erp AND item = :item AND order_id = :order_id
-            ");
-            $stmtProd->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
-            $production = (float)$stmtProd->fetchColumn();
-
-            // 3. Dispatch (Dispatch Master) - Matching Job No / ERP / Item / Order Id
-            $stmtDispatch = $pdo->prepare("
-                SELECT SUM(dispatch_qty) FROM dispatch_master 
-                WHERE firm_id = :firm_id AND job_no = :job_no AND erp = :erp AND item = :item AND order_id = :order_id
-            ");
-            $stmtDispatch->execute(['firm_id' => $firmId, 'job_no' => $jobNo, 'erp' => $erp, 'item' => $item, 'order_id' => $orderId]);
-            $dispatch = (float)$stmtDispatch->fetchColumn();
-
             $openingBalance = (float)($row['opening_balance'] ?? 0);
+            $receipt = (float)($row['receipt'] ?? 0);
+            $production = (float)($row['production'] ?? 0);
+            $dispatch = (float)($row['dispatch'] ?? 0);
             $balance = $openingBalance + $receipt + $production - $dispatch;
 
             return array_merge($extra, [
@@ -5895,7 +5878,7 @@ try {
                     id, firm_id, job_no, date, order_id, company_name, erp, item, 
                     scheduled_date, scheduled_qty, plan_quantity, required_reel, 
                     schedule_no, rate, sales_person, stage, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Issue', 'PENDING')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reel_issue_pending', 'PENDING')
             ");
             $stmt->execute([
                 $jobId, $firmId, $jobNo, date('Y-m-d'), $planning['order_id'], 

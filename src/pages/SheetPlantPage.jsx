@@ -83,7 +83,10 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
 
   const combinedPendingList = useMemo(() => {
     const fromDpm = (dpmJobs || [])
-      .filter((j) => String(j?.stage || '') === 'sheet_plant_pending')
+      .filter((j) => {
+        const s = String(j?.stage || '').toLowerCase();
+        return s === 'sheet_plant_pending' || s === 'sheetplant';
+      })
       .map((j) => {
         const job = String(j.job_no || '').trim();
         const issue = jobAggregates.issueAgg.get(job);

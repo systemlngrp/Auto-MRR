@@ -95,7 +95,10 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
 
   const combinedPendingList = useMemo(() => {
     const fromDpm = (dpmJobs || [])
-      .filter((j) => String(j?.stage || '') === 'printing_pending')
+      .filter((j) => {
+        const s = String(j?.stage || '').toLowerCase();
+        return s === 'printing_pending' || s === 'printing';
+      })
       .map((j) => {
         const job = String(j.job_no || '').trim();
         const issue = jobAggregates.issueAgg.get(job);

@@ -720,6 +720,39 @@ CREATE TABLE IF NOT EXISTS dpm_items_master (
   KEY idx_dpm_item_name (firm_id, item_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Single table for DPM Jobs lifecycle (Reel Issue -> Printing, etc.)
+-- Keep cancelled jobs in this table with `status='CANCELLED'` (or similar), do not split into multiple tables.
+CREATE TABLE IF NOT EXISTS dpm_jobs (
+  id VARCHAR(120) NOT NULL,
+  firm_id VARCHAR(64) NOT NULL,
+  job_no VARCHAR(120) NOT NULL,
+  date VARCHAR(40) DEFAULT NULL,
+  order_id VARCHAR(120) DEFAULT NULL,
+  company_name VARCHAR(255) DEFAULT NULL,
+  erp VARCHAR(120) DEFAULT NULL,
+  item VARCHAR(255) DEFAULT NULL,
+  scheduled_date VARCHAR(40) DEFAULT NULL,
+  scheduled_qty DECIMAL(18,3) DEFAULT NULL,
+  plan_quantity DECIMAL(18,3) DEFAULT NULL,
+  required_reel DECIMAL(18,3) DEFAULT NULL,
+  schedule_no INT DEFAULT NULL,
+  rate DECIMAL(18,2) DEFAULT NULL,
+  sales_person VARCHAR(190) DEFAULT NULL,
+  stage VARCHAR(80) DEFAULT 'reel_issue_pending',
+  status VARCHAR(80) DEFAULT 'PENDING',
+  opening_balance DECIMAL(18,3) DEFAULT 0,
+  receipt DECIMAL(18,3) DEFAULT 0,
+  production DECIMAL(18,3) DEFAULT 0,
+  dispatch DECIMAL(18,3) DEFAULT 0,
+  balance DECIMAL(18,3) DEFAULT 0,
+  extra_json LONGTEXT DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_dpm_firm_job (firm_id, job_no),
+  KEY idx_dpm_stage (firm_id, stage),
+  KEY idx_dpm_order (firm_id, order_id),
+  KEY idx_dpm_status (firm_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS orders (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   firm_id VARCHAR(64) NOT NULL,

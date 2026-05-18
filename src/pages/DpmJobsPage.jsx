@@ -87,9 +87,18 @@ export default function DpmJobsPage({ selectedFirm, deps = {}, initialPlanningDa
     btn: { background: '#fff', border: '1px solid #d1d5db', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }
   };
 
-  const pendingReelIssue = useMemo(() => jobs.filter(j => j.stage === 'reel_issue_pending'), [jobs]);
-  const pendingSheetPlant = useMemo(() => jobs.filter(j => j.stage === 'sheet_plant_pending'), [jobs]);
-  const pendingPrinting = useMemo(() => jobs.filter(j => j.stage === 'printing_pending'), [jobs]);
+  const pendingReelIssue = useMemo(() => jobs.filter(j => {
+    const s = String(j.stage || '').toLowerCase();
+    return s === 'reel_issue_pending' || s === 'issue';
+  }), [jobs]);
+  const pendingSheetPlant = useMemo(() => jobs.filter(j => {
+    const s = String(j.stage || '').toLowerCase();
+    return s === 'sheet_plant_pending' || s === 'sheetplant';
+  }), [jobs]);
+  const pendingPrinting = useMemo(() => jobs.filter(j => {
+    const s = String(j.stage || '').toLowerCase();
+    return s === 'printing_pending' || s === 'printing';
+  }), [jobs]);
 
   const renderJobTable = (title, data, color) => (
     <div style={{ ...styles.card, marginTop: '20px' }}>
