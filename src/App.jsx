@@ -56,6 +56,7 @@ import PendingApprovalPage from './pages/PendingApprovalPage';
 import PendingSchedulingPage from './pages/PendingSchedulingPage';
 import PendingPlanningPage from './pages/PendingPlanningPage';
 import PendingLoadingSlipPage from './pages/PendingLoadingSlipPage';
+import DispatchMasterPage from './pages/DispatchMasterPage';
 
 const GEMINI_PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_FALLBACK_MODELS = String(import.meta.env.VITE_GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
@@ -3594,7 +3595,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onOrderPendingJobs: () => setStep(33),
               onDispatchPlanning: () => setStep(38),
               onPendingLoadingSlip: () => setStep(39),
-              onOrderApproved: () => setStep(34),              onOrderCancelled: () => setStep(35),
+              onDispatchMaster: () => setStep(40),              onOrderApproved: () => setStep(34),              onOrderCancelled: () => setStep(35),
               onUsers: () => setStep(9),
               onBackToFirms: () => setStep(2)
             }}
@@ -5520,6 +5521,33 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
       <>
         {userBadge}
         <DispatchPlanningPage
+          firm={tempFirm}
+          currentUser={currentUser}
+          onBack={() => setStep(3)}
+        />
+      </>
+    );
+  }
+
+  if (step === 39) {
+    return (
+      <>
+        {userBadge}
+        <PendingLoadingSlipPage
+          firm={tempFirm}
+          currentUser={currentUser}
+          onBack={() => setStep(3)}
+          onSuccess={() => setStep(40)}
+        />
+      </>
+    );
+  }
+
+  if (step === 40) {
+    return (
+      <>
+        {userBadge}
+        <DispatchMasterPage
           firm={tempFirm}
           currentUser={currentUser}
           onBack={() => setStep(3)}

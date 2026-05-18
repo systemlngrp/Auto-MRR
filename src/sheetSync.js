@@ -529,6 +529,30 @@ export async function fetchDispatchPlanning(firm) {
   return Array.isArray(payload?.plans) ? payload.plans : [];
 }
 
+export async function saveDispatchMaster(firm, data, userEmail) {
+  const backendUrl = ensureBackendUrl(firm);
+  return fetchJson(backendUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'save_dispatch_master',
+      firm_id: getFirmKey(firm),
+      user_email: userEmail || '',
+      data,
+    })
+  });
+}
+
+export async function fetchDispatchMaster(firm) {
+  const backendUrl = ensureBackendUrl(firm);
+  const query = new URLSearchParams({
+    action: 'get_dispatch_master',
+    firm_id: getFirmKey(firm),
+  });
+  const payload = await fetchJson(`${backendUrl}?${query}`);
+  return Array.isArray(payload?.dispatches) ? payload.dispatches : [];
+}
+
 export async function approveOrder(firm, orderId, userEmail) {
   const backendUrl = ensureBackendUrl(firm);
   return fetchJson(backendUrl, {

@@ -227,6 +227,18 @@ export default function SidebarMenu({
               {badge(0, 'gray')}
             </button>
           ) : null}
+          {canSee('pending_loading_slip') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onPendingLoadingSlip}>
+              <span>Pending Loading Slip</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {canSee('dispatch_master') ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onDispatchMaster}>
+              <span>Dispatch Master</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
           </div>
 
       </div>

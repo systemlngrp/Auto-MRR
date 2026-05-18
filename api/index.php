@@ -633,11 +633,42 @@ function ensureDispatchPlanningSchema(PDO $pdo): void
           dispatch_plan_qty DECIMAL(18,3) DEFAULT NULL,
           truck_number VARCHAR(120) DEFAULT NULL,
           dispatch_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          status VARCHAR(50) DEFAULT 'Pending',
+          loading_slip_no VARCHAR(120) DEFAULT NULL,
           created_by VARCHAR(190) DEFAULT NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
           KEY idx_dispatch_firm_job (firm_id, job_no),
           KEY idx_dispatch_order (firm_id, order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    
+    // Migration: add status and loading_slip_no if they don't exist
+    try { $pdo->exec("ALTER TABLE dispatch_planning ADD COLUMN status VARCHAR(50) DEFAULT 'Pending' AFTER dispatch_date"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE dispatch_planning ADD COLUMN loading_slip_no VARCHAR(120) DEFAULT NULL AFTER status"); } catch (Exception $e) {}
+}
+
+function ensureDispatchMasterSchema(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS dispatch_master (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          firm_id VARCHAR(64) NOT NULL,
+          loading_slip_no VARCHAR(120) NOT NULL,
+          dispatch_plan_id BIGINT UNSIGNED DEFAULT NULL,
+          job_no VARCHAR(120) NOT NULL,
+          order_id VARCHAR(120) DEFAULT NULL,
+          company_name VARCHAR(255) DEFAULT NULL,
+          erp VARCHAR(120) DEFAULT NULL,
+          item VARCHAR(255) DEFAULT NULL,
+          dispatch_qty DECIMAL(18,3) DEFAULT NULL,
+          truck_number VARCHAR(120) DEFAULT NULL,
+          dispatch_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          created_by VARCHAR(190) DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uniq_ls_no (firm_id, loading_slip_no),
+          KEY idx_dm_firm_job (firm_id, job_no)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 }
@@ -651,6 +682,7 @@ function ensureDpmItemsMasterSchema(PDO $pdo): void
           erp VARCHAR(120) NOT NULL,
           item_name VARCHAR(255) DEFAULT NULL,
           customer_name VARCHAR(255) DEFAULT NULL,
+          stock DECIMAL(18,3) DEFAULT 0,
           data_json LONGTEXT DEFAULT NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -659,6 +691,9 @@ function ensureDpmItemsMasterSchema(PDO $pdo): void
           KEY idx_dpm_item_name (firm_id, item_name)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
+    
+    // Migration: add stock if it doesn't exist
+    try { $pdo->exec("ALTER TABLE dpm_items_master ADD COLUMN stock DECIMAL(18,3) DEFAULT 0 AFTER customer_name"); } catch (Exception $e) {}
 }
 
 function ensureOrderWorkflowSchema(PDO $pdo): void
@@ -5798,6 +5833,68 @@ try {
         $stmt->execute([$firmId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         jsonOut(['ok' => true, 'plans' => $rows]);
+    }
+
+    if ($action === 'save_dispatch_master') {
+        $pdo = db();
+        ensureDispatchMasterSchema($pdo);
+        ensureDispatchPlanningSchema($pdo);
+        ensureDpmItemsMasterSchema($pdo);
+        
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        $planId = (int)($data['dispatch_plan_id'] ?? 0);
+        $dispatchQty = (float)($data['dispatch_qty'] ?? 0);
+        $userEmail = trim((string)($payload['user_email'] ?? ''));
+
+        if ($planId <= 0 || $dispatchQty <= 0) {
+            jsonOut(['ok' => false, 'error' => 'Missing dispatch_plan_id or invalid dispatch_qty.'], 400);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM dispatch_planning WHERE firm_id = ? AND id = ? FOR UPDATE");
+            $stmt->execute([$firmId, $planId]);
+            $plan = $stmt->fetch();
+            if (!$plan) {
+                throw new Exception('Dispatch planning record not found.');
+            }
+
+            $prefix = 'LS-' . date('Ym') . '-';
+            $seq = nextSequenceNumber($firmId, $prefix, 'dispatch_master', 'loading_slip_no');
+            $lsNo = $prefix . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO dispatch_master (firm_id, loading_slip_no, dispatch_plan_id, job_no, order_id, company_name, erp, item, dispatch_qty, truck_number, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $firmId, $lsNo, $planId, $plan['job_no'], $plan['order_id'], $plan['company_name'], $plan['erp'], $plan['item'], 
+                $dispatchQty, $plan['truck_number'], $userEmail
+            ]);
+
+            $stmt = $pdo->prepare("UPDATE dispatch_planning SET status = 'Dispatched', loading_slip_no = ? WHERE id = ?");
+            $stmt->execute([$lsNo, $planId]);
+
+            if ($plan['erp']) {
+                $stmt = $pdo->prepare("UPDATE dpm_items_master SET stock = stock - ? WHERE firm_id = ? AND erp = ?");
+                $stmt->execute([$dispatchQty, $firmId, $plan['erp']]);
+            }
+
+            $pdo->commit();
+            jsonOut(['ok' => true, 'loading_slip_no' => $lsNo]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'get_dispatch_master') {
+        $pdo = db();
+        ensureDispatchMasterSchema($pdo);
+        $stmt = $pdo->prepare("SELECT * FROM dispatch_master WHERE firm_id = ? ORDER BY created_at DESC");
+        $stmt->execute([$firmId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonOut(['ok' => true, 'dispatches' => $rows]);
     }
 
     if ($action === 'save_ge_entry') {

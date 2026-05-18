@@ -2,31 +2,50 @@ import React, { useState, useEffect } from 'react';
 import * as sheetSync from '../sheetSync';
 import { pageStyles } from '../styles/pageStyles';
 
-export default function PendingLoadingSlipPage({ firm, currentUser, onBack }) {
+export default function PendingLoadingSlipPage({ firm, currentUser, onBack, onSuccess }) {
   const [pendingPlans, setPendingPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadData();
-  }, [firm]);
+  }, [firm.firmKey]);
 
   async function loadData() {
     setIsLoading(true);
     setError('');
     try {
-      // For now, we fetch all dispatch plans. 
-      // In a real scenario, we might have a specific endpoint for plans pending loading slip.
       const plans = await sheetSync.fetchDispatchPlanning(firm);
-      // Let's assume for now that "pending loading slip" are plans that don't have a loading slip ID yet.
-      // (This is a placeholder logic)
-      setPendingPlans(plans); 
+      // Filter for Pending plans
+      setPendingPlans((plans || []).filter(p => p.status === 'Pending'));
     } catch (err) {
       setError(err.message || 'Failed to load pending loading slips');
     } finally {
       setIsLoading(false);
     }
   }
+
+  const handleGenerateSlip = async (plan) => {
+    if (!window.confirm(`Generate Loading Slip for Job ${plan.job_no}?`)) return;
+    
+    setIsGenerating(true);
+    setError('');
+    try {
+      const result = await sheetSync.saveDispatchMaster(firm, {
+        dispatch_plan_id: plan.id,
+        dispatch_qty: plan.dispatch_plan_qty
+      }, currentUser?.email);
+      
+      alert(`Loading Slip Generated: ${result.loading_slip_no}`);
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error('Failed to generate loading slip:', err);
+      setError('Failed to generate loading slip: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div style={pageStyles.pageContainer}>
@@ -71,7 +90,13 @@ export default function PendingLoadingSlipPage({ firm, currentUser, onBack }) {
                   <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>{plan.dispatch_plan_qty}</td>
                   <td style={{ padding: '16px 20px' }}>{plan.truck_number}</td>
                   <td style={{ padding: '16px 20px' }}>
-                    <button className="inv-btn-primary small">Generate Slip</button>
+                    <button 
+                      className="inv-btn-primary small" 
+                      disabled={isGenerating}
+                      onClick={() => handleGenerateSlip(plan)}
+                    >
+                      {isGenerating ? 'Generating...' : 'Generate Slip'}
+                    </button>
                   </td>
                 </tr>
               ))
