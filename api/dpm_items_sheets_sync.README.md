@@ -34,7 +34,16 @@ Call (recommended from Hostinger Cron via URL fetch):
 
 `/api/dpm_items_sheets_sync.php?firm_id=lnki&secret=YOUR_SECRET&spreadsheet_id=SPREADSHEET_ID&sheet_name=Items`
 
+### Logging / Debug
+
+The sync writes JSONL logs to: `api/dpm_items_sheets_sync.log`
+
+To include the log filename in the JSON response, add `debug=1`:
+
+`/api/dpm_items_sheets_sync.php?firm_id=lnki&secret=YOUR_SECRET&spreadsheet_id=SPREADSHEET_ID&sheet_name=Items&debug=1`
+
+Every response includes a `trace_id`. Search that `trace_id` inside `dpm_items_sheets_sync.log` to see exactly where it failed (token, sheet fetch, DB, headers, etc.).
+
 ## Run (CLI)
 
 `php dpm_items_sheets_sync.php --firm_id=lnki --secret=YOUR_SECRET --spreadsheet_id=SPREADSHEET_ID --sheet_name=Items`
-

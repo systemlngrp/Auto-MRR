@@ -25,6 +25,21 @@ function jsonOut(array $payload, int $status = 200): void {
     exit;
 }
 
+function syncLogPath(): string {
+    return __DIR__ . '/dpm_items_sheets_sync.log';
+}
+
+function logLine(string $traceId, string $event, array $data = []): void {
+    $entry = [
+        'ts' => gmdate('c'),
+        'trace_id' => $traceId,
+        'event' => $event,
+        'data' => $data,
+    ];
+    $line = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+    @file_put_contents(syncLogPath(), $line, FILE_APPEND);
+}
+
 function readConfig(): array {
     $cfgFile = __DIR__ . '/config.php';
     if (is_file($cfgFile)) {
@@ -97,6 +112,28 @@ function base64UrlEncode(string $data): string {
 
 function httpPostForm(string $url, array $fields, int $timeoutSeconds = 25): array {
     $body = http_build_query($fields, '', '&');
+    // Prefer cURL when available (many shared hostings disable allow_url_fopen).
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSeconds);
+        $res = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        if ($res === false) {
+            throw new RuntimeException("HTTP POST failed: {$url} (status {$status}) {$err}");
+        }
+        $json = json_decode((string)$res, true);
+        if (!is_array($json)) {
+            throw new RuntimeException("Invalid JSON response from {$url} (status {$status})");
+        }
+        return [$status, $json];
+    }
+
     $opts = [
         'http' => [
             'method' => 'POST',
@@ -112,7 +149,7 @@ function httpPostForm(string $url, array $fields, int $timeoutSeconds = 25): arr
     $status = 0;
     if (preg_match('/\s(\d{3})\s/', $statusLine, $m)) $status = (int)$m[1];
     if ($res === false) {
-        throw new RuntimeException("HTTP POST failed: {$url} (status {$status})");
+        throw new RuntimeException("HTTP POST failed: {$url} (status {$status}). If this is Hostinger, enable cURL or allow_url_fopen.");
     }
     $json = json_decode($res, true);
     if (!is_array($json)) {
@@ -122,6 +159,30 @@ function httpPostForm(string $url, array $fields, int $timeoutSeconds = 25): arr
 }
 
 function httpGetJson(string $url, array $headers = [], int $timeoutSeconds = 25): array {
+    // Prefer cURL when available (many shared hostings disable allow_url_fopen).
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSeconds);
+        if (!empty($headers)) {
+            $hdrs = [];
+            foreach ($headers as $k => $v) $hdrs[] = "{$k}: {$v}";
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $hdrs);
+        }
+        $res = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        if ($res === false) {
+            throw new RuntimeException("HTTP GET failed: {$url} (status {$status}) {$err}");
+        }
+        $json = json_decode((string)$res, true);
+        if (!is_array($json)) {
+            throw new RuntimeException("Invalid JSON response from {$url} (status {$status})");
+        }
+        return [$status, $json];
+    }
+
     $hdr = '';
     foreach ($headers as $k => $v) $hdr .= "{$k}: {$v}\r\n";
     $opts = [
@@ -137,7 +198,7 @@ function httpGetJson(string $url, array $headers = [], int $timeoutSeconds = 25)
     $status = 0;
     if (preg_match('/\s(\d{3})\s/', $statusLine, $m)) $status = (int)$m[1];
     if ($res === false) {
-        throw new RuntimeException("HTTP GET failed: {$url} (status {$status})");
+        throw new RuntimeException("HTTP GET failed: {$url} (status {$status}). If this is Hostinger, enable cURL or allow_url_fopen.");
     }
     $json = json_decode($res, true);
     if (!is_array($json)) {
@@ -244,40 +305,70 @@ function safeJsonEncode(array $data): string {
 }
 
 try {
+    $traceId = bin2hex(random_bytes(8));
     $cfg = readConfig();
     $args = parseArgs();
+    $debug = ($args['debug'] ?? '') === '1';
 
     $secret = $args['secret'] ?? '';
     $expectedSecret = envFirst('SYNC_SECRET') ?? (string)cfgGet($cfg, 'sync.secret', '');
     if ($expectedSecret === '' || $secret === '' || !hash_equals($expectedSecret, $secret)) {
+        logLine($traceId, 'unauthorized', ['remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null]);
         jsonOut(['ok' => false, 'error' => 'Unauthorized'], 401);
     }
 
     $firmId = $args['firm_id'] ?? '';
-    if ($firmId === '') jsonOut(['ok' => false, 'error' => 'firm_id is required'], 400);
+    if ($firmId === '') {
+        logLine($traceId, 'bad_request', ['missing' => 'firm_id']);
+        jsonOut(['ok' => false, 'error' => 'firm_id is required'], 400);
+    }
 
     $spreadsheetId = $args['spreadsheet_id'] ?? '';
     $sheetName = $args['sheet_name'] ?? 'Items';
-    if ($spreadsheetId === '') jsonOut(['ok' => false, 'error' => 'spreadsheet_id is required'], 400);
+    if ($spreadsheetId === '') {
+        logLine($traceId, 'bad_request', ['missing' => 'spreadsheet_id']);
+        jsonOut(['ok' => false, 'error' => 'spreadsheet_id is required'], 400);
+    }
 
     $serviceAccountJsonPath =
         envFirst('GOOGLE_SERVICE_ACCOUNT_JSON')
         ?? (string)cfgGet($cfg, 'google.service_account_json', '');
     if ($serviceAccountJsonPath === '') {
+        logLine($traceId, 'config_missing', ['missing' => 'GOOGLE_SERVICE_ACCOUNT_JSON|google.service_account_json']);
         jsonOut(['ok' => false, 'error' => 'GOOGLE_SERVICE_ACCOUNT_JSON (or config google.service_account_json) is required'], 500);
     }
+
+    logLine($traceId, 'start', [
+        'firm_id' => $firmId,
+        'spreadsheet_id' => $spreadsheetId,
+        'sheet_name' => $sheetName,
+        'range' => $args['range'] ?? ($sheetName . '!A1:ZZ'),
+        'service_account_json' => $serviceAccountJsonPath,
+        'php_sapi' => PHP_SAPI,
+    ]);
 
     $token = googleAccessTokenFromServiceAccount($serviceAccountJsonPath, [
         'https://www.googleapis.com/auth/spreadsheets.readonly',
     ]);
+    logLine($traceId, 'google_token_ok');
+
     $values = sheetValues([
         'spreadsheet_id' => $spreadsheetId,
         'sheet_name' => $sheetName,
         'range' => $args['range'] ?? null,
     ], $token);
+    logLine($traceId, 'sheet_fetch_ok', ['rows' => is_array($values) ? count($values) : 0]);
 
     if (count($values) < 2) {
-        jsonOut(['ok' => true, 'synced' => 0, 'skipped' => 0, 'note' => 'No data rows found.']);
+        logLine($traceId, 'no_rows');
+        jsonOut([
+            'ok' => true,
+            'trace_id' => $traceId,
+            'synced' => 0,
+            'skipped' => 0,
+            'note' => 'No data rows found.',
+            'log_file' => $debug ? basename(syncLogPath()) : null,
+        ]);
     }
 
     $headerRow = $values[0];
@@ -286,11 +377,13 @@ try {
     // Required headers in the sheet
     $erpHeader = isset($headerMap['erp code']) ? 'ERP CODE' : (isset($headerMap['erp']) ? 'ERP' : null);
     if ($erpHeader === null) {
+        logLine($traceId, 'missing_header', ['need' => 'ERP CODE|ERP', 'headers' => $headerRow]);
         jsonOut(['ok' => false, 'error' => 'Sheet header must include "ERP CODE" (or "ERP").'], 400);
     }
 
     $pdo = pdoFromConfig($cfg);
     $pdo->exec("SET time_zone = '+05:30'");
+    logLine($traceId, 'db_connected');
 
     $upsert = $pdo->prepare("
         INSERT INTO dpm_items_master (firm_id, erp, item_name, customer_name, data_json)
@@ -361,15 +454,19 @@ try {
         throw $e;
     }
 
+    logLine($traceId, 'done', ['synced' => $synced, 'skipped' => $skipped]);
     jsonOut([
         'ok' => true,
+        'trace_id' => $traceId,
         'firm_id' => $firmId,
         'spreadsheet_id' => $spreadsheetId,
         'sheet_name' => $sheetName,
         'synced' => $synced,
         'skipped' => $skipped,
+        'log_file' => $debug ? basename(syncLogPath()) : null,
     ]);
 } catch (Throwable $e) {
-    jsonOut(['ok' => false, 'error' => $e->getMessage()], 500);
+    $traceId = $traceId ?? 'no-trace';
+    logLine($traceId, 'error', ['message' => $e->getMessage()]);
+    jsonOut(['ok' => false, 'trace_id' => $traceId, 'error' => $e->getMessage()], 500);
 }
-
