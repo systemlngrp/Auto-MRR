@@ -144,6 +144,30 @@ function pdoFromConfig(array $cfg): PDO {
     return $pdo;
 }
 
+function tableColumns(PDO $pdo, string $table): array {
+    $stmt = $pdo->prepare("DESCRIBE `{$table}`");
+    $stmt->execute();
+    $cols = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (!empty($row['Field'])) $cols[] = (string)$row['Field'];
+    }
+    return $cols;
+}
+
+function normKey(string $k): string {
+    $k = strtolower(trim($k));
+    $k = preg_replace('/\s+/', ' ', $k);
+    return $k;
+}
+
+function firstExisting(array $map, array $keys): ?string {
+    foreach ($keys as $k) {
+        $nk = normKey($k);
+        if (array_key_exists($nk, $map)) return $nk;
+    }
+    return null;
+}
+
 function base64UrlEncode(string $data): string {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
@@ -316,13 +340,20 @@ function normStr($v): ?string {
     return null;
 }
 
+function normNum($v): ?string {
+    $s = normStr($v);
+    if ($s === null) return null;
+    // Allow numbers with commas.
+    $s = str_replace(',', '', $s);
+    // If it is not numeric, keep as string (so user can still inspect it in DB).
+    return $s;
+}
+
 function headerIndexMap(array $headerRow): array {
     $map = [];
     foreach ($headerRow as $i => $h) {
-        $key = strtolower(trim((string)$h));
+        $key = normKey((string)$h);
         if ($key === '') continue;
-        // normalize multiple spaces and punctuation
-        $key = preg_replace('/\s+/', ' ', $key);
         $map[$key] = $i;
     }
     return $map;
@@ -330,10 +361,18 @@ function headerIndexMap(array $headerRow): array {
 
 function rowToAssoc(array $row, array $headerRow): array {
     $assoc = [];
+    $seen = [];
     foreach ($headerRow as $i => $h) {
         $k = trim((string)$h);
         if ($k === '') continue;
-        $assoc[$k] = $row[$i] ?? null;
+        if (array_key_exists($k, $assoc)) {
+            $seen[$k] = ($seen[$k] ?? 1) + 1;
+            $k2 = $k . ' (' . $seen[$k] . ')';
+            $assoc[$k2] = $row[$i] ?? null;
+        } else {
+            $seen[$k] = 1;
+            $assoc[$k] = $row[$i] ?? null;
+        }
     }
     return $assoc;
 }
@@ -418,8 +457,8 @@ try {
     $headerMap = headerIndexMap($headerRow);
 
     // Required headers in the sheet
-    $erpHeader = isset($headerMap['erp code']) ? 'ERP CODE' : (isset($headerMap['erp']) ? 'ERP' : null);
-    if ($erpHeader === null) {
+    $erpHeaderKey = firstExisting($headerMap, ['ERP CODE', 'ERP']);
+    if ($erpHeaderKey === null) {
         logLine($traceId, 'missing_header', ['need' => 'ERP CODE|ERP', 'headers' => $headerRow]);
         jsonOut(['ok' => false, 'error' => 'Sheet header must include "ERP CODE" (or "ERP").'], 400);
     }
@@ -428,28 +467,84 @@ try {
     $pdo->exec("SET time_zone = '+05:30'");
     logLine($traceId, 'db_connected');
 
+    $dbCols = tableColumns($pdo, 'dpm_items_master');
+    $dbColSet = array_fill_keys($dbCols, true);
+
+    // Map sheet headers to DB columns (only if the DB column exists).
+    // Keep `data_json` as the source of truth for the entire sheet row.
+    $sheetToDb = [
+        'no. of parts' => 'no_of_parts',
+        'length' => 'length',
+        'bredth' => 'breadth',
+        'breadth' => 'breadth',
+        'height' => 'height',
+        'ply' => 'ply',
+        'flute' => 'flute',
+        'l1' => 'l1',
+        'f1' => 'f1',
+        'l2' => 'l2',
+        'f2' => 'f2',
+        'l3' => 'l3',
+        'plate/php weight' => 'plate_php_weight',
+        'rate' => 'rate',
+        'opening balance' => 'opening_balance',
+        'receipt' => 'receipt',
+        'production' => 'production',
+        'dispatch' => 'dispatch',
+        'balance' => 'balance',
+        'rapc' => 'rapc',
+        'ups' => 'ups',
+        'new rapc' => 'new_rapc',
+        'cutting with trimming' => 'cutting_with_trimming',
+        'id to od 2' => 'id_to_od_2',
+        'take up factor' => 'take_up_factor',
+        'deviation' => 'deviation',
+        'flap' => 'flap',
+        'no. of ups for rapc' => 'ups_for_rapc',
+        'cutting size' => 'cutting_size',
+        'category' => 'category',
+        'open length' => 'open_length',
+        'open width' => 'open_width',
+        'no. of die cut ups (cutting)' => 'die_cut_ups_cutting',
+        'no. of die cut ups (reel)' => 'die_cut_ups_reel',
+    ];
+
+    // Columns always written (must exist).
+    $insertCols = ['firm_id', 'erp', 'item_name', 'customer_name', 'data_json'];
+    $params = [':firm_id', ':erp', ':item_name', ':customer_name', ':data_json'];
+    $updates = [
+        'item_name = VALUES(item_name)',
+        'customer_name = VALUES(customer_name)',
+        'data_json = VALUES(data_json)',
+        'updated_at = CURRENT_TIMESTAMP',
+    ];
+
+    $optionalBindings = [];
+    foreach ($sheetToDb as $sheetHeaderKey => $dbCol) {
+        if (!isset($dbColSet[$dbCol])) continue;
+        $insertCols[] = $dbCol;
+        $params[] = ':' . $dbCol;
+        $updates[] = "`{$dbCol}` = VALUES(`{$dbCol}`)";
+        $optionalBindings[$sheetHeaderKey] = $dbCol;
+    }
+
+    $insertColsSql = implode(', ', array_map(static fn($c) => "`{$c}`", $insertCols));
+    $paramsSql = implode(', ', $params);
+    $updatesSql = implode(",\n            ", $updates);
+
     $upsert = $pdo->prepare("
-        INSERT INTO dpm_items_master (firm_id, erp, item_name, customer_name, data_json)
-        VALUES (:firm_id, :erp, :item_name, :customer_name, :data_json)
+        INSERT INTO dpm_items_master ({$insertColsSql})
+        VALUES ({$paramsSql})
         ON DUPLICATE KEY UPDATE
-            item_name = VALUES(item_name),
-            customer_name = VALUES(customer_name),
-            data_json = VALUES(data_json),
-            updated_at = CURRENT_TIMESTAMP
+            {$updatesSql}
     ");
 
     $synced = 0;
     $skipped = 0;
 
     // Try to pull these standard fields from headers (fallbacks are fine).
-    $itemNameKey = null;
-    foreach (['item name', 'item_name', 'item'] as $k) {
-        if (isset($headerMap[$k])) { $itemNameKey = $k; break; }
-    }
-    $companyKey = null;
-    foreach (['company name', 'customer name', 'customer_name', 'party name'] as $k) {
-        if (isset($headerMap[$k])) { $companyKey = $k; break; }
-    }
+    $itemNameKey = firstExisting($headerMap, ['Item Name', 'item_name', 'Item']);
+    $companyKey = firstExisting($headerMap, ['Company Name', 'Customer Name', 'customer_name', 'Party Name']);
 
     $pdo->beginTransaction();
     try {
@@ -457,16 +552,15 @@ try {
             if (!is_array($row)) continue;
             $assoc = rowToAssoc($row, $headerRow);
 
-            $erpVal = null;
-            if ($erpHeader === 'ERP CODE') $erpVal = normStr($assoc['ERP CODE'] ?? null);
-            else $erpVal = normStr($assoc['ERP'] ?? null);
+            $erpHeaderLabel = $headerRow[(int)$headerMap[$erpHeaderKey]] ?? null;
+            $erpVal = is_string($erpHeaderLabel) ? normStr($assoc[$erpHeaderLabel] ?? null) : null;
 
             if ($erpVal === null) { $skipped++; continue; }
 
             $itemName = null;
             if ($itemNameKey !== null) {
                 $raw = $headerRow[(int)$headerMap[$itemNameKey]] ?? null;
-                if (is_string($raw) && isset($assoc[$raw])) $itemName = normStr($assoc[$raw]);
+                if (is_string($raw)) $itemName = normStr($assoc[$raw] ?? null);
             } else {
                 $itemName = normStr($assoc['Item Name'] ?? null);
             }
@@ -474,7 +568,7 @@ try {
             $customerName = null;
             if ($companyKey !== null) {
                 $raw = $headerRow[(int)$headerMap[$companyKey]] ?? null;
-                if (is_string($raw) && isset($assoc[$raw])) $customerName = normStr($assoc[$raw]);
+                if (is_string($raw)) $customerName = normStr($assoc[$raw] ?? null);
             } else {
                 $customerName = normStr($assoc['Company Name'] ?? null);
             }
@@ -482,13 +576,21 @@ try {
             // Store full row in JSON, but keep it compact and stable.
             $dataJson = safeJsonEncode($assoc);
 
-            $upsert->execute([
+            $bind = [
                 'firm_id' => $firmId,
                 'erp' => $erpVal,
                 'item_name' => $itemName,
                 'customer_name' => $customerName,
                 'data_json' => $dataJson,
-            ]);
+            ];
+
+            // Optional structured columns, when present in DB.
+            foreach ($optionalBindings as $sheetHeaderKey => $dbCol) {
+                $sheetLabel = $headerRow[(int)$headerMap[$sheetHeaderKey]] ?? null;
+                $bind[$dbCol] = is_string($sheetLabel) ? normNum($assoc[$sheetLabel] ?? null) : null;
+            }
+
+            $upsert->execute($bind);
             $synced++;
         }
         $pdo->commit();

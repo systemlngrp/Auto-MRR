@@ -16,6 +16,17 @@ return [
     'app' => [
         'timezone' => 'Asia/Kolkata',
     ],
+    'sync' => [
+        // Protect sync endpoints with a shared secret. Set via env on server if possible.
+        // Example: SYNC_SECRET=...
+        'secret' => getenv('SYNC_SECRET') ?: 'CHANGE_ME',
+    ],
+    'google' => [
+        // Service account JSON path for Google Sheets API access.
+        // Recommended: set env on server: GOOGLE_SERVICE_ACCOUNT_JSON=/full/path/to/key.json
+        // Fallback below assumes the key is placed beside api scripts or under api/private/.
+        'service_account_json' => getenv('GOOGLE_SERVICE_ACCOUNT_JSON') ?: (__DIR__ . '/private/dpm-item-sync.json'),
+    ],
 ];
 
 // Optional: you can also configure DB via environment variables instead of api/config.php:

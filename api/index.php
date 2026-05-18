@@ -717,6 +717,39 @@ function ensureDpmItemsMasterSchema(PDO $pdo): void
           erp VARCHAR(120) NOT NULL,
           item_name VARCHAR(255) DEFAULT NULL,
           customer_name VARCHAR(255) DEFAULT NULL,
+          no_of_parts VARCHAR(60) DEFAULT NULL,
+          length VARCHAR(60) DEFAULT NULL,
+          breadth VARCHAR(60) DEFAULT NULL,
+          height VARCHAR(60) DEFAULT NULL,
+          ply VARCHAR(60) DEFAULT NULL,
+          flute VARCHAR(60) DEFAULT NULL,
+          l1 VARCHAR(60) DEFAULT NULL,
+          f1 VARCHAR(60) DEFAULT NULL,
+          l2 VARCHAR(60) DEFAULT NULL,
+          f2 VARCHAR(60) DEFAULT NULL,
+          l3 VARCHAR(60) DEFAULT NULL,
+          plate_php_weight VARCHAR(80) DEFAULT NULL,
+          rate VARCHAR(60) DEFAULT NULL,
+          opening_balance VARCHAR(80) DEFAULT NULL,
+          receipt VARCHAR(80) DEFAULT NULL,
+          production VARCHAR(80) DEFAULT NULL,
+          dispatch VARCHAR(80) DEFAULT NULL,
+          balance VARCHAR(80) DEFAULT NULL,
+          rapc VARCHAR(80) DEFAULT NULL,
+          ups VARCHAR(80) DEFAULT NULL,
+          new_rapc VARCHAR(80) DEFAULT NULL,
+          cutting_with_trimming VARCHAR(80) DEFAULT NULL,
+          id_to_od_2 VARCHAR(80) DEFAULT NULL,
+          take_up_factor VARCHAR(80) DEFAULT NULL,
+          deviation VARCHAR(80) DEFAULT NULL,
+          flap VARCHAR(80) DEFAULT NULL,
+          ups_for_rapc VARCHAR(80) DEFAULT NULL,
+          cutting_size VARCHAR(80) DEFAULT NULL,
+          category VARCHAR(120) DEFAULT NULL,
+          open_length VARCHAR(80) DEFAULT NULL,
+          open_width VARCHAR(80) DEFAULT NULL,
+          die_cut_ups_cutting VARCHAR(80) DEFAULT NULL,
+          die_cut_ups_reel VARCHAR(80) DEFAULT NULL,
           stock DECIMAL(18,3) DEFAULT 0,
           data_json LONGTEXT DEFAULT NULL,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -727,8 +760,46 @@ function ensureDpmItemsMasterSchema(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     
-    // Migration: add stock if it doesn't exist
-    try { $pdo->exec("ALTER TABLE dpm_items_master ADD COLUMN stock DECIMAL(18,3) DEFAULT 0 AFTER customer_name"); } catch (Exception $e) {}
+    // Migrations: add columns if they don't exist yet (safe to re-run; ignore errors).
+    $migrations = [
+        "ALTER TABLE dpm_items_master ADD COLUMN stock DECIMAL(18,3) DEFAULT 0 AFTER customer_name",
+        "ALTER TABLE dpm_items_master ADD COLUMN no_of_parts VARCHAR(60) DEFAULT NULL AFTER customer_name",
+        "ALTER TABLE dpm_items_master ADD COLUMN length VARCHAR(60) DEFAULT NULL AFTER no_of_parts",
+        "ALTER TABLE dpm_items_master ADD COLUMN breadth VARCHAR(60) DEFAULT NULL AFTER length",
+        "ALTER TABLE dpm_items_master ADD COLUMN height VARCHAR(60) DEFAULT NULL AFTER breadth",
+        "ALTER TABLE dpm_items_master ADD COLUMN ply VARCHAR(60) DEFAULT NULL AFTER height",
+        "ALTER TABLE dpm_items_master ADD COLUMN flute VARCHAR(60) DEFAULT NULL AFTER ply",
+        "ALTER TABLE dpm_items_master ADD COLUMN l1 VARCHAR(60) DEFAULT NULL AFTER flute",
+        "ALTER TABLE dpm_items_master ADD COLUMN f1 VARCHAR(60) DEFAULT NULL AFTER l1",
+        "ALTER TABLE dpm_items_master ADD COLUMN l2 VARCHAR(60) DEFAULT NULL AFTER f1",
+        "ALTER TABLE dpm_items_master ADD COLUMN f2 VARCHAR(60) DEFAULT NULL AFTER l2",
+        "ALTER TABLE dpm_items_master ADD COLUMN l3 VARCHAR(60) DEFAULT NULL AFTER f2",
+        "ALTER TABLE dpm_items_master ADD COLUMN plate_php_weight VARCHAR(80) DEFAULT NULL AFTER l3",
+        "ALTER TABLE dpm_items_master ADD COLUMN rate VARCHAR(60) DEFAULT NULL AFTER plate_php_weight",
+        "ALTER TABLE dpm_items_master ADD COLUMN opening_balance VARCHAR(80) DEFAULT NULL AFTER rate",
+        "ALTER TABLE dpm_items_master ADD COLUMN receipt VARCHAR(80) DEFAULT NULL AFTER opening_balance",
+        "ALTER TABLE dpm_items_master ADD COLUMN production VARCHAR(80) DEFAULT NULL AFTER receipt",
+        "ALTER TABLE dpm_items_master ADD COLUMN dispatch VARCHAR(80) DEFAULT NULL AFTER production",
+        "ALTER TABLE dpm_items_master ADD COLUMN balance VARCHAR(80) DEFAULT NULL AFTER dispatch",
+        "ALTER TABLE dpm_items_master ADD COLUMN rapc VARCHAR(80) DEFAULT NULL AFTER balance",
+        "ALTER TABLE dpm_items_master ADD COLUMN ups VARCHAR(80) DEFAULT NULL AFTER rapc",
+        "ALTER TABLE dpm_items_master ADD COLUMN new_rapc VARCHAR(80) DEFAULT NULL AFTER ups",
+        "ALTER TABLE dpm_items_master ADD COLUMN cutting_with_trimming VARCHAR(80) DEFAULT NULL AFTER new_rapc",
+        "ALTER TABLE dpm_items_master ADD COLUMN id_to_od_2 VARCHAR(80) DEFAULT NULL AFTER cutting_with_trimming",
+        "ALTER TABLE dpm_items_master ADD COLUMN take_up_factor VARCHAR(80) DEFAULT NULL AFTER id_to_od_2",
+        "ALTER TABLE dpm_items_master ADD COLUMN deviation VARCHAR(80) DEFAULT NULL AFTER take_up_factor",
+        "ALTER TABLE dpm_items_master ADD COLUMN flap VARCHAR(80) DEFAULT NULL AFTER deviation",
+        "ALTER TABLE dpm_items_master ADD COLUMN ups_for_rapc VARCHAR(80) DEFAULT NULL AFTER flap",
+        "ALTER TABLE dpm_items_master ADD COLUMN cutting_size VARCHAR(80) DEFAULT NULL AFTER ups_for_rapc",
+        "ALTER TABLE dpm_items_master ADD COLUMN category VARCHAR(120) DEFAULT NULL AFTER cutting_size",
+        "ALTER TABLE dpm_items_master ADD COLUMN open_length VARCHAR(80) DEFAULT NULL AFTER category",
+        "ALTER TABLE dpm_items_master ADD COLUMN open_width VARCHAR(80) DEFAULT NULL AFTER open_length",
+        "ALTER TABLE dpm_items_master ADD COLUMN die_cut_ups_cutting VARCHAR(80) DEFAULT NULL AFTER open_width",
+        "ALTER TABLE dpm_items_master ADD COLUMN die_cut_ups_reel VARCHAR(80) DEFAULT NULL AFTER die_cut_ups_cutting",
+    ];
+    foreach ($migrations as $sql) {
+        try { $pdo->exec($sql); } catch (Exception $e) {}
+    }
 }
 
 function ensureOrderWorkflowSchema(PDO $pdo): void
@@ -5501,29 +5572,96 @@ try {
         $items = $payload['items'] ?? [];
         if (!is_array($items)) $items = [$items];
         
+        $sheetToDb = [
+            'No. of Parts' => 'no_of_parts',
+            'Length' => 'length',
+            'Bredth' => 'breadth',
+            'Height' => 'height',
+            'PLY' => 'ply',
+            'FLUTE' => 'flute',
+            'L1' => 'l1',
+            'F1' => 'f1',
+            'L2' => 'l2',
+            'F2' => 'f2',
+            'L3' => 'l3',
+            'PLATE/PHP WEIGHT' => 'plate_php_weight',
+            'RATE' => 'rate',
+            'Opening Balance' => 'opening_balance',
+            'Receipt' => 'receipt',
+            'Production' => 'production',
+            'Dispatch' => 'dispatch',
+            'Balance' => 'balance',
+            'RAPC' => 'rapc',
+            'UPS' => 'ups',
+            'New RAPC' => 'new_rapc',
+            'CUTTING with TRIMMING' => 'cutting_with_trimming',
+            'ID to OD 2' => 'id_to_od_2',
+            'Take Up Factor' => 'take_up_factor',
+            'Deviation' => 'deviation',
+            'Flap' => 'flap',
+            'No. of Ups for RAPC' => 'ups_for_rapc',
+            'Cutting Size' => 'cutting_size',
+            'Category' => 'category',
+            'Open Length' => 'open_length',
+            'Open Width' => 'open_width',
+            'No. of Die Cut Ups (Cutting)' => 'die_cut_ups_cutting',
+            'No. of Die Cut Ups (Reel)' => 'die_cut_ups_reel',
+            // Fallbacks for sheet sync
+            'no. of parts' => 'no_of_parts',
+            'breadth' => 'breadth',
+            'plate/php weight' => 'plate_php_weight',
+            'no. of ups for rapc' => 'ups_for_rapc',
+            'no. of die cut ups (cutting)' => 'die_cut_ups_cutting',
+            'no. of die cut ups (reel)' => 'die_cut_ups_reel',
+        ];
+
         $pdo->beginTransaction();
         try {
             foreach ($items as $item) {
-                $erp = trim((string)($item['erp'] ?? $item['ERP'] ?? ''));
+                $erp = trim((string)($item['erp'] ?? $item['ERP'] ?? $item['ERP CODE'] ?? ''));
                 if ($erp === '') continue;
                 
                 $itemName = trim((string)($item['item_name'] ?? $item['Item Name'] ?? ''));
-                $customerName = trim((string)($item['customer_name'] ?? $item['Customer Name'] ?? ''));
+                $customerName = trim((string)($item['customer_name'] ?? $item['Customer Name'] ?? $item['Company Name'] ?? ''));
                 
                 $data = $item;
                 unset($data['id'], $data['firm_id'], $data['created_at'], $data['updated_at']);
                 $dataJson = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 
+                $cols = ['firm_id', 'erp', 'item_name', 'customer_name', 'data_json'];
+                $vals = [':firm_id', ':erp', ':item_name', ':customer_name', ':data_json'];
+                $bind = [
+                    'firm_id' => $firmId,
+                    'erp' => $erp,
+                    'item_name' => $itemName,
+                    'customer_name' => $customerName,
+                    'data_json' => $dataJson,
+                ];
+
+                foreach ($sheetToDb as $label => $dbCol) {
+                    if (isset($item[$label])) {
+                        $cols[] = $dbCol;
+                        $vals[] = ':' . $dbCol;
+                        $bind[$dbCol] = trim((string)$item[$label]);
+                    }
+                }
+
+                $colsSql = implode(', ', $cols);
+                $valsSql = implode(', ', $vals);
+                $updates = [];
+                foreach ($cols as $c) {
+                    if ($c === 'firm_id' || $c === 'erp') continue;
+                    $updates[] = "{$c} = VALUES({$c})";
+                }
+                $updates[] = "updated_at = CURRENT_TIMESTAMP";
+                $updatesSql = implode(', ', $updates);
+
                 $stmt = $pdo->prepare("
-                    INSERT INTO dpm_items_master (firm_id, erp, item_name, customer_name, data_json)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        item_name = VALUES(item_name),
-                        customer_name = VALUES(customer_name),
-                        data_json = VALUES(data_json),
-                        updated_at = CURRENT_TIMESTAMP
+                    INSERT INTO dpm_items_master ({$colsSql})
+                    VALUES ({$valsSql})
+                    ON DUPLICATE KEY UPDATE {$updatesSql}
                 ");
-                $stmt->execute([$firmId, $erp, $itemName, $customerName, $dataJson]);
+                $stmt->execute($bind);
             }
             $pdo->commit();
             jsonOut(['ok' => true]);

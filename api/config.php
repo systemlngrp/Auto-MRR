@@ -19,5 +19,10 @@ return [
     'app' => [
         'timezone' => getenv('APP_TIMEZONE') ?: 'Asia/Kolkata',
     ],
+    'sync' => [
+        'secret' => getenv('SYNC_SECRET') ?: '1234567890',
+    ],
+    'google' => [
+        'service_account_json' => getenv('GOOGLE_SERVICE_ACCOUNT_JSON') ?: (__DIR__ . '/dpm-item-sync-95d4106a07bf.json'),
+    ],
 ];
-
