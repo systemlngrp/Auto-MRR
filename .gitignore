@@ -17,6 +17,11 @@ api/*.log
 api/*.sqlite
 api/*.sqlite3
 
+# Google service account keys (never commit)
+dpm-item-sync-*.json
+api/dpm-item-sync-*.json
+*service-account*.json
+
 # Misc
 .DS_Store
 .env
