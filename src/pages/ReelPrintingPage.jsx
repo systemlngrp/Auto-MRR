@@ -194,6 +194,26 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
     const erpCode = activeDetail.erp;
 
     try {
+      const requiredFields = [
+        ['PROD. AT PRINTING', 'prod_at_printing'],
+        ['FG', 'fg'],
+        ['SLOTTING', 'slotting'],
+        ['DELAMINATION', 'delamination'],
+        ['MISALIGNMENT', 'misalignment'],
+        ['DRY SHEETS', 'dry_sheets'],
+        ['WARP', 'warp'],
+        ['MISPRINTING', 'misprinting'],
+        ['JOB SETTING', 'job_setting'],
+        ['HELPER', 'helper']
+      ];
+      const missing = requiredFields
+        .filter(([, key]) => String(form?.[key] ?? '').trim() === '')
+        .map(([label]) => label);
+      if (missing.length) {
+        alert('Please fill all mandatory fields:\n- ' + missing.join('\n- '));
+        return;
+      }
+
       // 1. Update DPM Job (this also updates the production column for the job)
       await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
         prod_at_printing: Number.parseFloat(form.prod_at_printing) || 0,
@@ -235,6 +255,11 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
       alert('Failed to save: ' + err.message);
     }
   };
+
+  const isPrintingFormComplete = useMemo(() => {
+    const keys = ['prod_at_printing', 'fg', 'slotting', 'delamination', 'misalignment', 'dry_sheets', 'warp', 'misprinting', 'job_setting', 'helper'];
+    return keys.every((k) => String(form?.[k] ?? '').trim() !== '');
+  }, [form]);
 
   return (
     <div style={{ padding: '24px', width: '100%', minHeight: '100vh', background: '#f5f7fb' }}>
@@ -361,7 +386,7 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
                 </div>
               </div>
 
-              <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndMove}>
+              <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndMove} disabled={!isPrintingFormComplete}>
                 Save & Complete Job ✓
               </button>
             </div>

@@ -187,6 +187,23 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
       return;
     }
 
+    const requiredFields = [
+      ['PART PRODUCTION (Boxes)', 'part_prod'],
+      ['FULL CORRUGATION QNT. (Boxes)', 'full_corr'],
+      ['PROD. AT SHEET PLANT (Boxes)', 'prod_at_sheet'],
+      ['WARPAGE (Boxes)', 'warpage_boxes'],
+      ['DELAMINATION (Boxes)', 'delamination_boxes'],
+      ['MISALIGNMENT (Boxes)', 'misalignment_boxes'],
+      ['2PLY & PAPER (Kgs)', 'two_ply_paper']
+    ];
+    const missing = requiredFields
+      .filter(([, key]) => String(form?.[key] ?? '').trim() === '')
+      .map(([label]) => label);
+    if (missing.length) {
+      alert('Please fill all mandatory fields:\n- ' + missing.join('\n- '));
+      return;
+    }
+
     const numericPayload = {
       part_prod: Number.parseFloat(form.part_prod) || 0,
       full_corr: Number.parseFloat(form.full_corr) || 0,
@@ -204,6 +221,11 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
     setActiveJob(null);
     await refreshDpm();
   };
+
+  const isSheetPlantFormComplete = useMemo(() => {
+    const keys = ['part_prod', 'full_corr', 'prod_at_sheet', 'warpage_boxes', 'delamination_boxes', 'misalignment_boxes', 'two_ply_paper'];
+    return keys.every((k) => String(form?.[k] ?? '').trim() !== '');
+  }, [form]);
 
   return (
     <div style={{ padding: '24px', width: '100%', minHeight: '100vh', background: '#f5f7fb' }}>
@@ -327,7 +349,7 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
                 </div>
               </div>
 
-              <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndMove}>
+              <button type="button" className="btn main" style={{ marginTop: '10px' }} onClick={onSaveAndMove} disabled={!isSheetPlantFormComplete}>
                 Save & Move to Printing →
               </button>
             </div>
