@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { fetchReelReturnEntries, fetchReelStock, saveReelReturnEntry } from '../sheetSync';
+import { fetchReelIssueEntries, fetchReelReturnEntries, fetchReelStock, saveReelReturnEntry } from '../sheetSync';
 
 export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
   const [returnRows, setReturnRows] = useState([]);
   const [stockRows, setStockRows] = useState([]);
+  const [issueRows, setIssueRows] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const loadRunRef = useRef(0);
@@ -47,18 +48,21 @@ export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
     setIsLoading(true);
     setErrorText('');
     try {
-      const [stock, returns] = await Promise.all([
+      const [stock, returns, issues] = await Promise.all([
         fetchReelStock(selectedFirm),
-        fetchReelReturnEntries(selectedFirm)
+        fetchReelReturnEntries(selectedFirm),
+        fetchReelIssueEntries(selectedFirm)
       ]);
       if (loadRunRef.current !== runId) return;
       setStockRows(Array.isArray(stock?.rows) ? stock.rows : []);
       setReturnRows(Array.isArray(returns?.rows) ? returns.rows : []);
+      setIssueRows(Array.isArray(issues?.rows) ? issues.rows : []);
     } catch (err) {
       if (loadRunRef.current !== runId) return;
       setErrorText(err?.message || 'Could not load reel return data.');
       setStockRows([]);
       setReturnRows([]);
+      setIssueRows([]);
     } finally {
       if (loadRunRef.current === runId) setIsLoading(false);
     }
@@ -69,14 +73,30 @@ export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
 
+  const issuedJobs = useMemo(() => {
+    const s = new Set();
+    (issueRows || []).forEach((r) => {
+      const job = String(r?.job_no || '').trim();
+      if (job) s.add(job);
+    });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [issueRows]);
+
+  const issuedJobsSet = useMemo(() => new Set(issuedJobs), [issuedJobs]);
+
   const onSave = async () => {
     if (!selectedFirm) return;
+    const job = String(jobNo || '').trim();
+    if (job && issuedJobs.length && !issuedJobsSet.has(job)) {
+      setErrorText('This Job has no Reel Issue entry yet. Please issue a reel first, then return.');
+      return;
+    }
     setIsLoading(true);
     setErrorText('');
     try {
       await saveReelReturnEntry({
         ...selectedFirm,
-        jobNo,
+        jobNo: job,
         ourReelNo,
         returnWeight: Number(returnWeight || 0),
         createdBy: currentUser?.login_id || currentUser?.name || '',
@@ -110,7 +130,7 @@ export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
           <div>
             <div style={{ fontSize: '14px', fontWeight: 1000, color: '#1d4ed8' }}>New Reel Return</div>
             <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', fontWeight: 700 }}>
-              Save returns by Job No and Our Reel No.
+              Save returns by Job No and Our Reel No. (Job No must have Reel Issue.)
             </div>
             {errorText ? <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 900, color: '#b91c1c' }}>{errorText}</div> : null}
           </div>
@@ -122,7 +142,18 @@ export default function ReelReturnPage({ selectedFirm, currentUser, onBack }) {
         <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 180px 140px', gap: '10px', marginTop: '12px', alignItems: 'end' }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#374151' }}>JOB NO.</div>
-            <input value={jobNo} onChange={(e) => setJobNo(e.target.value)} placeholder="Job No" style={{ width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: '10px' }} />
+            <input
+              list="issued-job-list"
+              value={jobNo}
+              onChange={(e) => setJobNo(e.target.value)}
+              placeholder="Job No"
+              style={{ width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: '10px' }}
+            />
+            <datalist id="issued-job-list">
+              {issuedJobs.map((j) => (
+                <option key={j} value={j} />
+              ))}
+            </datalist>
           </div>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 900, color: '#374151' }}>OUR REEL NO.</div>

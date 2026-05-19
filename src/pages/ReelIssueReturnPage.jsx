@@ -142,12 +142,20 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
 
   const combinedPendingList = useMemo(() => {
     const normalizeJob = (raw) => String(raw || '').trim();
+    const hasIssuedForJob = (job) => {
+      const issue = jobAggregates.issueAgg.get(job);
+      if (!issue) return false;
+      return (issue.reels?.size || 0) > 0 || (Number(issue.weight) || 0) > 0;
+    };
     
     // 1. Process DPM Jobs in 'reel_issue_pending' stage
     const fromDpm = (dpmJobs || [])
       .filter((j) => {
         const s = String(j?.stage || '').toLowerCase();
-        return s === 'reel_issue_pending' || s === 'issue';
+        if (!(s === 'reel_issue_pending' || s === 'issue')) return false;
+        const job = String(j?.job_no || '').trim();
+        // Once reel issue is done for a job, remove it from Reel Issue pending list.
+        return job ? !hasIssuedForJob(job) : true;
       })
       .map((j) => {
         const job = String(j.job_no || '').trim();
@@ -178,6 +186,8 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
       .map(row => {
         const job = normalizeJob(row?.['JOB No.'] || row?.['JOB NO.'] || row?.JOB);
         if (!job || seenJobs.has(job)) return null;
+        // Once reel issue is done for a job, remove it from Reel Issue pending list.
+        if (hasIssuedForJob(job)) return null;
         seenJobs.add(job);
 
         const issue = jobAggregates.issueAgg.get(job);
@@ -575,17 +585,20 @@ export default function ReelIssueReturnPage({ selectedFirm, currentUser, onBack 
               backdropFilter: 'blur(8px)',
               zIndex: 10050,
               display: 'flex',
-              justifyContent: 'flex-end'
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: isMobile ? '12px' : '16px'
             }}
             onClick={() => setActivePendingJob(null)}
           >
             <div
               style={{
-                width: 'min(580px, 98vw)',
-                height: '100%',
+                width: 'min(860px, 98vw)',
+                maxHeight: 'min(860px, 92vh)',
                 background: '#fff',
-                borderLeft: '1px solid #e5e7eb',
-                boxShadow: '-20px 0 60px rgba(0,0,0,0.25)',
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                boxShadow: '0 30px 90px rgba(0,0,0,0.35)',
                 padding: isMobile ? '12px' : '20px',
                 overflowY: 'auto'
               }}

@@ -186,8 +186,19 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
       alert('Only DPM Jobs can be moved through stages automatically.');
       return;
     }
+
+    const numericPayload = {
+      part_prod: Number.parseFloat(form.part_prod) || 0,
+      full_corr: Number.parseFloat(form.full_corr) || 0,
+      prod_at_sheet: Number.parseFloat(form.prod_at_sheet) || 0,
+      warpage_boxes: Number.parseFloat(form.warpage_boxes) || 0,
+      delamination_boxes: Number.parseFloat(form.delamination_boxes) || 0,
+      misalignment_boxes: Number.parseFloat(form.misalignment_boxes) || 0,
+      two_ply_paper: Number.parseFloat(form.two_ply_paper) || 0
+    };
+
     await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
-      ...form,
+      ...numericPayload,
       stage: 'printing_pending'
     });
     setActiveJob(null);
@@ -247,8 +258,33 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
       </div>
 
       {activeDetail && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)', zIndex: 10050, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setActiveJob(null)}>
-          <div style={{ width: 'min(520px, 96vw)', height: '100%', background: '#fff', padding: '20px', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div
+          className="no-print"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 10050,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setActiveJob(null)}
+        >
+          <div
+            style={{
+              width: 'min(720px, 96vw)',
+              maxHeight: 'min(760px, 92vh)',
+              background: '#fff',
+              padding: '20px',
+              overflowY: 'auto',
+              borderRadius: '16px',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.25)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>PENDING JOB (SHEET PLANT)</div>
@@ -261,17 +297,20 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
               <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', borderBottom: '1px solid #eef2f7', paddingBottom: '6px' }}>Corrugation Updates</div>
               
               {[
-                ['PART PRODUCTION (Boxes)', 'part_prod'],
-                ['FULL CORRUGATION QNT. (Boxes)', 'full_corr'],
-                ['PROD. AT SHEET PLANT (Boxes)', 'prod_at_sheet'],
-                ['WARPAGE (Boxes)', 'warpage_boxes'],
-                ['DELAMINATION (Boxes)', 'delamination_boxes'],
-                ['MISALIGNMENT (Boxes)', 'misalignment_boxes'],
-                ['2PLY & PAPER (Kgs)', 'two_ply_paper']
-              ].map(([label, key]) => (
+                { label: 'PART PRODUCTION (Boxes)', key: 'part_prod', step: '1', inputMode: 'numeric' },
+                { label: 'FULL CORRUGATION QNT. (Boxes)', key: 'full_corr', step: '1', inputMode: 'numeric' },
+                { label: 'PROD. AT SHEET PLANT (Boxes)', key: 'prod_at_sheet', step: '1', inputMode: 'numeric' },
+                { label: 'WARPAGE (Boxes)', key: 'warpage_boxes', step: '1', inputMode: 'numeric' },
+                { label: 'DELAMINATION (Boxes)', key: 'delamination_boxes', step: '1', inputMode: 'numeric' },
+                { label: 'MISALIGNMENT (Boxes)', key: 'misalignment_boxes', step: '1', inputMode: 'numeric' },
+                { label: '2PLY & PAPER (Kgs)', key: 'two_ply_paper', step: '0.001', inputMode: 'decimal' }
+              ].map(({ label, key, step, inputMode }) => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'center' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>{label}</div>
                   <input
+                    type="number"
+                    step={step}
+                    inputMode={inputMode}
                     value={form[key]}
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}

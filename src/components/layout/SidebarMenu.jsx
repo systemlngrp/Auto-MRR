@@ -305,6 +305,18 @@ export default function SidebarMenu({
               {badge(0, 'gray')}
             </button>
           ) : null}
+          {typeof actions?.onReelIssueData === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onReelIssueData}>
+              <span>Reel Issue Data</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
+          {typeof actions?.onReelReturnData === 'function' ? (
+            <button type="button" className="inv-submenu-item" onClick={actions?.onReelReturnData}>
+              <span>Reel Return</span>
+              {badge(0, 'gray')}
+            </button>
+          ) : null}
           {canSee('pending_sheet_plant') && typeof actions?.onPendingSheetPlant === 'function' ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onPendingSheetPlant}>
               <span>Pending Jobs For Sheet Plant</span>

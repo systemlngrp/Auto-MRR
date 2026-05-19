@@ -196,7 +196,16 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
     try {
       // 1. Update DPM Job (this also updates the production column for the job)
       await updateDpmJob(selectedFirm, activeDetail._dpm_id, {
-        ...form,
+        prod_at_printing: Number.parseFloat(form.prod_at_printing) || 0,
+        fg: fgValue,
+        slotting: Number.parseFloat(form.slotting) || 0,
+        delamination: Number.parseFloat(form.delamination) || 0,
+        misalignment: Number.parseFloat(form.misalignment) || 0,
+        dry_sheets: Number.parseFloat(form.dry_sheets) || 0,
+        warp: Number.parseFloat(form.warp) || 0,
+        misprinting: Number.parseFloat(form.misprinting) || 0,
+        job_setting: Number.parseFloat(form.job_setting) || 0,
+        helper: String(form.helper || ''),
         production: fgValue,
         stage: 'completed' // Moving to completed instead of closer as requested
       });
@@ -280,8 +289,33 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
       </div>
 
       {activeDetail && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)', zIndex: 10050, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setActiveJob(null)}>
-          <div style={{ width: 'min(520px, 96vw)', height: '100%', background: '#fff', padding: '20px', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div
+          className="no-print"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 10050,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setActiveJob(null)}
+        >
+          <div
+            style={{
+              width: 'min(720px, 96vw)',
+              maxHeight: 'min(760px, 92vh)',
+              background: '#fff',
+              padding: '20px',
+              overflowY: 'auto',
+              borderRadius: '16px',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.25)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>PENDING JOB (PRINTING)</div>
@@ -294,20 +328,23 @@ export default function ReelPrintingPage({ selectedFirm, currentUser, deps = {},
               <div style={{ fontSize: '13px', fontWeight: 1000, color: '#1d4ed8', borderBottom: '1px solid #eef2f7', paddingBottom: '6px' }}>Printing Updates</div>
               
               {[
-                ['PROD. AT PRINTING', 'prod_at_printing'],
-                ['FG', 'fg'],
-                ['SLOTTING', 'slotting'],
-                ['DELAMINATION', 'delamination'],
-                ['MISALIGNMENT', 'misalignment'],
-                ['DRY SHEETS', 'dry_sheets'],
-                ['WARP', 'warp'],
-                ['MISPRINTING', 'misprinting'],
-                ['JOB SETTING', 'job_setting'],
-                ['HELPER', 'helper']
-              ].map(([label, key]) => (
+                { label: 'PROD. AT PRINTING', key: 'prod_at_printing', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'FG', key: 'fg', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'SLOTTING', key: 'slotting', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'DELAMINATION', key: 'delamination', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'MISALIGNMENT', key: 'misalignment', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'DRY SHEETS', key: 'dry_sheets', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'WARP', key: 'warp', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'MISPRINTING', key: 'misprinting', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'JOB SETTING', key: 'job_setting', type: 'number', step: '0.001', inputMode: 'decimal' },
+                { label: 'HELPER', key: 'helper', type: 'text' }
+              ].map(({ label, key, type, step, inputMode }) => (
                 <div key={key} style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'center' }}>
                   <div style={{ fontSize: '11px', fontWeight: 1000, color: '#6b7280' }}>{label}</div>
                   <input
+                    type={type}
+                    step={type === 'number' ? step : undefined}
+                    inputMode={type === 'number' ? inputMode : undefined}
                     value={form[key]}
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
