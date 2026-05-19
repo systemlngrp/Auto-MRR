@@ -317,12 +317,6 @@ export default function SidebarMenu({
               {badge(0, 'gray')}
             </button>
           ) : null}
-          {typeof actions?.onUnifiedPendingSchema === 'function' ? (
-            <button type="button" className="inv-submenu-item" onClick={actions?.onUnifiedPendingSchema}>
-              <span>Unified Pending Schema</span>
-              {badge(0, 'gray')}
-            </button>
-          ) : null}
           {canSee('pending_sheet_plant') && typeof actions?.onPendingSheetPlant === 'function' ? (
             <button type="button" className="inv-submenu-item" onClick={actions?.onPendingSheetPlant}>
               <span>Pending Jobs For Sheet Plant</span>
