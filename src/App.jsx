@@ -52,6 +52,7 @@ import DpmJobsPage from './pages/DpmJobsPage';
 import TruckMasterPage from './pages/TruckMasterPage';
 import DispatchPlanningPage from './pages/DispatchPlanningPage';
 import ReelStockPage from './pages/ReelStockPage';
+import UnifiedPendingSchemaPage from './pages/UnifiedPendingSchemaPage';
 import OrderFormPage from './pages/OrderFormPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PendingSchedulingPage from './pages/PendingSchedulingPage';
@@ -3556,6 +3557,7 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onPendingCloser: () => setStep(22),
               onReelIssueData: () => setStep(24),
               onReelReturnData: () => setStep(23),
+              onUnifiedPendingSchema: () => setStep(41),
               onReelStock: () => setStep(26),
               onIndent: () => { setPrListContext(''); setStep(14); },
               onIndentForm: () => {
@@ -5561,6 +5563,15 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
           currentUser={currentUser}
           onBack={() => setStep(3)}
         />
+      </>
+    );
+  }
+
+  if (step === 41) {
+    return (
+      <>
+        {userBadge}
+        <UnifiedPendingSchemaPage onBack={() => setStep(3)} />
       </>
     );
   }

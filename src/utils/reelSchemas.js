@@ -204,3 +204,79 @@ export const REEL_SCHEMAS = {
     ]
   }
 };
+
+// Canonical unified schema (no duplicates) for:
+// - Pending Reel Issue
+// - Pending Sheet Plant
+// - Pending Printing
+export const UNIFIED_PENDING_JOB_SCHEMA = {
+  headers: [
+    // Identity
+    'S NO.',
+    'DATE',
+    'JOB No.',
+    'ERP',
+    'ITEM',
+
+    // Planning + reel requirement
+    'PLAN QUANTITY',
+    'REQUIRED REEL (Kgs)',
+    'ERP REEL CODE',
+
+    // Reel usage summary
+    'TOTAL REEL ISSUED',
+    'TOTAL REEL RETURNED',
+    'ACTUAL PAPER USED (Kgs)',
+    'AVG NOTIONAL WEIGHT/REEL',
+    'NO OF REELS',
+
+    // Corrugation / stage metadata
+    'CORRUGATION',
+
+    // Transfer helpers
+    'SELECT JOB FOR TRANSFER',
+    'REEL NO FOR TRANSFER',
+    'SELECT REELS TO TRANSFER',
+    'SELECT JOB NO TO TRANSFER',
+
+    // Sheet plant production & defects
+    'PART PRODUCTION (Boxes)',
+    'FULL CORRUGATION QNT. (Boxes)',
+    'PROD. AT SHEET PLANT (Boxes)',
+    'WARPAGE (Boxes)',
+    'WARPAGE (Kgs)',
+    'DELAMINATION (Boxes)',
+    'DELAMINATION (Kgs)',
+    'MISALIGNMENT (Boxes)',
+    'MISALIGNMENT (Kgs)',
+    '2PLY & PAPER (Kgs)',
+    'DECKEL WASTAGE',
+    'SHEER CUTTER (Boxes)',
+    'SHEER CUTTER (Kgs)',
+    'NO HISAB',
+    'PENDING ID',
+    'TOTAL C WASTAGE',
+    'PERCENTAGE',
+
+    // Printing stage
+    'PART PRINTING',
+    'PROD. AT PRINTING',
+    'FG',
+    'SLOTTING',
+    'DELAMINATION (Printing)',
+    'MISALIGNMENT (Printing)',
+    'DRY SHEETS',
+    'WARP (Printing)',
+    'MISPRINTING',
+    'JOB SETTING',
+    'HELPER',
+
+    // Waste + attachments + timestamps
+    'C WASTAGE',
+    'TOTAL WASTAGE %',
+    'P WASTAGE',
+    'PO PDF',
+    'Timestamp',
+    'Timestamp New'
+  ]
+};
