@@ -12,7 +12,9 @@ function ReelCloserPage({ selectedFirm, currentUser, onBack }) {
   const [isLoading, setIsLoading] = useState(false);
   const loadRunRef = useRef(0);
 
-  // ... rest of state
+  const [form, setForm] = useState({
+    remarks: ''
+  });
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;
@@ -55,6 +57,10 @@ function ReelCloserPage({ selectedFirm, currentUser, onBack }) {
   useEffect(() => {
     loadFromSheets();
   }, [selectedFirm?.spreadsheetId || selectedFirm?.id]);
+
+  useEffect(() => {
+    setForm({ remarks: '' });
+  }, [activeJob]);
 
   const jobAggregates = useMemo(() => {
     const normalizeJob = (raw) => String(raw || '').trim();

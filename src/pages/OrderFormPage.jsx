@@ -2,14 +2,24 @@ import React, { useState, useEffect, useMemo } from 'react';
 import SearchableSelect from '../components/layout/SearchableSelect';
 
 export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
-  const { fetchCompanyMaster, fetchDpmItems, saveOrder } = deps;
+  const { fetchCompanyMaster, fetchDpmItems, saveOrder, fetchOrders } = deps;
 
   const [companies, setCompanies] = useState([]);
   const [items, setItems] = useState([]);
+  const [existingOrders, setExistingOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
+
+  const getFinancialYearString = () => {
+    const d = new Date();
+    const month = d.getMonth() + 1; // 1-12
+    const year = d.getFullYear();
+    const startYear = month >= 4 ? year : year - 1;
+    const endYear = startYear + 1;
+    return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
+  };
 
   const [formData, setFormData] = useState({
     order_date: today,
@@ -29,20 +39,45 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
       if (!selectedFirm) return;
       setIsLoading(true);
       try {
-        const [companyData, itemData] = await Promise.all([
+        const [companyData, itemData, orderData] = await Promise.all([
           fetchCompanyMaster({ spreadsheetId: selectedFirm.spreadsheetId }),
-          fetchDpmItems(selectedFirm)
+          fetchDpmItems(selectedFirm),
+          fetchOrders ? fetchOrders(selectedFirm) : Promise.resolve([])
         ]);
         setCompanies(Array.isArray(companyData) ? companyData : []);
         setItems(Array.isArray(itemData) ? itemData : []);
+        setExistingOrders(Array.isArray(orderData) ? orderData : []);
       } catch (err) {
+        console.error(err);
         setStatus('Error loading data: ' + err.message);
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, [selectedFirm, fetchCompanyMaster, fetchDpmItems]);
+  }, [selectedFirm]);
+
+  // Handle Verbal PO Auto-suggestion
+  useEffect(() => {
+    if (formData.po_type === 'Verbal' && !formData.po_number && existingOrders.length > 0) {
+      const fy = getFinancialYearString();
+      const prefix = `${fy}/`;
+      
+      const verbalOrders = existingOrders.filter(o => 
+        String(o.po_number || '').startsWith(prefix)
+      );
+      
+      let maxSeq = 0;
+      verbalOrders.forEach(o => {
+        const part = String(o.po_number).split('/')[1];
+        const seq = parseInt(part);
+        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      });
+      
+      const nextSeq = String(maxSeq + 1).padStart(3, '0');
+      setFormData(prev => ({ ...prev, po_number: `${prefix}${nextSeq}` }));
+    }
+  }, [formData.po_type, existingOrders]);
 
   const companyOptions = useMemo(() => {
     return companies
@@ -62,7 +97,7 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
     const nextErrors = {};
     if (!formData.order_date) nextErrors.order_date = true;
     if (!formData.company_name) nextErrors.company_name = true;
-    if (formData.po_type === 'Ref No.' && !formData.po_number) nextErrors.po_number = true;
+    if (!formData.po_number) nextErrors.po_number = true;
     if (!formData.item) nextErrors.item = true;
     
     const qtyNum = parseFloat(formData.qty);
@@ -70,6 +105,18 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
 
     const rateNum = parseFloat(formData.rate);
     if (isNaN(rateNum) || rateNum <= 0) nextErrors.rate = true;
+
+    // Uniqueness check: po_number + item
+    const isDuplicate = existingOrders.some(o => 
+      String(o.po_number).toLowerCase().trim() === String(formData.po_number).toLowerCase().trim() &&
+      String(o.item_name || o.item).toLowerCase().trim() === String(formData.item).toLowerCase().trim() &&
+      String(o.company_name).toLowerCase().trim() === String(formData.company_name).toLowerCase().trim()
+    );
+
+    if (isDuplicate) {
+      alert(`PO Number "${formData.po_number}" already exists for this item and company.`);
+      nextErrors.po_number = true;
+    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -110,250 +157,262 @@ export default function OrderFormPage({ selectedFirm, deps, onBack, onSaved }) {
     });
   };
 
-  const labelStyle = {
-    display: 'block',
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#4b5563',
-    marginBottom: '3px'
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      background: '#f0ebf8',
+      padding: '24px 12px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      fontFamily: 'Roboto, Arial, sans-serif'
+    },
+    headerCard: {
+      width: '100%',
+      maxWidth: '640px',
+      background: '#fff',
+      borderRadius: '8px',
+      borderTop: '10px solid #673ab7',
+      padding: '24px',
+      marginBottom: '12px',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+    },
+    title: {
+      fontSize: '32px',
+      margin: '0 0 12px 0',
+      color: '#202124'
+    },
+    description: {
+      fontSize: '14px',
+      color: '#202124'
+    },
+    questionCard: (hasError) => ({
+      width: '100%',
+      maxWidth: '640px',
+      background: '#fff',
+      borderRadius: '8px',
+      padding: '24px',
+      marginBottom: '12px',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+      border: hasError ? '1px solid #d93025' : '1px solid transparent'
+    }),
+    label: {
+      display: 'block',
+      fontSize: '16px',
+      fontWeight: '500',
+      color: '#202124',
+      marginBottom: '16px'
+    },
+    input: {
+      width: '100%',
+      border: 'none',
+      borderBottom: '1px solid #d1d5db',
+      padding: '8px 0',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-bottom 0.2s',
+      ':focus': {
+        borderBottom: '2px solid #673ab7'
+      }
+    },
+    select: {
+      width: '100%',
+      padding: '8px 0',
+      border: 'none',
+      borderBottom: '1px solid #d1d5db',
+      outline: 'none',
+      fontSize: '14px'
+    },
+    radioGroup: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px'
+    },
+    radioItem: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      cursor: 'pointer'
+    },
+    footer: {
+      width: '100%',
+      maxWidth: '640px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginTop: '12px'
+    },
+    btnSubmit: {
+      background: '#673ab7',
+      color: '#fff',
+      border: 'none',
+      padding: '10px 24px',
+      borderRadius: '4px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+    },
+    btnCancel: {
+      background: 'transparent',
+      color: '#673ab7',
+      border: 'none',
+      padding: '10px 24px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer'
+    },
+    errorText: {
+      color: '#d93025',
+      fontSize: '12px',
+      marginTop: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px'
+    }
   };
-
-  const inputContainerStyle = {
-    marginBottom: '10px'
-  };
-
-  const inputBaseStyle = (hasError) => ({
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '8px 10px',
-    border: `1px solid ${hasError ? '#ef4444' : '#d1d5db'}`,
-    borderRadius: '6px',
-    fontSize: '13px',
-    outline: 'none',
-    background: '#fff'
-  });
-
-  const star = <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f4f6', position: 'relative', paddingBottom: '80px' }}>
-      <div style={{ background: '#fff', padding: '14px', minHeight: 'calc(100vh - 80px)' }}>
-        
-        {/* Order Date */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>Order Date{star}</label>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="date" 
-              value={formData.order_date} 
-              onChange={e => setFormData({ ...formData, order_date: e.target.value })}
-              style={inputBaseStyle(errors.order_date)}
-            />
-          </div>
-        </div>
+    <div style={styles.page}>
+      
+      {/* Form Header */}
+      <div style={styles.headerCard}>
+        <h1 style={styles.title}>Sales Order Form</h1>
+        <p style={styles.description}>Please fill in the details to create a new sales order. Required fields are marked *</p>
+      </div>
 
-        {/* Company Name */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>Company Name{star}</label>
-          <SearchableSelect
-            value={formData.company_name}
-            onChange={v => setFormData({ ...formData, company_name: v })}
-            options={companyOptions}
-            placeholder="Select Company"
-            inputStyle={inputBaseStyle(errors.company_name)}
-          />
-        </div>
+      {/* Order Date */}
+      <div style={styles.questionCard(errors.order_date)}>
+        <label style={styles.label}>Order Date *</label>
+        <input 
+          type="date" 
+          value={formData.order_date} 
+          onChange={e => setFormData({ ...formData, order_date: e.target.value })}
+          style={styles.input}
+        />
+        {errors.order_date && <div style={styles.errorText}>! This is a required question</div>}
+      </div>
 
-        {/* PO Type */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>PO Type{star}</label>
-          <div style={{ display: 'flex', gap: '0', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden' }}>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, po_type: 'Verbal' })}
-              style={{
-                flex: 1,
-                padding: '8px',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: '600',
-                background: formData.po_type === 'Verbal' ? '#1d4ed8' : '#fff',
-                color: formData.po_type === 'Verbal' ? '#fff' : '#4b5563',
-                cursor: 'pointer'
-              }}
-            >
-              Verbal
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, po_type: 'Ref No.' })}
-              style={{
-                flex: 1,
-                padding: '8px',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: '600',
-                background: formData.po_type === 'Ref No.' ? '#1d4ed8' : '#fff',
-                color: formData.po_type === 'Ref No.' ? '#fff' : '#4b5563',
-                cursor: 'pointer',
-                borderLeft: '1px solid #d1d5db'
-              }}
-            >
-              Ref No.
-            </button>
-          </div>
-        </div>
+      {/* Company Name */}
+      <div style={styles.questionCard(errors.company_name)}>
+        <label style={styles.label}>Company Name *</label>
+        <SearchableSelect
+          value={formData.company_name}
+          onChange={v => setFormData({ ...formData, company_name: v })}
+          options={companyOptions}
+          placeholder="Choose"
+          inputStyle={{ ...styles.input, borderBottom: '1px solid #d1d5db' }}
+        />
+        {errors.company_name && <div style={styles.errorText}>! This is a required question</div>}
+      </div>
 
-        {/* PO Number */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>PO Number{formData.po_type === 'Ref No.' ? star : ''}</label>
-          <input
-            type="text"
-            value={formData.po_number}
-            onChange={e => setFormData({ ...formData, po_number: e.target.value })}
-            placeholder="Enter PO Number"
-            style={inputBaseStyle(errors.po_number)}
-          />
+      {/* PO Type */}
+      <div style={styles.questionCard(false)}>
+        <label style={styles.label}>PO Type *</label>
+        <div style={styles.radioGroup}>
+          {['Verbal', 'Ref No.'].map(type => (
+            <label key={type} style={styles.radioItem}>
+              <input 
+                type="radio" 
+                checked={formData.po_type === type}
+                onChange={() => setFormData({ ...formData, po_type: type, po_number: type === 'Ref No.' ? '' : formData.po_number })}
+              />
+              <span style={{ fontSize: '14px' }}>{type}</span>
+            </label>
+          ))}
         </div>
+      </div>
 
-        {/* Item */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>Item{star}</label>
-          <SearchableSelect
-            value={formData.item}
-            onChange={v => setFormData({ ...formData, item: v })}
-            options={itemOptions}
-            placeholder="Select Item"
-            inputStyle={inputBaseStyle(errors.item)}
-          />
-        </div>
+      {/* PO Number */}
+      <div style={styles.questionCard(errors.po_number)}>
+        <label style={styles.label}>PO Number *</label>
+        <input
+          type="text"
+          value={formData.po_number}
+          onChange={e => setFormData({ ...formData, po_number: e.target.value })}
+          placeholder="Your answer"
+          style={styles.input}
+        />
+        {errors.po_number && <div style={styles.errorText}>! Must be unique for the selected item</div>}
+      </div>
 
-        {/* Qty */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>Qty{star}</label>
-          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={formData.qty}
-              onChange={e => {
-                const val = e.target.value.replace(/[^\d.]/g, '');
-                setFormData({ ...formData, qty: val });
-              }}
-              style={{ ...inputBaseStyle(errors.qty), paddingRight: '80px' }}
-            />
-            <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '4px' }}>
-              <button 
-                type="button" 
-                onClick={() => updateNumeric('qty', -1)}
-                style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid #d1d5db', background: '#f9fafb', fontWeight: 'bold' }}
-              >-</button>
-              <button 
-                type="button" 
-                onClick={() => updateNumeric('qty', 1)}
-                style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid #d1d5db', background: '#f9fafb', fontWeight: 'bold' }}
-              >+</button>
-            </div>
-          </div>
-        </div>
+      {/* Item */}
+      <div style={styles.questionCard(errors.item)}>
+        <label style={styles.label}>Item *</label>
+        <SearchableSelect
+          value={formData.item}
+          onChange={v => setFormData({ ...formData, item: v })}
+          options={itemOptions}
+          placeholder="Choose"
+          inputStyle={{ ...styles.input, borderBottom: '1px solid #d1d5db' }}
+        />
+        {errors.item && <div style={styles.errorText}>! This is a required question</div>}
+      </div>
 
-        {/* PO Rate */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>PO Rate{star}</label>
-          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={formData.rate}
-              onChange={e => {
-                const val = e.target.value.replace(/[^\d.]/g, '');
-                setFormData({ ...formData, rate: val });
-              }}
-              style={{ ...inputBaseStyle(errors.rate), paddingRight: '80px' }}
-            />
-            <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '4px' }}>
-              <button 
-                type="button" 
-                onClick={() => updateNumeric('rate', -1)}
-                style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid #d1d5db', background: '#f9fafb', fontWeight: 'bold' }}
-              >-</button>
-              <button 
-                type="button" 
-                onClick={() => updateNumeric('rate', 1)}
-                style={{ width: '28px', height: '28px', borderRadius: '4px', border: '1px solid #d1d5db', background: '#f9fafb', fontWeight: 'bold' }}
-              >+</button>
-            </div>
-          </div>
-        </div>
+      {/* Qty */}
+      <div style={styles.questionCard(errors.qty)}>
+        <label style={styles.label}>Quantity *</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={formData.qty}
+          onChange={e => setFormData({ ...formData, qty: e.target.value.replace(/[^\d.]/g, '') })}
+          placeholder="Your answer"
+          style={styles.input}
+        />
+        {errors.qty && <div style={styles.errorText}>! Must be a positive number</div>}
+      </div>
 
-        {/* Remarks */}
-        <div style={inputContainerStyle}>
-          <label style={labelStyle}>Remarks</label>
-          <input
-            type="text"
-            value={formData.remarks}
-            onChange={e => setFormData({ ...formData, remarks: e.target.value })}
-            placeholder="Enter Remarks"
-            style={inputBaseStyle(false)}
-          />
-        </div>
+      {/* PO Rate */}
+      <div style={styles.questionCard(errors.rate)}>
+        <label style={styles.label}>PO Rate *</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={formData.rate}
+          onChange={e => setFormData({ ...formData, rate: e.target.value.replace(/[^\d.]/g, '') })}
+          placeholder="Your answer"
+          style={styles.input}
+        />
+        {errors.rate && <div style={styles.errorText}>! Must be a positive number</div>}
+      </div>
 
-        {status && (
-          <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '10px', fontWeight: '600' }}>
+      {/* Remarks */}
+      <div style={styles.questionCard(false)}>
+        <label style={styles.label}>Remarks</label>
+        <input
+          type="text"
+          value={formData.remarks}
+          onChange={e => setFormData({ ...formData, remarks: e.target.value })}
+          placeholder="Your answer"
+          style={styles.input}
+        />
+      </div>
+
+      {status && (
+        <div style={{ ...styles.questionCard(false), background: '#fff' }}>
+          <p style={{ margin: 0, color: status.includes('Error') ? '#d93025' : '#1e8e3e', fontWeight: '500' }}>
             {status}
-          </div>
-        )}
+          </p>
+        </div>
+      )}
 
-      </div>
-
-      {/* Bottom Action Bar */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '56px',
-        background: '#fff',
-        borderTop: '1px solid #e5e7eb',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 14px',
-        gap: '12px',
-        zIndex: 1000
-      }}>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '8px',
-            border: '1px solid #d1d5db',
-            background: '#fff',
-            color: '#374151',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}
+      {/* Actions */}
+      <div style={styles.footer}>
+        <button type="button" onClick={onBack} style={styles.btnCancel}>Clear form</button>
+        <button 
+          type="button" 
+          onClick={handleSave} 
+          style={{ ...styles.btnSubmit, opacity: isLoading ? 0.7 : 1 }}
+          disabled={isLoading}
         >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '8px',
-            border: 'none',
-            background: '#1d4ed8',
-            color: '#fff',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}
-        >
-          Save
+          {isLoading ? 'Saving...' : 'Submit'}
         </button>
       </div>
+
+      <p style={{ fontSize: '12px', color: '#70757a', marginTop: '24px', textAlign: 'center' }}>
+        Never submit passwords through Google Forms.
+      </p>
+
     </div>
   );
 }

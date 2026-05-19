@@ -216,67 +216,68 @@ export default function DispatchPlanningPage({ firm, currentUser, onBack, onMake
         </div>
       ) : (
         <div className="inv-card" style={{ padding: 0, overflow: 'hidden', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-          <table className="inv-table" style={{ margin: 0 }}>
+          <table className="inv-table" style={{ margin: 0, fontSize: '11px' }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Dispatch Schedule</th>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Reference</th>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Customer & Product</th>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Planned Qty</th>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Vehicle Info</th>
-                <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Planned By</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Dispatch Schedule</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Reference</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Customer & Product</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', textAlign: 'center', whiteSpace: 'nowrap' }}>Planned Qty</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Vehicle Info</th>
+                <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Planned By</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && savedPlans.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px' }}>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
                   <div className="spinner" style={{ margin: '0 auto 12px' }} />
                   <div style={{ color: '#64748b', fontWeight: '600' }}>Loading saved plans...</div>
                 </td></tr>
               ) : savedPlans.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px' }}>
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>📅</div>
-                  <div style={{ color: '#64748b', fontWeight: '600' }}>No dispatch plans have been saved yet.</div>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
+                  <div style={{ fontSize: '30px', marginBottom: '8px' }}>📅</div>
+                  <div style={{ color: '#64748b', fontWeight: '600' }}>No dispatch plans saved yet.</div>
                 </td></tr>
               ) : (
                 savedPlans.map((plan, idx) => (
                   <tr key={idx} style={{ transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{new Date(plan.dispatch_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{new Date(plan.dispatch_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: '700', color: '#1e293b' }}>{new Date(plan.dispatch_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{new Date(plan.dispatch_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                     </td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '15px' }}>{plan.job_no}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px', fontWeight: '600' }}>Order: {plan.order_id}</div>
+                    <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '12px' }}>{plan.job_no}</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px', fontWeight: '600' }}>Order: {plan.order_id}</div>
                     </td>
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: '700', color: '#334155' }}>{plan.company_name}</div>
-                      <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{plan.item}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{plan.item}</div>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--primary)' }}>{plan.dispatch_plan_qty}</div>
+                    <td style={{ padding: '6px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '900', color: 'var(--primary)' }}>{plan.dispatch_plan_qty}</div>
                     </td>
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
                       <div style={{ 
                         fontWeight: '800', 
                         background: '#eff6ff', 
                         color: '#1d4ed8', 
-                        padding: '6px 12px', 
-                        borderRadius: '8px', 
+                        padding: '4px 8px', 
+                        borderRadius: '6px', 
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        border: '1px solid #dbeafe'
+                        gap: '4px',
+                        border: '1px solid #dbeafe',
+                        fontSize: '11px'
                       }}>
                         <span>🚚</span> {getTruckDisplay(plan.truck_number)}
                       </div>
                     </td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '28px', height: '28px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>
+                    <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '22px', height: '22px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', color: '#64748b' }}>
                           {plan.created_by?.charAt(0).toUpperCase()}
                         </div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>{plan.created_by?.split('@')[0]}</div>
+                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#475569' }}>{plan.created_by?.split('@')[0]}</div>
                       </div>
                     </td>
                   </tr>

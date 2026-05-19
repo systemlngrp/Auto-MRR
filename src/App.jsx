@@ -3554,8 +3554,8 @@ function StartupOverlay({ onSelect, onGeSubmit, onLogin, onLogout, onRememberSel
               onPendingSheetPlant: () => setStep(20),
               onPendingPrinting: () => setStep(21),
               onPendingCloser: () => setStep(22),
-              onReelIssueData: () => setStep(20),
-              onReelReturnData: () => setStep(21),
+              onReelIssueData: () => setStep(24),
+              onReelReturnData: () => setStep(23),
               onReelStock: () => setStep(26),
               onIndent: () => { setPrListContext(''); setStep(14); },
               onIndentForm: () => {

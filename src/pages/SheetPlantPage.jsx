@@ -12,7 +12,15 @@ export default function SheetPlantPage({ selectedFirm, currentUser, onBack }) {
   const [isLoading, setIsLoading] = useState(false);
   const loadRunRef = useRef(0);
 
-  // ... rest of state
+  const [form, setForm] = useState({
+    part_prod: '',
+    full_corr: '',
+    prod_at_sheet: '',
+    warpage_boxes: '',
+    delamination_boxes: '',
+    misalignment_boxes: '',
+    two_ply_paper: ''
+  });
 
   const loadFromSheets = async () => {
     if (!selectedFirm) return;

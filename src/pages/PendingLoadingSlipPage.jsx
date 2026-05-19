@@ -97,44 +97,45 @@ export default function PendingLoadingSlipPage({ firm, currentUser, onBack, onSu
       {error && <div style={pageStyles.errorBanner}>{error}</div>}
 
       <div className="inv-card" style={{ padding: 0, overflow: 'hidden', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        <table className="inv-table" style={{ margin: 0 }}>
+        <table className="inv-table" style={{ margin: 0, fontSize: '11px' }}>
           <thead>
             <tr style={{ background: '#f8fafc' }}>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Date</th>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Job & Order</th>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Customer</th>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Qty</th>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>Truck</th>
-              <th style={{ padding: '20px', color: '#475569', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' }}>{activeTab === 'pending' ? 'Action' : 'Slip No'}</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Date</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Job & Order</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Customer</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Qty</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>Truck</th>
+              <th style={{ padding: '8px 10px', color: '#475569', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>{activeTab === 'pending' ? 'Action' : 'Slip No'}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && filteredPlans.length === 0 ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px' }}>Loading...</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>Loading...</td></tr>
             ) : filteredPlans.length === 0 ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '60px' }}>No {activeTab} loading slips found.</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>No {activeTab} loading slips found.</td></tr>
             ) : (
               filteredPlans.map((plan, idx) => (
-                <tr key={idx}>
-                  <td style={{ padding: '16px 20px' }}>{new Date(plan.dispatch_date).toLocaleDateString()}</td>
-                  <td style={{ padding: '16px 20px' }}>
+                <tr key={idx} style={{ transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{new Date(plan.dispatch_date).toLocaleDateString()}</td>
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
                     <div style={{ fontWeight: 'bold' }}>{plan.job_no}</div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>{plan.order_id}</div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>{plan.order_id}</div>
                   </td>
-                  <td style={{ padding: '16px 20px' }}>{plan.company_name}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>{plan.dispatch_plan_qty}</td>
-                  <td style={{ padding: '16px 20px' }}>{getTruckDisplay(plan.truck_number)}</td>
-                  <td style={{ padding: '16px 20px' }}>
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{plan.company_name}</td>
+                  <td style={{ padding: '6px 10px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{plan.dispatch_plan_qty}</td>
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{getTruckDisplay(plan.truck_number)}</td>
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
                     {activeTab === 'pending' ? (
                       <button 
                         className="inv-btn-primary small" 
                         disabled={isGenerating}
                         onClick={() => handleGenerateSlip(plan)}
+                        style={{ padding: '4px 8px', fontSize: '10px' }}
                       >
                         {isGenerating ? 'Generating...' : 'Generate Slip'}
                       </button>
                     ) : (
-                      <div style={{ fontWeight: 'bold', color: '#16a34a' }}>{plan.loading_slip_no}</div>
+                      <div style={{ fontWeight: 'bold', color: '#16a34a', fontSize: '12px' }}>{plan.loading_slip_no}</div>
                     )}
                   </td>
                 </tr>
